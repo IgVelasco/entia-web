@@ -10,15 +10,25 @@ button:focus-visible,a:focus-visible,[tabindex="-1"]:focus-visible{outline:2px s
 button{touch-action:manipulation}
 .skip-link{position:fixed;top:12px;left:20px;z-index:100;background:var(--gold);color:var(--deep);padding:12px;transform:translateY(-160%)}
 .skip-link:focus{transform:none}
-header{height:80px;padding:0 clamp(20px,4vw,64px);display:flex;align-items:center;justify-content:space-between;background:#0d1916;border-bottom:1px solid var(--line);position:relative;z-index:20}
+header{min-height:96px;padding:10px clamp(20px,4vw,64px);display:flex;align-items:center;justify-content:space-between;gap:28px;background:linear-gradient(180deg,#1b211c,#0c1512 75%);border-bottom:1px solid #9c89634d;box-shadow:inset 0 1px #bfa37426,0 3px #050e0b,0 4px #af967b35;position:relative;z-index:20}
 .brand{display:flex;align-items:center;text-decoration:none;flex-shrink:0}
 .brand-logo{display:block;width:198px;height:auto}
 .loading-mark{display:block;width:64px;height:64px}
-nav{display:flex;gap:32px;align-items:center}
-.nav{border:0;background:none;color:#b5c2b3;font-size:14px;font-weight:700;position:relative;min-height:44px;padding:12px 0;transition:color .15s}
-.nav:hover,.nav.active{color:#f2deb4}.nav.active:after{content:'';position:absolute;bottom:3px;height:2px;width:100%;left:0;background:var(--gold)}
-.nav-download{border:1px solid #d9bd7c70;padding:11px 20px;color:#e9d4a2}.nav-download.active{background:#dfc18415}.nav-download.active:after{display:none}
-#world{height:calc(100svh - 80px);min-height:690px;position:relative;overflow:hidden;isolation:isolate}
+/* Reuse the game's nine-slice HUD frame, buttons and numbered action slots. */
+.navigation-dock{display:flex;align-items:stretch;gap:5px;padding:5px;border:9px solid transparent;border-image:url('assets/hud/frame.png') 14 fill / 9px / 0 stretch;background:#111713;isolation:isolate}
+.nav{display:flex;align-items:center;justify-content:center;gap:12px;min-width:124px;min-height:48px;padding:6px 16px 6px 8px;border:0;background:none;color:#c9c9b4;position:relative;isolation:isolate;transition:color .16s,transform .16s var(--ease)}
+.nav:before{content:'';position:absolute;inset:0;z-index:-1;border:10px solid transparent;border-image:url('assets/hud/button.png') 10 fill / 10px / 0 stretch;opacity:.8;transition:opacity .16s}
+.nav-label{font:600 20px/1.2 'Cormorant Garamond',Georgia,serif;letter-spacing:.15px;text-shadow:0 1px 2px #07120d}
+.navigation-dock .nav kbd{display:grid;place-items:center;flex-shrink:0;width:34px;height:34px;padding:0;margin:0;border:0;background:url('assets/hud/key-slot.png') center/100% 100%;font:600 13px/1 Manrope,sans-serif;color:#9da895;transition:color .16s}
+.nav-marker{position:absolute;left:50%;bottom:-9px;transform:translateX(-50%) scale(.5);font-size:11px;line-height:12px;color:#f3d08b;opacity:0;transition:opacity .16s,transform .16s var(--ease)}
+.nav:hover,.nav:focus-visible{color:#f8e4bd}.nav:hover:before,.nav:focus-visible:before{border-image-source:url('assets/hud/button-hover.png');opacity:1}
+.nav.active{color:#f7dfaa;background:linear-gradient(0deg,#ba883330,#ddb76408);box-shadow:inset 0 0 0 1px #d8bb755c,inset 0 -2px #c9a45f44}
+.nav.active:before{opacity:.2}.nav.active .nav-marker{opacity:1;transform:translateX(-50%) scale(1)}
+.navigation-dock .nav.active kbd{background-image:url('assets/hud/key-slot-active.png');color:#f5d599}
+.nav:active{transform:translateY(1px)}.nav:focus-visible{outline-offset:2px;z-index:1}
+.nav-download{margin-left:5px;color:#eed6a0;background:#b6974414;padding-right:12px;box-shadow:inset 0 0 0 1px #cdb37642}
+.nav-scroll{width:24px;height:32px;object-fit:contain;margin-left:3px;filter:drop-shadow(0 2px 2px #080e0c)}
+#world{height:calc(100svh - 96px);min-height:690px;position:relative;overflow:hidden;isolation:isolate}
 #scene{position:absolute;width:100%;height:100%;inset:0;image-rendering:pixelated;background:#1b2e20;touch-action:manipulation}
 .vignette{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,#0a1815f5 0%,#0b1914e5 22%,#0c1b1380 36%,#0a1a1000 57%),linear-gradient(0deg,#0b1713f0,transparent 24%,transparent 83%,#0b17135c)}
 .world-meta{position:absolute;top:30px;left:clamp(24px,4vw,64px);z-index:3;pointer-events:none}
@@ -82,9 +92,9 @@ footer{position:absolute;bottom:0;left:0;right:0;height:52px;padding:0 clamp(24p
 #loading{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:16px;background:#0c1915;z-index:10;pointer-events:none}#loading p{font-size:14px;color:#b5c1a9;padding:0 30px;text-align:center}#retry-load{pointer-events:auto}
 dialog{border:1px solid #bfa76a66;background:#0f201a;color:var(--ink);max-width:540px;padding:36px;box-shadow:0 25px 100px #0007}dialog::backdrop{background:#07120be8}#close-notes{float:right}dialog p{font-size:15px}
 @media(min-width:901px) and (max-height:860px){#main-content{top:158px}h1{font-size:48px;margin:12px 0}#intro>p{font-size:14px;margin-bottom:16px}.world-invitation{margin-top:16px;padding-top:15px}.world-invitation p{font-size:12px}.intro-actions{gap:9px}}
-@media(max-width:1100px) and (min-width:901px){header{padding:0 28px}nav{gap:25px}#main-content{width:270px;left:28px}.world-meta{left:28px}.keeper{width:124px}.keeper-label{min-width:104px}.keeper-label strong{font-size:16px}}
+@media(max-width:1100px) and (min-width:901px){header{padding:10px 28px;gap:18px}.nav{min-width:108px;gap:8px;padding-right:12px}.nav-label{font-size:19px}#main-content{width:270px;left:28px}.world-meta{left:28px}.keeper{width:124px}.keeper-label{min-width:104px}.keeper-label strong{font-size:16px}}
 @media(max-width:900px){
-  header{height:72px;padding:0 24px}nav{gap:22px}
+  header{padding:12px 24px;gap:8px;flex-direction:column}.navigation-dock{width:min(100%,650px);display:grid;grid-template-columns:1fr 1fr 1.15fr 1.35fr}.nav{min-width:0;padding:6px;gap:8px}.brand-logo{width:170px}
   #world{height:auto;min-height:0;padding-top:570px;padding-bottom:52px;overflow:hidden}
   #scene{height:570px}.vignette{height:570px;background:linear-gradient(0deg,#0b1713 0%,#0b171300 22%,#0b171300 75%,#0b1713a8 100%)}
   .world-meta{left:24px;top:20px}.where{margin-top:8px}.where strong{font-size:22px}.eyebrow{font-size:10px}#location-state{font-size:11px}
@@ -95,8 +105,7 @@ dialog{border:1px solid #bfa76a66;background:#0f201a;color:var(--ink);max-width:
   footer{padding:0 24px}.keeper-label{max-width:144px;padding:3px 6px}.keeper-label strong{font-size:15px}.movement-help{display:none}
 }
 @media(max-width:600px){
-  header{height:auto;min-height:74px;padding:12px 16px;gap:14px;flex-wrap:wrap}
-  nav{gap:15px;flex:1;justify-content:flex-end}.nav{font-size:12px}.nav-download{padding:9px 10px}
+  header{padding:8px 12px 10px;gap:5px}.navigation-dock{padding:3px;gap:3px;grid-template-columns:1fr 1fr 1.15fr 1.3fr;border-width:7px;border-image-width:7px}.nav{flex-direction:column;gap:5px;min-height:68px;padding:6px 3px 8px}.nav-label{font:700 14px/1.2 Manrope,system-ui,sans-serif;letter-spacing:0}.navigation-dock .nav kbd{width:27px;height:27px;font-size:12px}.nav-download{margin-left:0}.nav-scroll{display:none}.nav-marker{bottom:-8px;font-size:9px}.brand-logo{width:148px}
   #world{padding-top:480px}#scene,.vignette{height:480px}
   .world-meta{left:18px;top:16px}.world-meta>.eyebrow{font-size:9px;letter-spacing:1.3px}.where{gap:9px;margin-top:8px}.where strong{font-size:20px}.where>span:last-child{font-size:10px}.compass{font-size:22px}#location-state{font-size:11px;margin-left:31px}
   #main-content{padding:16px 22px 28px}h1{font-size:46px}#intro>p{font-size:15px}.intro-actions{gap:18px}.primary,.quiet{font-size:13px}.world-invitation strong{font-size:18px}
@@ -106,7 +115,7 @@ dialog{border:1px solid #bfa76a66;background:#0f201a;color:var(--ink);max-width:
   .scene-controls button{width:35px;height:43px;font-size:20px}#travel-toast{top:358px;font-size:11px;padding:8px 10px}
   #panel h2,#essence-game h2{font-size:38px}footer{padding:0 18px;font-size:9px;letter-spacing:1px}footer button{font-size:11px}dialog{max-width:calc(100% - 26px);padding:26px}dialog h2{font-size:34px}
 }
-@media(max-width:370px){header{gap:6px}nav{gap:10px}.nav{font-size:11px}.nav-download{padding:8px}#spell small{font-size:9px}.scene-controls button{width:31px}.keeper{width:100px}.keeper-label{min-width:90px}.intro-actions{flex-wrap:wrap}}
+@media(max-width:370px){header{padding-inline:7px}.nav-label{font-size:13px}#spell small{font-size:9px}.scene-controls button{width:31px}.keeper{width:100px}.keeper-label{min-width:90px}.intro-actions{flex-wrap:wrap}}
 .motion-off *, .motion-off *:before, .motion-off *:after{transition:none!important;animation:none!important}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
@@ -118,11 +127,8 @@ dialog{border:1px solid #bfa76a66;background:#0f201a;color:var(--ink);max-width:
 #intro .entia-title{max-width:310px;margin:0 0 8px;line-height:0}
 .entia-title img{display:block;width:100%;height:auto}
 #intro>.intro-lead{font:500 34px/1.08 'Cormorant Garamond',Georgia,serif;letter-spacing:-.4px;color:#eee6d1;margin:0 0 18px;max-width:15ch}
-@media(max-width:1100px) and (min-width:601px){.brand-logo{width:178px}}
+@media(max-width:1100px) and (min-width:901px){.brand-logo{width:178px}}
 @media(max-width:600px){
-  header{justify-content:center;gap:4px;padding-top:8px;padding-bottom:8px}
-  .brand{flex:0 0 100%;justify-content:center}.brand-logo{width:148px}
-  nav{flex:1 0 100%;justify-content:space-between;gap:12px}
   #intro .entia-title{max-width:340px;margin:10px 0 8px}
   #intro>.intro-lead{font-size:34px;max-width:none;margin-bottom:18px}
 }

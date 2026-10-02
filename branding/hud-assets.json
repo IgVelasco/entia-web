@@ -1,0 +1,13 @@
+{
+  "repository": "IgVelasco/rao-client",
+  "commit": "e0684d0998862f5b673c604ac3b63c9cbe611f1d",
+  "note": "Unmodified UI assets referenced by the current client. These legacy-derived HUD textures are separate from the improved 60-PPT world artwork.",
+  "assets": {
+    "dist/assets/hud/frame.png": {"source": "assets/interface/legacy_hud/menu-frame-neutral.png", "sha256": "573af9d13f143b8d0e29d8bd3214432ee9ac86387b694c9b5d15d065629ff9b1"},
+    "dist/assets/hud/button.png": {"source": "assets/interface/legacy_hud/button-neutral.png", "sha256": "89bf45ae44bb8b94c783d6ed9f7a46abaeeed041d14e8fc694ee58989cd8957d"},
+    "dist/assets/hud/button-hover.png": {"source": "assets/interface/legacy_hud/hover-button-neutral.png", "sha256": "a5f941f55f6172c9d24bed019aa604ccb0d974f9d2f5ca0a61e1d90fae80e9d4"},
+    "dist/assets/hud/key-slot.png": {"source": "assets/interface/macros/slot01.png", "sha256": "327285c34fcd522c1d51126087518ae2702f9237cb16bb26547faa5a2497c6f3"},
+    "dist/assets/hud/key-slot-active.png": {"source": "assets/interface/macros/slot01-over.png", "sha256": "96cedb5987733532680424f2165efee86147220500c8188ea20a9e6c080dee29"},
+    "dist/assets/hud/scroll.png": {"source": "assets/interface/icons/spell-scroll.png", "sha256": "646178f1a64ba128190a810024f66c5bfa135c458e2beb3c4f8fb449f7b98c36"}
+  }
+}
