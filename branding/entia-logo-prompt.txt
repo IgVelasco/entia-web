@@ -1,0 +1,13 @@
+Entia logo
+Created with the built-in image-generation tool. Transparent PNG, 2172 x 724.
+Website asset: dist/assets/entia-logo.png
+The small SVG favicon is a simplified interface companion to the threshold/essence emblem.
+
+Use case: logo-brand.
+Create the finished primary game logo for ENTIA, a dark medieval fantasy multiplayer RPG rooted in an intimate woodland town, manual spellcasting, rivalries, and carrying vulnerable essence home. This is a NEW professional game identity, not a mockup.
+Text, exactly once and spelled correctly: ENTIA (E N T I A). No other text.
+A wide horizontal logo lockup on a genuinely transparent background, roughly 3:1 aspect ratio, tightly framed with only small transparent safety padding. A distinctive compact arcane seal on the left and large beautifully drawn uppercase ENTIA lettering to its right, visually one coherent logo.
+Emblem idea: a weathered bronze threshold / open stone arch encloses a single small pale ember of essence; three asymmetric carved cuts subtly suggest E. The opening and protected light convey a dangerous world and a gathering place. Strong readable silhouette, an original symbol rather than a generic round magic circle. Simple enough to recognize at favicon size.
+Lettering: bespoke sharply cut old-world Roman serif capitals, generous sturdy proportions, sculpted but restrained; striking E and A terminals, legible at small sizes. Avoid ornate blackletter. The entire word is the visual hero, emblem about the height of the lettering.
+Materials and palette: antique brushed gold, pale warm ivory face edges, muted copper recesses, tiny warm amber / desaturated celadon essence light. Subtle hand-painted wear and engraved texture fitting improved 60-pixel RPG scenery. Rich, confident and evocative; no glossy chrome, no excessive bevels, no neon haze.
+Keep all contours crisp with useful alpha transparency; transparent counters inside letters. No background rectangle, no landscape scene, no checkerboard baked into image, no presentation board, no drop shadow outside the artwork, no tagline, no shield, no sword, no dragon, no esports mascot, no stock heraldry, no extra symbols. The design must stand out cleanly on near-black forest green #0b1713.

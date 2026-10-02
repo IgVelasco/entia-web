@@ -11,9 +11,9 @@ button{touch-action:manipulation}
 .skip-link{position:fixed;top:12px;left:20px;z-index:100;background:var(--gold);color:var(--deep);padding:12px;transform:translateY(-160%)}
 .skip-link:focus{transform:none}
 header{height:80px;padding:0 clamp(20px,4vw,64px);display:flex;align-items:center;justify-content:space-between;background:#0d1916;border-bottom:1px solid var(--line);position:relative;z-index:20}
-.brand{display:flex;gap:12px;align-items:center;text-decoration:none;font-family:Georgia,serif;font-size:27px;letter-spacing:4px}
-.brand-mark{color:var(--gold);border:1px solid #d6b87370;width:38px;height:44px;display:grid;place-items:center;font-family:Georgia,serif;font-size:30px;font-weight:bold;letter-spacing:-2px;clip-path:polygon(0 0,100% 0,100% 76%,50% 100%,0 76%)}
-.brand small{display:block;font:700 10px Manrope,sans-serif;letter-spacing:2.5px;margin-top:3px;color:#a9b6a9}
+.brand{display:flex;align-items:center;text-decoration:none;flex-shrink:0}
+.brand-logo{display:block;width:198px;height:auto}
+.loading-mark{display:block;width:64px;height:64px}
 nav{display:flex;gap:32px;align-items:center}
 .nav{border:0;background:none;color:#b5c2b3;font-size:14px;font-weight:700;position:relative;min-height:44px;padding:12px 0;transition:color .15s}
 .nav:hover,.nav.active{color:#f2deb4}.nav.active:after{content:'';position:absolute;bottom:3px;height:2px;width:100%;left:0;background:var(--gold)}
@@ -81,7 +81,7 @@ dialog{border:1px solid #bfa76a66;background:#0f201a;color:var(--ink);max-width:
 @media(min-width:901px) and (max-height:860px){#main-content{top:158px}h1{font-size:48px;margin:12px 0}#intro>p{font-size:14px;margin-bottom:16px}.world-invitation{margin-top:16px;padding-top:15px}.world-invitation p{font-size:12px}.intro-actions{gap:9px}}
 @media(max-width:1100px) and (min-width:901px){header{padding:0 28px}nav{gap:25px}#main-content{width:270px;left:28px}.world-meta{left:28px}.keeper{width:124px}.keeper-label{min-width:104px}.keeper-label strong{font-size:16px}}
 @media(max-width:900px){
-  header{height:72px;padding:0 24px}nav{gap:22px}.brand small{display:none}
+  header{height:72px;padding:0 24px}nav{gap:22px}
   #world{height:auto;min-height:0;padding-top:570px;padding-bottom:52px;overflow:hidden}
   #scene{height:570px}.vignette{height:570px;background:linear-gradient(0deg,#0b1713 0%,#0b171300 22%,#0b171300 75%,#0b1713a8 100%)}
   .world-meta{left:24px;top:20px}.where{margin-top:8px}.where strong{font-size:22px}.eyebrow{font-size:10px}#location-state{font-size:11px}
@@ -92,7 +92,7 @@ dialog{border:1px solid #bfa76a66;background:#0f201a;color:var(--ink);max-width:
   footer{padding:0 24px}.keeper-label{margin-top:5px;min-width:112px;padding:6px 9px}.keeper-label strong{font-size:16px}.keeper-label small{font-size:9px}.keeper-state{font-size:8px;margin-top:3px}
 }
 @media(max-width:600px){
-  header{height:auto;min-height:74px;padding:12px 16px;gap:14px;flex-wrap:wrap}.brand{font-size:23px;gap:7px;letter-spacing:2px}.brand-mark{width:29px;height:35px;font-size:24px}
+  header{height:auto;min-height:74px;padding:12px 16px;gap:14px;flex-wrap:wrap}
   nav{gap:15px;flex:1;justify-content:flex-end}.nav{font-size:12px}.nav-download{padding:9px 10px}
   #world{padding-top:480px}#scene,.vignette{height:480px}
   .world-meta{left:18px;top:16px}.world-meta>.eyebrow{font-size:9px;letter-spacing:1.3px}.where{gap:9px;margin-top:8px}.where strong{font-size:20px}.where>span:last-child{font-size:10px}.compass{font-size:22px}#location-state{font-size:11px;margin-left:31px}
@@ -103,10 +103,23 @@ dialog{border:1px solid #bfa76a66;background:#0f201a;color:var(--ink);max-width:
   .scene-controls button{width:35px;height:43px;font-size:20px}#travel-toast{top:358px;font-size:11px;padding:8px 10px}
   #panel h2,#essence-game h2{font-size:38px}footer{padding:0 18px;font-size:9px;letter-spacing:1px}footer button{font-size:11px}dialog{max-width:calc(100% - 26px);padding:26px}dialog h2{font-size:34px}
 }
-@media(max-width:370px){header{gap:6px}nav{gap:10px}.nav{font-size:11px}.nav-download{padding:8px}.brand{font-size:21px}#spell small{font-size:9px}.scene-controls button{width:31px}.keeper{width:100px}.keeper-label{min-width:90px}.intro-actions{flex-wrap:wrap}}
+@media(max-width:370px){header{gap:6px}nav{gap:10px}.nav{font-size:11px}.nav-download{padding:8px}#spell small{font-size:9px}.scene-controls button{width:31px}.keeper{width:100px}.keeper-label{min-width:90px}.intro-actions{flex-wrap:wrap}}
 .motion-off *, .motion-off *:before, .motion-off *:after{transition:none!important;animation:none!important}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
 /* Apocalipsis keeps the warm copper / magenta palette of the spell definition. */
 #spell{border-color:#d483597d}#spell .spell-glyph{color:#efa76e}#spell:hover,#spell[aria-pressed="true"]{background:#33251e;border-color:#efa76e}.aiming .target-reticle,.keeper:hover .target-reticle{color:#f2a47b}
 @media(max-width:370px){#spell strong{font-size:16px}}
+
+/* Entia: the threshold protects the essence; the village remains the main stage. */
+#intro .entia-title{margin:12px 0 8px;line-height:0}
+.entia-title img{display:block;width:100%;height:auto}
+#intro>.intro-lead{font:500 34px/1.08 'Cormorant Garamond',Georgia,serif;letter-spacing:-.4px;color:#eee6d1;margin:0 0 18px;max-width:15ch}
+@media(max-width:1100px) and (min-width:601px){.brand-logo{width:178px}}
+@media(max-width:600px){
+  header{justify-content:center;gap:4px;padding-top:8px;padding-bottom:8px}
+  .brand{flex:0 0 100%;justify-content:center}.brand-logo{width:148px}
+  nav{flex:1 0 100%;justify-content:space-between;gap:12px}
+  #intro .entia-title{max-width:340px;margin:10px 0 8px}
+  #intro>.intro-lead{font-size:34px;max-width:none;margin-bottom:18px}
+}
