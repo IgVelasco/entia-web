@@ -46,26 +46,12 @@ const motionOff = () => paused || motionPreference.matches;
 const heading = (dx,dy) => Math.abs(dx)>Math.abs(dy) ? (dx>0?1:3) : (dy>0?2:0);
 const screen = p => ({x:p.x*scale+ox, y:p.y*scale+oy});
 
-// Original FONT_DIALOG glyphs from the client, displayed at their native pixel size.
-const nameGlyphs = {"<":[21485,8,14],">":[21486,8,14],"D":[21429,8,14],"G":[21432,8,14],"H":[21433,8,14],"N":[21439,8,14],"O":[21440,9,14],"P":[21441,7,14],"R":[21443,8,14],"U":[21446,8,14],"Y":[21450,7,14],"a":[21400,7,14],"b":[21401,7,14],"d":[21403,7,14],"e":[21404,7,14],"g":[21406,7,14],"i":[21408,3,14],"k":[21410,8,14],"l":[21411,3,14],"m":[21412,11,14],"n":[21413,7,14],"o":[21414,7,14],"r":[21417,5,14],"s":[21418,6,14],"v":[21421,7,14],"w":[21422,9,14],"x":[21423,8,14]};
-
+// Match the client's active NativeWorldTextGlyph renderer with real Inter text.
 function setGameText(element, text) {
   if (element.dataset.gameText === text) return;
   element.dataset.gameText = text;
-  // Keep real accessible text alongside the exact game glyphs.
   element.textContent = text;
   element.classList.add('game-text');
-  const art = document.createElement('span');
-  art.className = 'game-glyphs';
-  art.setAttribute('aria-hidden', 'true');
-  for (const character of text) {
-    const [id,w,h] = nameGlyphs[character];
-    const glyph = document.createElement('img');
-    glyph.src = `assets/font-dialog/${id}.png`;
-    glyph.alt = ''; glyph.width = w; glyph.height = h;
-    art.append(glyph);
-  }
-  element.append(art);
 }
 
 // Labels are real buttons, so the same spell works with mouse, touch and keyboard.

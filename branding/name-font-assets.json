@@ -1,121 +1,20 @@
 {
   "repository": "IgVelasco/rao-client",
   "commit": "e0684d0998862f5b673c604ac3b63c9cbe611f1d",
-  "font": "SpriteFontService.FONT_DIALOG",
-  "display_scale": 1,
-  "faction_colors": {
-    "source": "scripts/ActorOverlayPolicy.gd",
-    "army": "#2051FB",
-    "chaos": "#C40005"
-  },
-  "assets": {
-    "21485": {
-      "source": "assets/sprites/legacy_font_21485.png",
-      "sha256": "1056fb4c0e993e4fa597cfa2e160ffd94b4418798299e9d2bb7cad18dee3690f"
-    },
-    "21486": {
-      "source": "assets/sprites/legacy_font_21486.png",
-      "sha256": "372f097ca9b7e46d8f06aca2ef242df3f81c3c30a3bf70b98c10d5a3f5d920b2"
-    },
-    "21429": {
-      "source": "assets/sprites/legacy_font_21429.png",
-      "sha256": "f7364e6bcce03df3b8c4f12befbb1cf2b33f3be25737f33a612110d6ec325e9a"
-    },
-    "21432": {
-      "source": "assets/sprites/legacy_font_21432.png",
-      "sha256": "602c05a9acb81459b8f39596c2b0c31a6a56f1c512c9bb3552f7fd41f19d6c71"
-    },
-    "21433": {
-      "source": "assets/sprites/legacy_font_21433.png",
-      "sha256": "188bd2ddccf23c7787f7a2b4a2d7b86ffb0c280c8731e1c184826cdd7b49ef71"
-    },
-    "21439": {
-      "source": "assets/sprites/legacy_font_21439.png",
-      "sha256": "2fef7d3c7b7ff4027e46171b63d90934f5ff7b7afca43f461eebb7a46fd48191"
-    },
-    "21440": {
-      "source": "assets/sprites/legacy_font_21440.png",
-      "sha256": "a69eb32e7a3ca510e2ac33a2500e3e687d61216b908ac0cfeb8bf32ec7161fd5"
-    },
-    "21441": {
-      "source": "assets/sprites/legacy_font_21441.png",
-      "sha256": "65d4e3f8fdda751b288a0c8c10c450c653e398ecafa37bb806cc2638ed7f1559"
-    },
-    "21443": {
-      "source": "assets/sprites/legacy_font_21443.png",
-      "sha256": "c89683326a38d3b746b68e00aef40cc148491229d8e0f666665d2e8eea60f80c"
-    },
-    "21446": {
-      "source": "assets/sprites/legacy_font_21446.png",
-      "sha256": "39d6658aac1d5fdfe6a3639c4624e30dbbd6f730c5b30fba3575a50fd5b0dc78"
-    },
-    "21450": {
-      "source": "assets/sprites/legacy_font_21450.png",
-      "sha256": "1032e2fefc3ea68b39f2ddd2b64d191299d99d6b4c8f356671a65d635989c1eb"
-    },
-    "21400": {
-      "source": "assets/sprites/legacy_font_21400.png",
-      "sha256": "3570cd9b093e98f4e570d80c2119244b9cb850059f23bb62289bbce1a1aa2dcb"
-    },
-    "21401": {
-      "source": "assets/sprites/legacy_font_21401.png",
-      "sha256": "10f8f2b36a6997b2a58edb1280772d8b9e00982500e980b5a2109436d6d4a0c3"
-    },
-    "21403": {
-      "source": "assets/sprites/legacy_font_21403.png",
-      "sha256": "0d7cb24132a4d6811f2c7970808b18c9eedc5e5ef435ae0f7505149ef0e90485"
-    },
-    "21404": {
-      "source": "assets/sprites/legacy_font_21404.png",
-      "sha256": "76a7c1d2768407d4b87baf28b4d27b8d4056aa0ffb835af6a3b363defcb3e95e"
-    },
-    "21406": {
-      "source": "assets/sprites/legacy_font_21406.png",
-      "sha256": "0e108fb94369a665d2463d1ad4860c945913e5f56ce586c455dd4edd81815369"
-    },
-    "21408": {
-      "source": "assets/sprites/legacy_font_21408.png",
-      "sha256": "0479e9cf337e3f99f10f421a0a9ffadf7a23e4afd20eb2d5770e2b42978a7261"
-    },
-    "21410": {
-      "source": "assets/sprites/legacy_font_21410.png",
-      "sha256": "334ab537ce50b59fc59effe6e89e207c2082dd71453cd7265fd820c2c2a33b9c"
-    },
-    "21411": {
-      "source": "assets/sprites/legacy_font_21411.png",
-      "sha256": "100c2f80c7f508b4b517fb1297b2b2629ce8f0014f1f55aebc65531264aca281"
-    },
-    "21412": {
-      "source": "assets/sprites/legacy_font_21412.png",
-      "sha256": "78f67aa5bf672885b72c8a8a1fb8a66aa77e71444c21f8c7c2de3e1f40771336"
-    },
-    "21413": {
-      "source": "assets/sprites/legacy_font_21413.png",
-      "sha256": "ff9d7926a531b743f82fb062fd0d8c3aa64c98ec6d08b0ed60e716bbca02d15f"
-    },
-    "21414": {
-      "source": "assets/sprites/legacy_font_21414.png",
-      "sha256": "c60d992ab50ff9a50b18c78f6183239422d887f774464fdd1f29d39d1c590e25"
-    },
-    "21417": {
-      "source": "assets/sprites/legacy_font_21417.png",
-      "sha256": "8dd70e675177a0c8644f8fe2807b8120a392d7fed9deb19e34e3df877f29c2d5"
-    },
-    "21418": {
-      "source": "assets/sprites/legacy_font_21418.png",
-      "sha256": "a8434cccf671b45f6e0e6a7d3476fb9987b8e3657444da07344d78356138d761"
-    },
-    "21421": {
-      "source": "assets/sprites/legacy_font_21421.png",
-      "sha256": "5a0f0c4e97c022aa35420b1316ada5363f2301f35ac8f02159d95f97d1c9e021"
-    },
-    "21422": {
-      "source": "assets/sprites/legacy_font_21422.png",
-      "sha256": "0d88c279ad10edb47ce7ecbd2e24d4da26d94962c4789114a60c6276fac2a1bc"
-    },
-    "21423": {
-      "source": "assets/sprites/legacy_font_21423.png",
-      "sha256": "8b2bdf9e42282164cdef78f3c6b72e1e9142d4c47fafae40074b347b3f6d01b2"
-    }
+  "font": "Inter Regular",
+  "active_renderer": "scripts/NativeWorldTextGlyph.gd",
+  "renderer_enabled_by": "scripts/hud/FixedWorldPresentation.gd",
+  "source": "assets/interface/fonts/inter/Inter-Regular.ttf",
+  "sha256": "40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82",
+  "license": "SIL Open Font License 1.1; bundled as dist/assets/fonts/OFL.txt",
+  "web_presentation": {
+    "names_px": 17,
+    "mobile_names_px": 16,
+    "clan_px": 13,
+    "weight": 400,
+    "map_zoom_independent": true,
+    "army": "#7DADFF",
+    "chaos": "#FF777B",
+    "note": "Uses the exact current-game font. Larger stable screen sizes and brighter faction shades improve readability on the website."
   }
 }
