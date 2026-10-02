@@ -1,17 +1,67 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1413"><title>RAO · Enter Nix</title><meta name="description" content="Step into Nix. Discover RAO’s world of rivalries, risky essence and lasting progression."><link rel="icon" href="favicon.svg"><link rel="stylesheet" href="style.css"></head><body>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b1413">
+  <title>RAO · Enter Nix</title>
+  <meta name="description" content="Find your way through Nix. Explore RAO’s world, its PvP vision, rankings preview and client availability.">
+  <link rel="icon" href="favicon.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
 <div id="app">
-<header><a href="#home" class="brand" aria-label="RAO home"><span class="brand-mark">R</span><span>RAO<small>A WORLD WORTH RETURNING TO</small></span></a><nav aria-label="Main navigation"><button class="nav active" data-place="home">Home</button><button class="nav" data-place="arena">The game</button><button class="nav" data-place="hall">Rankings</button><button class="nav nav-download" data-place="gate">Download <span>↗</span></button></nav></header>
-<main id="world"><canvas id="scene" aria-label="Interactive Nix village. Use the location buttons to explore." role="img"></canvas><div class="vignette"></div><div class="grain"></div>
-<div class="world-meta"><span class="eyebrow">THE LIVING WORLD</span><span>Nix <i></i> The gathering place</span></div>
-<div id="intro"><div class="chapter"><span></span> WELCOME TO RAO</div><h1>Your next rivalry<br>starts <em>here.</em></h1><p>A familiar world. A new reason to fight.<br>Gather in Nix. Enter the arena. Decide what to risk.</p><div class="intro-actions"><button class="primary" data-place="arena">Discover the game <span>↗</span></button><button class="quiet" id="wander">Take a walk <span>⌁</span></button></div><span class="hint"><span class="mouse-icon"></span> Choose a place. Your character will lead the way.</span></div>
-<div id="locations" aria-label="Places in Nix"><button class="location home" data-place="home"><span class="loc-icon">⌂</span><span>The inn<small>HOME</small></span></button><button class="location arena" data-place="arena"><span class="loc-icon">⚔</span><span>The arena<small>RISK & REWARD</small></span></button><button class="location hall" data-place="hall"><span class="loc-icon">♜</span><span>Hall of names<small>RANKINGS</small></span></button><button class="location gate" data-place="gate"><span class="loc-icon">◇</span><span>The crossing<small>DOWNLOAD</small></span></button></div>
-<div id="essence-game" hidden><span class="eyebrow">A LITTLE TASTE OF THE JOURNEY</span><strong>Carry the light home.</strong><p>Click the glowing points, then return to the inn.</p><div><span id="essence-count">0 / 3 essence</span><button id="leave-game" class="text-button">Leave</button></div></div>
-<aside id="panel" aria-live="polite" hidden><button id="close-panel" aria-label="Close section">×</button><div id="panel-content"></div></aside>
-<div id="travel-toast" role="status"></div>
-<div class="scene-controls"><button id="motion" aria-label="Pause world animation" title="Pause animation">Ⅱ</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="zoom-in" aria-label="Zoom in">+</button><button id="reset-view" aria-label="Reset view" title="Reset view">⌖</button></div>
-<footer><span><b class="compass">✦</b> NIX <span class="footer-divider">/</span> EXPLORE AT YOUR OWN PACE</span><button id="about">Prototype notes</button></footer>
-<div id="loading"><span class="brand-mark">R</span><p>Opening the gates of Nix…</p></div>
-</main>
-<dialog id="notes"><button id="close-notes" aria-label="Close notes">×</button><span class="eyebrow">ABOUT THIS PREVIEW</span><h2>A world in the making.</h2><p>This is an interactive website prototype, using RAO’s improved artwork. The PvP loop is a product-design direction, not a statement that every feature is live.</p><p>Rankings use illustrative characters, and a game download has not been connected. The essence walk is a small website interaction, separate from the game’s economy.</p><p>Artwork reference: the approved-art package from client PR237. Public ranking rules, final downloads and additional mounts remain to be connected.</p></dialog>
-</div><script src="app.js"></script></body></html>
+  <a class="skip-link" href="#main-content">Skip to section content</a>
+  <header>
+    <a href="#home" data-place="home" class="brand" aria-label="RAO home"><span class="brand-mark" aria-hidden="true">R</span><span>RAO<small>ENTER NIX</small></span></a>
+    <nav aria-label="Main navigation">
+      <button class="nav active" data-place="home" aria-current="page">Home</button>
+      <button class="nav" data-place="arena">The game</button>
+      <button class="nav" data-place="hall">Rankings</button>
+      <button class="nav nav-download" data-place="gate">Download</button>
+    </nav>
+  </header>
+  <main id="world" data-place="home">
+    <canvas id="scene" aria-label="Nix village with four keepers. Use the labeled keeper buttons to cast a travel spell." role="img"></canvas>
+    <div class="vignette" aria-hidden="true"></div>
+    <div class="world-meta">
+      <span class="eyebrow">NIX · THE GATHERING PLACE</span>
+      <div class="where"><span class="compass" aria-hidden="true">✦</span><strong id="location-name">The inn</strong><span id="location-section">Home</span></div>
+      <span id="location-state">You are here</span>
+    </div>
+    <div id="locations" role="group" aria-label="Cast Waylight to a keeper" aria-describedby="spell-hint"></div>
+    <div id="player-label" aria-hidden="true"><span>YOU</span></div>
+    <div id="keeper-reply" aria-hidden="true" hidden></div>
+    <section id="main-content" tabindex="-1" aria-label="Current section">
+      <div id="intro">
+        <span class="eyebrow">WELCOME, TRAVELER</span>
+        <h1>Find your way<br>through <em>Nix.</em></h1>
+        <p>A gathering place before the next rivalry. The keepers will show you around.</p>
+        <div class="intro-actions"><button class="primary" data-place="gate">Find the download</button><button class="quiet" data-place="arena">Discover the game</button></div>
+        <div class="world-invitation"><span class="spell-glyph" aria-hidden="true">✧</span><div><strong>A little magic goes a long way.</strong><p>Choose a keeper to cast Waylight and travel to their part of the world.</p></div></div>
+        <button class="text-button" id="wander">Or take an essence walk</button>
+      </div>
+      <aside id="panel" aria-labelledby="section-heading" hidden>
+        <button id="close-panel" aria-label="Return to Home">×</button>
+        <div id="panel-content"></div>
+      </aside>
+      <div id="essence-game" hidden>
+        <span class="eyebrow">A SMALL WEBSITE ADVENTURE</span><h2>Carry the light home.</h2>
+        <p>Collect the three lights, then return to the Innkeeper. This is separate from the game’s economy.</p>
+        <div class="essence-actions" role="group" aria-label="Collect essence"><button data-essence="0">Light 1</button><button data-essence="1">Light 2</button><button data-essence="2">Light 3</button></div>
+        <div class="essence-progress"><span id="essence-count">0 / 3 essence</span><button id="leave-game" class="text-button">Leave walk</button></div>
+      </div>
+    </section>
+    <div class="world-toolbar">
+      <button id="spell" aria-pressed="false" aria-describedby="spell-hint"><span class="spell-glyph" aria-hidden="true">✧</span><span><strong>Waylight</strong><small id="spell-hint">Cast at a keeper</small></span><kbd aria-hidden="true">C</kbd></button>
+      <div class="scene-controls" aria-label="World controls"><button id="motion" aria-label="Pause world animation" aria-pressed="false" title="Pause animation">Ⅱ</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="zoom-in" aria-label="Zoom in">+</button><button id="reset-view" aria-label="Reset view" title="Reset view">⌖</button></div>
+    </div>
+    <div id="travel-toast" role="status" aria-live="polite"></div>
+    <footer><span>✦ <b>NIX</b> <span class="footer-divider">/</span> <span id="footer-place">THE INN</span></span><button id="about">Prototype notes</button></footer>
+    <div id="loading" role="status"><span class="brand-mark" aria-hidden="true">R</span><p>Opening the gates of Nix…</p><button id="retry-load" class="quiet" hidden>Try again</button></div>
+  </main>
+  <dialog id="notes" aria-labelledby="notes-heading"><button id="close-notes" aria-label="Close notes">×</button><span class="eyebrow">ABOUT THIS PREVIEW</span><h2 id="notes-heading">A world in the making.</h2><p>This is an interactive website prototype, using RAO’s improved artwork. The PvP loop is a product-design direction, not a statement that every feature is live.</p><p>Rankings use illustrative characters, and a game download has not been connected. Waylight and the essence walk are website interactions, separate from the game’s spells and economy.</p><p>Use the navigation, click a keeper, or press C to choose a spell target. Keys 1–4 open sections. Pause freezes the world; reduced-motion preferences are respected.</p></dialog>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
