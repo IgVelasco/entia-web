@@ -9,6 +9,8 @@ let width = 0, height = 0, dpr = 1, scale = 1, ox = 0, oy = 0, zoom = 1;
 let time = 0, last = 0, frameRequest = 0, paused = false, ready = false;
 let images = {}, current = 'home', route = null, spell = null, rings = [], aiming = false;
 let atPlace = 'home', hovered = null, game = false, collected = 0, toastTimer, replyTimer;
+let nearbyPlace = null;
+const NEAR_ENTER = 72, NEAR_EXIT = 104;
 const camera = {x: 990, y: 520, targetX: 990, targetY: 520};
 const spots = {
   home: {x: 800, y: 440, section: 'Home', clan: 'Nix', body: 'rogue', greeting: 'Welcome to Nix.', land: {x: 870, y: 470}},
@@ -302,15 +304,16 @@ function advanceRoute(dt) {
     remaining-=length;from=to;
   }
   hero.gait+=distance-r.distance;r.distance=distance;hero.x=p.x;hero.y=p.y;
+  if(r.explore)checkNearbySection();
   if(u===1){route=null;r.complete?.();}
 }
-function moveHero(points,{complete,instant=false,manual=false}={}) {
+function moveHero(points,{complete,instant=false,manual=false,explore=manual}={}) {
   const target=points.at(-1);let from=hero,length=0;
   for(const p of points){length+=Math.hypot(p.x-from.x,p.y-from.y);from=p;}
   // Every new action replaces the previous route and its completion callback.
   route=null;
-  if(motionOff()||instant||length<2){hero.x=target.x;hero.y=target.y;complete?.();requestDraw();return;}
-  route={sx:hero.x,sy:hero.y,target,points,segment:0,length,distance:0,elapsed:0,duration:length/WALK_SPEED,complete,manual};
+  if(motionOff()||instant||length<2){hero.x=target.x;hero.y=target.y;if(explore)checkNearbySection();complete?.();requestDraw();return;}
+  route={sx:hero.x,sy:hero.y,target,points,segment:0,length,distance:0,elapsed:0,duration:length/WALK_SPEED,complete,manual,explore};
   requestDraw();
 }
 function walkingPath(target) {
@@ -370,6 +373,31 @@ function checkWalkingProgress() {
   treasures.forEach((light,index)=>{if(Math.hypot(light.x-hero.x,light.y-hero.y)<27)takeLight(index);});
   if(collected===3&&Math.hypot(hero.x-spots.home.land.x,hero.y-spots.home.land.y)<27)go('home');
 }
+function checkNearbySection() {
+  // Exploration opens content in place. Never redirect the walk, release held
+  // keys, cast a spell, or interrupt collecting lights to select a section.
+  if(game)return;
+  const distance=place=>Math.hypot(hero.x-spots[place].x,hero.y-spots[place].y);
+  if(nearbyPlace&&distance(nearbyPlace)<=NEAR_EXIT){
+    atPlace=nearbyPlace;$('#location-state').textContent='You are here';return;
+  }
+  if(nearbyPlace){
+    nearbyPlace=null;atPlace=null;$('#location-state').textContent='Exploring Nix';
+  }
+  const nearest=keepers.reduce((best,k)=>distance(k.place)<(best?distance(best.place):NEAR_ENTER)?k:best,null);
+  if(!nearest)return;
+  nearbyPlace=nearest.place;atPlace=nearest.place;
+  if(current!==nearest.place){
+    current=nearest.place;setContent(current);
+    window.history.replaceState(null,'','#'+current);
+    clearTimeout(replyTimer);$('#keeper-reply').hidden=true;
+    clearTimeout(toastTimer);$('#travel-toast').classList.remove('show');
+    $('#travel-toast').textContent=`${nearest.section} opened.`;
+  }
+  $('#location-state').textContent='You are here';
+  $('#world').classList.remove('traveling');
+  updateKeeperStates();reactToArrival(nearest.place);
+}
 function updateKeeperStates() {
   for(const k of keepers){
     const active=k.place===current;
@@ -405,6 +433,7 @@ function setContent(place) {
 }
 function go(place,{history:writeHistory=true,instant=false,announce=true,cast=false}={}) {
   if(!spots[place])return;
+  nearbyPlace=null;
   heldDirections.clear();
   clearTimeout(toastTimer);$('#travel-toast').classList.remove('show');$('#travel-toast').textContent='';
   const secured=game&&place==='home'&&collected===3;
@@ -442,7 +471,7 @@ function setMotionState() {
     heldDirections.clear();
     if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;
     const pending=route;route=null;spell=null;rings=[];
-    if(pending){hero.x=pending.target.x;hero.y=pending.target.y;pending.complete?.();}
+    if(pending){hero.x=pending.target.x;hero.y=pending.target.y;if(pending.explore)checkNearbySection();pending.complete?.();}
     camera.x=camera.targetX;camera.y=camera.targetY;
     for(const a of [...npcs,...keepers])a.reaction=0;
     for(const animation of $('#world').getAnimations({subtree:true}))animation.cancel();
@@ -461,6 +490,7 @@ function rankRows(mode){const rows=mode==='support'?[names[3],names[5],names[7],
 
 function startGame() {
   heldDirections.clear();
+  nearbyPlace=null;
   route=null;spell=null;rings=[];atPlace=null;game=true;collected=0;
   treasures.forEach(p=>p.collected=false);
   setAim(false);$('#world').classList.remove('traveling','panel-open');$('#world').classList.add('walking');
@@ -508,7 +538,7 @@ canvas.addEventListener('click',event=>{
   if(aiming){toast('Click Home, Game, Rankings or Download.');return;}
   if(isWalkable(x,y)){
     heldDirections.clear();beginManualMovement();
-    moveHero(walkingPath({x,y}),{complete:checkWalkingProgress});
+    moveHero(walkingPath({x,y}),{explore:true,complete:checkWalkingProgress});
   }
 });
 $('#wander').onclick=()=>{startGame();$('#main-content').focus({preventScroll:true});};

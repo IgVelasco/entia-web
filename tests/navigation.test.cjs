@@ -9,11 +9,11 @@ const vm = require('node:vm');
 async function village({reduced=false, hash=''}={}) {
   const nodes=new Map(), frames=new Map(), draws=[];let nextFrame=0;
   const makeNode=()=>{
-    const attributes=new Map(),classes=new Set(),children=new Map();
+    const attributes=new Map(),classes=new Set(),children=new Map(),events={};
     return {hidden:false,disabled:false,textContent:'',innerHTML:'',style:{},dataset:{},scrollTop:0,
       classList:{add:(...items)=>items.forEach(x=>classes.add(x)),remove:(...items)=>items.forEach(x=>classes.delete(x)),toggle:(x,on)=>on?classes.add(x):classes.delete(x),contains:x=>classes.has(x)},
       setAttribute:(key,value)=>attributes.set(key,value),getAttribute:key=>attributes.get(key),removeAttribute:key=>attributes.delete(key),
-      addEventListener(){},append(){},focus(){},animate(){},getAnimations:()=>[],matches:()=>false,closest:()=>null,contains:()=>false,
+      events,addEventListener:(key,callback)=>{events[key]=callback;},append(){},focus(){},animate(){},getAnimations:()=>[],matches:()=>false,closest:()=>null,contains:()=>false,
       querySelector(key){if(!children.has(key))children.set(key,makeNode());return children.get(key);},
       getBoundingClientRect:()=>({width:1440,height:820,left:0,top:80}),
       getContext:()=>new Proxy({drawImage:(...args)=>draws.push(args),createRadialGradient:()=>({addColorStop(){}}),createPattern:()=>({})},{get:(obj,key)=>obj[key]||(()=>{})})
@@ -25,7 +25,8 @@ async function village({reduced=false, hash=''}={}) {
   const listeners={},windowListeners={};
   const preference={matches:reduced,addEventListener:(_,cb)=>{preference.change=cb;}};
   const location={hash};
-  const history={pushState:(_,__,value)=>{location.hash=value;}};
+  const historyCalls=[];
+  const history={pushState:(_,__,value)=>{location.hash=value;historyCalls.push(['push',value]);},replaceState:(_,__,value)=>{location.hash=value;historyCalls.push(['replace',value]);}};
   const document={hidden:false,querySelector:get,querySelectorAll:key=>key==='.nav'?nav:key==='[data-essence]'?lights:[],createElement:()=>makeNode(),addEventListener:(key,cb)=>{listeners[key]=cb;}};
   const context=vm.createContext({document,window:{history,addEventListener:(key,cb)=>{windowListeners[key]=cb;}},location,matchMedia:()=>preference,devicePixelRatio:1,
     Image:class{constructor(){this.width=768;this.height=640;}set src(value){this.path=value;this.onload();}},
@@ -42,7 +43,8 @@ async function village({reduced=false, hash=''}={}) {
     drawHero(){drawActor(hero);},
     drawKeeper(){drawActor(keepers[0]);},
     path:()=>route?.points,
-    state:()=>({ready,current,route:!!route,spell:!!spell,spellPlace:spell?.place,spellHit:spell?.hit,manual:route?.manual,held:heldDirections.size,rings:rings.length,gait:hero.gait,dir:hero.dir,x:hero.x,y:hero.y,atPlace,game,collected,cameraX:camera.x,cameraTargetX:camera.targetX}),
+    state:()=>({ready,current,route:!!route,spell:!!spell,spellPlace:spell?.place,spellHit:spell?.hit,manual:route?.manual,explore:route?.explore,held:heldDirections.size,rings:rings.length,gait:hero.gait,dir:hero.dir,x:hero.x,y:hero.y,atPlace,game,collected,cameraX:camera.x,cameraTargetX:camera.targetX}),
+    groundPoint:(x,y)=>{const p=screen({x,y});return {clientX:p.x,clientY:p.y+80};},
     target:place=>spots[place].land,
     reaction:place=>keepers.find(k=>k.place===place).reaction,
     label:place=>keepers.find(k=>k.place===place).button.querySelector('.keeper-clan').textContent
@@ -53,7 +55,8 @@ async function village({reduced=false, hash=''}={}) {
     listeners[type]({key:value,target:get('#scene'),preventDefault(){prevented=true;},...options});
     return prevented;
   };
-  return {api,get,location,preference,nav,frames,draws,listeners,windowListeners,document,key};
+  const clickGround=(x,y)=>get('#scene').events.click(api.groundPoint(x,y));
+  return {api,get,location,preference,nav,frames,draws,listeners,windowListeners,document,key,clickGround,historyCalls};
 }
 
 test('a spell opens content and marks the section before its journey completes',async()=>{
@@ -286,4 +289,78 @@ test('ranking category clicks reach their own handler without restarting navigat
   listeners.click({target:{closest:selector=>selector==='[data-rank]'?rank:selector==='[data-place]'?world:null},preventDefault(){}});
   assert.match(get('#ranks').innerHTML,/Nox/);assert.match(get('#ranks').innerHTML,/930/);
   assert.equal(api.state().route,false);assert.equal(api.state().atPlace,'hall');
+});
+
+function tap(v,key){v.key('keydown',key);v.key('keyup',key);v.api.finish();}
+function westSide(v){for(let i=0;i<3;i++)tap(v,'ArrowLeft');}
+
+test('walking near Download opens it once while a held arrow keeps moving',async()=>{
+  const v=await village();westSide(v);
+  v.key('keydown','ArrowDown');
+  for(let i=0;i<6;i++)v.api.advanceMovement(.2);
+  const entered=v.api.state();
+  assert.equal(entered.current,'gate');assert.equal(entered.atPlace,'gate');
+  assert.equal(entered.x,774);assert.equal(entered.y,662);
+  assert.equal(entered.held,1);assert.equal(entered.route,true);
+  assert.equal(entered.spell,false);assert.equal(v.location.hash,'#gate');
+  assert.match(v.get('#panel-content').innerHTML,/Download Entia/);
+  assert.equal(v.nav[3].getAttribute('aria-current'),'page');
+  assert.equal(v.api.label('gate'),'<Now>');
+  v.get('#main-content').scrollTop=40;
+  v.api.advanceMovement(.2);
+  assert.equal(v.api.state().y,694);assert.equal(v.get('#main-content').scrollTop,40);
+  assert.deepEqual(v.historyCalls,[['replace','#gate']]);
+});
+
+test('ground-click exploration opens a section before its longer route ends',async()=>{
+  const v=await village();westSide(v);v.clickGround(1050,780);
+  assert.equal(v.api.state().explore,true);assert.equal(v.api.state().manual,false);
+  v.api.advanceRoute(1.1);
+  assert.equal(v.api.state().current,'gate');assert.equal(v.api.state().route,true);
+  assert.equal(v.api.state().x,774);assert.equal(v.api.state().y,646);
+  v.api.finish();
+  assert.equal(v.api.state().x,1050);assert.equal(v.api.state().y,780);
+  assert.equal(v.api.state().current,'gate');assert.equal(v.api.state().atPlace,null);
+  assert.equal(v.get('#location-state').textContent,'Exploring Nix');
+});
+
+test('explicit navigation passing a different character keeps its chosen section',async()=>{
+  const v=await village();westSide(v);v.api.go('hall',{cast:true});
+  v.api.advanceRoute(1.2);
+  assert.equal(v.api.state().x,774);assert.equal(v.api.state().y,662);
+  assert.equal(v.api.state().current,'hall');assert.equal(v.api.state().spellPlace,'hall');
+  assert.deepEqual(v.historyCalls,[['push','#hall']]);
+  v.api.finish();assert.equal(v.api.state().atPlace,'hall');
+});
+
+test('leaving and reentering a proximity boundary preserves the open panel',async()=>{
+  const v=await village({reduced:true});westSide(v);
+  for(let i=0;i<6;i++)tap(v,'s');
+  assert.equal(v.api.state().current,'gate');
+  v.get('#main-content').scrollTop=75;
+  // At 85 units we retain the nearby state; beyond 104 we release it.
+  tap(v,'w');assert.equal(v.api.state().atPlace,'gate');
+  tap(v,'w');assert.equal(v.api.state().atPlace,null);
+  tap(v,'s');tap(v,'s');
+  assert.equal(v.api.state().atPlace,'gate');assert.equal(v.api.state().current,'gate');
+  assert.equal(v.get('#main-content').scrollTop,75);
+  assert.deepEqual(v.historyCalls,[['replace','#gate']]);
+});
+
+test('reduced motion and pausing a ground walk both resolve proximity at the endpoint',async()=>{
+  for(const reduced of [true,false]){
+    const v=await village({reduced});v.clickGround(780,765);
+    if(!reduced)v.api.pause();
+    assert.equal(v.api.state().current,'gate');assert.equal(v.api.state().route,false);
+    assert.equal(v.api.state().x,780);assert.equal(v.api.state().y,765);
+    assert.equal(v.api.state().atPlace,'gate');
+  }
+});
+
+test('walking near characters does not interrupt collecting lights',async()=>{
+  const v=await village();v.api.startGame();westSide(v);
+  for(let i=0;i<6;i++)tap(v,'s');
+  assert.equal(v.api.state().game,true);assert.equal(v.api.state().current,'home');
+  assert.equal(v.get('#essence-game').hidden,false);assert.equal(v.get('#panel').hidden,true);
+  assert.deepEqual(v.historyCalls,[]);
 });

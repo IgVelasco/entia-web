@@ -28,7 +28,7 @@
     </nav>
   </header>
   <main id="world" data-place="home">
-    <canvas id="scene" aria-label="Nix. Walk with WASD or arrow keys. Click a named character to open a section." aria-describedby="movement-help" tabindex="0" role="img"></canvas>
+    <canvas id="scene" aria-label="Nix. Walk with WASD or arrow keys, or click the ground. Approach a named character to open its section." aria-describedby="movement-help" tabindex="0" role="img"></canvas>
     <div class="vignette" aria-hidden="true"></div>
     <div class="world-meta">
       <span class="eyebrow">NIX · THE TOWN SQUARE</span>
@@ -44,7 +44,7 @@
         <p class="intro-lead">Welcome to Nix.</p>
         <p>Explore Entia’s world and its planned PvP.</p>
         <div class="intro-actions"><button class="primary" data-place="gate">Download</button><button class="quiet" data-place="arena">About the game</button></div>
-        <div class="world-invitation"><span class="spell-glyph" aria-hidden="true">✧</span><div><p>Walk with WASD or arrow keys. Click a character to open a section.</p></div></div>
+        <div class="world-invitation"><span class="spell-glyph" aria-hidden="true">✧</span><div><p>Walk up to a character to open its section. Use WASD, arrow keys, or click the ground.</p></div></div>
         <button class="text-button" id="wander">Try collecting lights</button>
       </div>
       <aside id="panel" aria-labelledby="section-heading" hidden>
@@ -67,7 +67,7 @@
     <footer><span>✦ <b>NIX</b> <span class="footer-divider">/</span> <span id="footer-place">HOME</span></span><button id="about">Prototype notes</button></footer>
     <div id="loading" role="status"><img class="loading-mark" src="favicon.svg?v=entia" alt="" width="64" height="64"><p>Opening the gates of Nix…</p><button id="retry-load" class="quiet" hidden>Try again</button></div>
   </main>
-  <dialog id="notes" aria-labelledby="notes-heading"><button id="close-notes" aria-label="Close notes">×</button><span class="eyebrow">ABOUT THIS PREVIEW</span><h2 id="notes-heading">About this preview</h2><p>This is a website preview of Entia. The game is in development; downloads and live rankings are not connected yet.</p><p>Apocalipsis and collecting lights here are website interactions. They do not affect the game’s economy.</p><p>Walk with WASD or arrow keys, or click open ground. Click a named character to open a section. Press C to choose a spell target, then Enter to cast. Keys 1–4 open sections.</p><p>Pause stops world animation. With reduced motion or pause enabled, each movement key press takes one step.</p></dialog>
+  <dialog id="notes" aria-labelledby="notes-heading"><button id="close-notes" aria-label="Close notes">×</button><span class="eyebrow">ABOUT THIS PREVIEW</span><h2 id="notes-heading">About this preview</h2><p>This is a website preview of Entia. The game is in development; downloads and live rankings are not connected yet.</p><p>Apocalipsis and collecting lights here are website interactions. They do not affect the game’s economy.</p><p>Walk with WASD or arrow keys, or click open ground. Walk up to a named character to open its section, or click one to cast Apocalipsis. Press C to choose a spell target, then Enter to cast. Keys 1–4 open sections.</p><p>Pause stops world animation. With reduced motion or pause enabled, each movement key press takes one step.</p></dialog>
 </div>
 <script src="app.js"></script>
 </body>
