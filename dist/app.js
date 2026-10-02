@@ -44,6 +44,28 @@ const motionOff = () => paused || motionPreference.matches;
 const heading = (dx,dy) => Math.abs(dx)>Math.abs(dy) ? (dx>0?1:3) : (dy>0?2:0);
 const screen = p => ({x:p.x*scale+ox, y:p.y*scale+oy});
 
+// Original FONT_DIALOG glyphs from the client, displayed at their native pixel size.
+const nameGlyphs = {"<":[21485,8,14],">":[21486,8,14],"D":[21429,8,14],"G":[21432,8,14],"H":[21433,8,14],"N":[21439,8,14],"O":[21440,9,14],"P":[21441,7,14],"R":[21443,8,14],"U":[21446,8,14],"Y":[21450,7,14],"a":[21400,7,14],"b":[21401,7,14],"d":[21403,7,14],"e":[21404,7,14],"g":[21406,7,14],"i":[21408,3,14],"k":[21410,8,14],"l":[21411,3,14],"m":[21412,11,14],"n":[21413,7,14],"o":[21414,7,14],"r":[21417,5,14],"s":[21418,6,14],"v":[21421,7,14],"w":[21422,9,14],"x":[21423,8,14]};
+
+function setGameText(element, text) {
+  if (element.dataset.gameText === text) return;
+  element.dataset.gameText = text;
+  // Keep real accessible text alongside the exact game glyphs.
+  element.textContent = text;
+  element.classList.add('game-text');
+  const art = document.createElement('span');
+  art.className = 'game-glyphs';
+  art.setAttribute('aria-hidden', 'true');
+  for (const character of text) {
+    const [id,w,h] = nameGlyphs[character];
+    const glyph = document.createElement('img');
+    glyph.src = `assets/font-dialog/${id}.png`;
+    glyph.alt = ''; glyph.width = w; glyph.height = h;
+    art.append(glyph);
+  }
+  element.append(art);
+}
+
 // Labels are real buttons, so the same spell works with mouse, touch and keyboard.
 for (const keeper of keepers) {
   const button = document.createElement('button');
@@ -52,6 +74,7 @@ for (const keeper of keepers) {
   button.dataset.cast = 'true';
   button.setAttribute('aria-label', `Open ${keeper.section} with Apocalipsis`);
   button.innerHTML = `<span class="keeper-label"><strong>${keeper.section}</strong><small class="keeper-clan">&lt;${keeper.clan}&gt;</small></span><span class="keeper-hit" aria-hidden="true"><span class="target-reticle">⌖</span></span>`;
+  setGameText(button.querySelector('strong'), keeper.section);
   button.addEventListener('pointerenter', () => { hovered=keeper.place; requestDraw(); });
   button.addEventListener('pointerleave', () => { hovered=null; requestDraw(); });
   button.addEventListener('focus', () => { hovered=keeper.place; requestDraw(); });
@@ -59,6 +82,7 @@ for (const keeper of keepers) {
   $('#locations').append(button);
   keeper.button = button;
 }
+setGameText($('#player-label span'), 'YOU');
 
 function viewport() {
   const compact = width <= 900;
@@ -83,11 +107,11 @@ function positionLabels() {
   for (const k of keepers) {
     const p = screen(k);
     k.button.style.transform = `translate3d(${Math.round(p.x)}px,${Math.round(p.y)}px,0) translate(-50%, -100%)`;
-    // Anchor the name to the visible head, excluding the sprite sheet's transparent padding.
+    // The hit target covers the sprite; CSS anchors its name below the feet.
     k.button.querySelector('.keeper-hit').style.height = `${Math.round(64*scale)}px`;
   }
   const p = screen(hero);
-  $('#player-label').style.transform = `translate3d(${Math.round(p.x)}px,${Math.round(p.y+13)}px,0) translateX(-50%)`;
+  $('#player-label').style.transform = `translate3d(${Math.round(p.x)}px,${Math.round(p.y+3)}px,0) translateX(-50%)`;
   const destination = screen(spots[current]);
   $('#keeper-reply').style.transform = `translate3d(${Math.round(destination.x)}px,${Math.round(destination.y-64*scale-58)}px,0) translate(-50%,-100%)`;
 }
@@ -351,7 +375,7 @@ function updateKeeperStates() {
     const active=k.place===current;
     k.button.classList.toggle('selected',active);
     if(active)k.button.setAttribute('aria-current','location');else k.button.removeAttribute('aria-current');
-    k.button.querySelector('.keeper-clan').textContent=`<${active?'Now':k.clan}>`;
+    setGameText(k.button.querySelector('.keeper-clan'), `<${active?'Now':k.clan}>`);
   }
 }
 function setAim(value,{focus=false}={}) {

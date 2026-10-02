@@ -57,13 +57,16 @@ p{font-size:16px;line-height:1.75;color:var(--muted)}
 .keeper-hit{height:72px;display:flex;align-items:center;justify-content:center;position:relative}
 .target-reticle{font-size:56px;line-height:1;color:#f5d893;opacity:0;transform:scale(.84);transition:opacity .18s,transform .18s var(--ease)}
 .keeper:hover .target-reticle,.keeper:focus-visible .target-reticle,.aiming .target-reticle{opacity:.85;transform:scale(1)}
-.keeper-label{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);display:flex;align-items:center;flex-direction:column;width:max-content;max-width:154px;padding:3px 8px;text-shadow:0 2px 3px #07130e,1px 0 2px #07130e,-1px 0 2px #07130e}
-.keeper-label strong{font:800 16px/1.25 Manrope,system-ui,sans-serif;color:#f2eedc}.keeper-label .keeper-clan{font:600 12px/1.5 Manrope,system-ui,sans-serif;color:#c5d2b6}
+.keeper-label{position:absolute;top:100%;left:50%;transform:translateX(-50%);display:flex;align-items:center;flex-direction:column;width:max-content;padding:0 6px}
+.game-text{font-size:0!important;line-height:0!important;letter-spacing:0!important}
+.game-glyphs{display:flex;align-items:flex-start;justify-content:center;filter:drop-shadow(1px 1px 0 #050905)}
+.game-glyphs img{display:block;flex:none;image-rendering:pixelated;filter:sepia(.65)}
+.keeper-label .keeper-clan{margin-top:-2px}
+.keeper.selected .game-glyphs img,.keeper:hover .game-glyphs img{filter:sepia(1) saturate(2)}
 .keeper.selected .keeper-label strong,.keeper.selected .keeper-clan{color:#f6d68a}
 .keeper:hover .keeper-label strong,.keeper:focus-visible .keeper-label strong{color:#ffe6ac}
 .keeper:focus-visible{outline:none}.keeper:focus-visible .keeper-label{outline:2px solid #f3d69b;outline-offset:4px}
 #player-label{position:absolute;top:0;left:0;z-index:4;pointer-events:none;font-size:10px;letter-spacing:1.3px;font-weight:800;color:#f4dc9f;text-shadow:0 1px 3px #09130f}
-#player-label span:before{content:'◆';margin-right:5px;font-size:7px}
 #keeper-reply{position:absolute;top:0;left:0;z-index:4;max-width:190px;padding:9px 12px;background:#e5d5aa;color:#233022;text-align:center;font:400 14px/1.4 Georgia,serif;pointer-events:none;box-shadow:0 4px 20px #06150d44}
 #keeper-reply:after{content:'';position:absolute;bottom:-5px;left:50%;width:10px;height:10px;transform:rotate(45deg);background:#e5d5aa}
 #panel{height:auto;overflow:visible;padding:0 14px 28px 0;scrollbar-width:thin;scrollbar-color:#9c9563 #0b1915;background:linear-gradient(90deg,#0b1915dd,#0b191599);position:relative}
