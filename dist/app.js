@@ -11,10 +11,10 @@ let images = {}, current = 'home', route = null, spell = null, rings = [], aimin
 let atPlace = 'home', hovered = null, game = false, collected = 0, toastTimer, replyTimer;
 const camera = {x: 990, y: 520, targetX: 990, targetY: 520};
 const spots = {
-  home: {x: 800, y: 440, name: 'The inn', section: 'Home', keeper: 'Innkeeper', body: 'rogue', greeting: 'There’s always a place for you here.', land: {x: 870, y: 470}},
-  arena: {x: 1190, y: 345, name: 'The arena', section: 'The game', keeper: 'Battlemaster', body: 'hero', greeting: 'A good rival is worth finding.', land: {x: 1100, y: 410}},
-  hall: {x: 1170, y: 655, name: 'Hall of names', section: 'Rankings', keeper: 'Chronicler', body: 'mage', greeting: 'Every name has a story.', land: {x: 1075, y: 680}},
-  gate: {x: 780, y: 715, name: 'The crossing', section: 'Download', keeper: 'Gatekeeper', body: 'hero', greeting: 'The next journey starts here.', land: {x: 880, y: 725}}
+  home: {x: 800, y: 440, section: 'Home', clan: 'Nix', body: 'rogue', greeting: 'Welcome to Nix.', land: {x: 870, y: 470}},
+  arena: {x: 1190, y: 345, section: 'Game', clan: 'PvP', body: 'hero', greeting: 'Find your next rival.', land: {x: 1100, y: 410}},
+  hall: {x: 1170, y: 655, section: 'Rankings', clan: 'Preview', body: 'mage', greeting: 'Live rankings are coming later.', land: {x: 1075, y: 680}},
+  gate: {x: 780, y: 715, section: 'Download', clan: 'Unavailable', body: 'hero', greeting: 'No download is linked yet.', land: {x: 880, y: 725}}
 };
 const hero = {x: 870, y: 470, body: 'hero', dir: 2, gait: 0, hero: true};
 const keepers = Object.entries(spots).map(([place, p]) => ({...p, place, dir: 2, isKeeper: true, reaction: 0}));
@@ -36,6 +36,9 @@ let groundReady = false;
 // RAO movement: 32 world units per tile, 0.20 s/player step, 0.40 s/NPC step.
 const WALK_TILE = 32, WALK_SPEED = WALK_TILE/.20, NPC_SPEED = WALK_TILE/.40;
 const walkCycleTiles = {hero:2, rogue:1, mage:2};
+const heldDirections = new Map();
+const movementKeys = {w:0,ArrowUp:0,d:1,ArrowRight:1,s:2,ArrowDown:2,a:3,ArrowLeft:3};
+const directions = [{x:0,y:-1},{x:1,y:0},{x:0,y:1},{x:-1,y:0}];
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 const motionOff = () => paused || motionPreference.matches;
 const heading = (dx,dy) => Math.abs(dx)>Math.abs(dy) ? (dx>0?1:3) : (dy>0?2:0);
@@ -47,8 +50,8 @@ for (const keeper of keepers) {
   button.className = 'keeper';
   button.dataset.place = keeper.place;
   button.dataset.cast = 'true';
-  button.setAttribute('aria-label', `Cast Apocalipsis to ${keeper.keeper}: ${keeper.section}`);
-  button.innerHTML = `<span class="keeper-hit" aria-hidden="true"><span class="target-reticle">⌖</span></span><span class="keeper-label"><small>${keeper.keeper}</small><strong>${keeper.section}</strong><span class="keeper-state">Cast Apocalipsis</span></span>`;
+  button.setAttribute('aria-label', `Open ${keeper.section} with Apocalipsis`);
+  button.innerHTML = `<span class="keeper-label"><strong>${keeper.section}</strong><small class="keeper-clan">&lt;${keeper.clan}&gt;</small></span><span class="keeper-hit" aria-hidden="true"><span class="target-reticle">⌖</span></span>`;
   button.addEventListener('pointerenter', () => { hovered=keeper.place; requestDraw(); });
   button.addEventListener('pointerleave', () => { hovered=null; requestDraw(); });
   button.addEventListener('focus', () => { hovered=keeper.place; requestDraw(); });
@@ -79,12 +82,14 @@ function resize() {
 function positionLabels() {
   for (const k of keepers) {
     const p = screen(k);
-    k.button.style.transform = `translate3d(${Math.round(p.x)}px,${Math.round(p.y)}px,0) translate(-50%, -72px)`;
+    k.button.style.transform = `translate3d(${Math.round(p.x)}px,${Math.round(p.y)}px,0) translate(-50%, -100%)`;
+    // Anchor the name to the visible head, excluding the sprite sheet's transparent padding.
+    k.button.querySelector('.keeper-hit').style.height = `${Math.round(64*scale)}px`;
   }
   const p = screen(hero);
   $('#player-label').style.transform = `translate3d(${Math.round(p.x)}px,${Math.round(p.y+13)}px,0) translateX(-50%)`;
   const destination = screen(spots[current]);
-  $('#keeper-reply').style.transform = `translate3d(${Math.round(destination.x)}px,${Math.round(destination.y-100*scale)}px,0) translate(-50%,-100%)`;
+  $('#keeper-reply').style.transform = `translate3d(${Math.round(destination.x)}px,${Math.round(destination.y-64*scale-58)}px,0) translate(-50%,-100%)`;
 }
 function loadImage(path) {
   return new Promise((resolve,reject) => {
@@ -227,7 +232,7 @@ function tick(now) {
   const dt=Math.min((now-last)/1000||0,.04);last=now;
   if(!motionOff()){
     time+=dt;
-    if(route)advanceRoute(dt);
+    advanceMovement(dt);
     advanceSpell(dt);
     rings=rings.filter(r=>(r.age+=dt)<r.duration);
     for(const n of [...npcs,...keepers]){
@@ -254,7 +259,6 @@ function arrive(place,announce=true) {
   if(!motionOff())rings.push({x:hero.x,y:hero.y,age:0,duration:.5});
   reactToArrival(place);
   if(announce){
-    toast(`${spots[place].section} · ${spots[place].name}`);
     $('#keeper-reply').textContent=spots[place].greeting;$('#keeper-reply').hidden=false;
     clearTimeout(replyTimer);replyTimer=setTimeout(()=>{$('#keeper-reply').hidden=true;},2200);
   }
@@ -276,13 +280,13 @@ function advanceRoute(dt) {
   hero.gait+=distance-r.distance;r.distance=distance;hero.x=p.x;hero.y=p.y;
   if(u===1){route=null;r.complete?.();}
 }
-function moveHero(points,{complete,instant=false}={}) {
+function moveHero(points,{complete,instant=false,manual=false}={}) {
   const target=points.at(-1);let from=hero,length=0;
   for(const p of points){length+=Math.hypot(p.x-from.x,p.y-from.y);from=p;}
   // Every new action replaces the previous route and its completion callback.
   route=null;
   if(motionOff()||instant||length<2){hero.x=target.x;hero.y=target.y;complete?.();requestDraw();return;}
-  route={sx:hero.x,sy:hero.y,target,points,segment:0,length,distance:0,elapsed:0,duration:length/WALK_SPEED,complete};
+  route={sx:hero.x,sy:hero.y,target,points,segment:0,length,distance:0,elapsed:0,duration:length/WALK_SPEED,complete,manual};
   requestDraw();
 }
 function walkingPath(target) {
@@ -296,20 +300,64 @@ function walkingPath(target) {
   }
   // Walk around the eastern house when returning from the lower square.
   if(from.x>1140&&target.y<650)add(1100,from.y);
+  if(target.y<400&&from.x<1075)add(1100,from.y);
   add(from.x,target.y);add(target.x,target.y);
   return points.length?points:[{x:target.x,y:target.y}];
+}
+function isWalkable(x,y) {
+  const square=x>=720&&x<=1300&&y>=400&&y<=780 && !(x>1140&&y<650);
+  const arena=x>=1075&&x<=1320&&y>=310&&y<=390;
+  const passage=x>=1075&&x<=1140&&y>=390&&y<=400;
+  return square||arena||passage;
+}
+function clearMovementInput() {
+  heldDirections.clear();
+  if(route?.manual)route=null;
+  requestDraw();
+}
+function beginManualMovement() {
+  // Keep the in-progress footstep, but discard the old destination/reward callback.
+  if(route&&!route.manual){
+    const next=route.points[route.segment],distance=Math.hypot(next.x-hero.x,next.y-hero.y);
+    const step=Math.min(WALK_TILE-(hero.gait%WALK_TILE),distance);
+    if(distance>.001)moveHero([{x:hero.x+(next.x-hero.x)/distance*step,y:hero.y+(next.y-hero.y)/distance*step}],{manual:true,complete:checkWalkingProgress});
+    else route=null;
+  }
+  atPlace=null;spell=null;setAim(false);clearTimeout(replyTimer);$('#keeper-reply').hidden=true;
+  $('#world').classList.remove('traveling');
+  $('#location-state').textContent=game?'Collect the three lights':'Exploring Nix';
+  updateKeeperStates();
+}
+function startKeyboardStep(direction=[...heldDirections.values()].at(-1)) {
+  if(route||direction===undefined||!ready)return;
+  const vector=directions[direction],target={x:hero.x+vector.x*WALK_TILE,y:hero.y+vector.y*WALK_TILE};
+  hero.dir=direction;
+  // Four-direction steps cannot cut through the house or leave the square.
+  if(!isWalkable(target.x,target.y)){requestDraw();return;}
+  moveHero([target],{manual:true,complete:checkWalkingProgress});
+}
+function advanceMovement(dt) {
+  if(!route)startKeyboardStep();
+  if(route)advanceRoute(dt);
+  if(!route)startKeyboardStep();
+}
+function checkWalkingProgress() {
+  if(!game)return;
+  treasures.forEach((light,index)=>{if(Math.hypot(light.x-hero.x,light.y-hero.y)<27)takeLight(index);});
+  if(collected===3&&Math.hypot(hero.x-spots.home.land.x,hero.y-spots.home.land.y)<27)go('home');
 }
 function updateKeeperStates() {
   for(const k of keepers){
     const active=k.place===current;
     k.button.classList.toggle('selected',active);
     if(active)k.button.setAttribute('aria-current','location');else k.button.removeAttribute('aria-current');
-    k.button.querySelector('.keeper-state').textContent=active?(route&&$('#world').classList.contains('traveling')?'Walking here':atPlace===current?'You are here':'Section open'):'Cast Apocalipsis';
+    k.button.querySelector('.keeper-clan').textContent=`<${active?'Now':k.clan}>`;
   }
 }
 function setAim(value,{focus=false}={}) {
+  if(value)clearMovementInput();
   aiming=value;$('#world').classList.toggle('aiming',value);$('#spell').setAttribute('aria-pressed',String(value));
-  $('#spell-hint').textContent=value?'Choose your keeper':'Cast at a keeper';
+  $('#spell-hint').textContent=value?'Click a character':'Choose a character';
   if(focus&&value)keepers.find(k=>k.place!==current).button.focus({preventScroll:true});
   requestDraw();
 }
@@ -323,8 +371,8 @@ function setContent(place) {
     $('#panel').scrollTop=0;
     if(!motionOff())$('#panel-content').animate([{opacity:.35,transform:'translateY(8px)'},{opacity:1,transform:'translateY(0)'}],{duration:220,easing:'cubic-bezier(.22,1,.36,1)'});
   }
-  $('#location-name').textContent=spots[place].name;$('#location-section').textContent=spots[place].section;
-  $('#footer-place').textContent=spots[place].name.toUpperCase();
+  $('#location-name').textContent=spots[place].section;
+  $('#footer-place').textContent=spots[place].section.toUpperCase();
   $('#world').dataset.place=place;
   for(const button of $$('.nav')){
     const active=button.dataset.place===place;button.classList.toggle('active',active);
@@ -333,6 +381,7 @@ function setContent(place) {
 }
 function go(place,{history:writeHistory=true,instant=false,announce=true,cast=false}={}) {
   if(!spots[place])return;
+  heldDirections.clear();
   clearTimeout(toastTimer);$('#travel-toast').classList.remove('show');$('#travel-toast').textContent='';
   const secured=game&&place==='home'&&collected===3;
   game=false;$('#world').classList.remove('walking');
@@ -348,7 +397,7 @@ function go(place,{history:writeHistory=true,instant=false,announce=true,cast=fa
     spell={place,x:spots[place].x,y:spots[place].y-32,age:0,delay:.12,duration:.12+apocalipsis.duration,hit:false};
     hero.dir=heading(spots[place].x-hero.x,spots[place].y-hero.y);
   }
-  $('#location-state').textContent=`Walking to ${spots[place].name.toLowerCase()}…`;
+  $('#location-state').textContent=`Walking to ${spots[place].section}…`;
   $('#world').classList.add('traveling');
   moveHero(points,{instant:instant||!ready,complete:()=>{arrive(place,announce);if(secured)toast('All three lights carried home. Journey complete.');}});
   updateKeeperStates();requestDraw();
@@ -366,6 +415,7 @@ function setMotionState() {
   $('#motion').disabled=motionPreference.matches;
   $('#motion').title=motionPreference.matches?'Following your reduced-motion preference':paused?'Resume animation':'Pause animation';
   if(off){
+    heldDirections.clear();
     if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;
     const pending=route;route=null;spell=null;rings=[];
     if(pending){hero.x=pending.target.x;hero.y=pending.target.y;pending.complete?.();}
@@ -377,30 +427,36 @@ function setMotionState() {
 }
 
 const names=[['Aren','Ranger','4,820'],['Sombra','Mage','4,610'],['Elara','Warrior','4,380'],['Nox','Cleric','4,170'],['Kael','Paladin','3,960'],['Lyra','Bard','3,820'],['Corvus','Assassin','3,710'],['Mara','Druid','3,590'],['Rook','Warrior','3,460'],['Ash','Mage','3,310']];
-function content(place){if(place==='arena')return `<span class="eyebrow">THE ARENA · THE PVP VISION</span><h2>Fight for more<br>than the final blow.</h2><p>Skill starts the story. What you risk carrying out of the fight is your decision.</p><div class="steps"><div class="step"><div><h3>Find your fight.</h3><p>Meet in Nix and vote in a shared queue. Every match starts with a new set of rivals.</p></div></div><div class="step"><div><h3>Carry the risk.</h3><p>Eligible victories yield essence. Keep fighting with it at stake, or find a place to secure it.</p></div></div><div class="step"><div><h3>Make it last.</h3><p>Deposit what you’ve earned. Build a lasting identity through active play and bounded progression.</p></div></div></div><div class="mode-list"><span>Free-for-all</span><span>Squads of three</span><span>Factions</span></div><button class="primary" id="try-journey">Try the essence walk</button><p class="small-note">A preview of Entia’s design direction. Final rules and availability are still being shaped.</p>`;
-if(place==='hall')return `<span class="eyebrow">HALL OF NAMES</span><h2>Some names<br>stay with you.</h2><p>Rivals today. Stories tomorrow.</p><div class="tabs"><button class="active" data-rank="essence">Essence</button><button data-rank="support">Support</button></div><p class="small-note" style="padding:0;border:0">Illustrative roster · not live player rankings</p><div id="ranks">${rankRows('essence')}</div><p class="small-note">Ranking categories and public profile rules are still under design. No live player data is connected.</p>`;
-if(place==='gate')return `<span class="eyebrow">THE CROSSING</span><h2>The world<br>is waiting.</h2><p>Explore Nix, find your rivals and write the next chapter together.</p><div class="download-card"><span class="status">CLIENT DOWNLOAD</span><h3>Entia for desktop</h3><p class="platform">The release build will be linked here.</p><button class="primary" id="download-status">Check availability</button><p id="download-notice" class="inline-notice" role="status" hidden>No release download is connected to this prototype yet. There’s nothing to install from this page.</p></div><p class="small-note">This is a website preview. Platform support and release details will be confirmed with the published client.</p><button class="quiet" data-place="arena">Explore the game instead</button>`;return '';}
+function content(place){
+  if(place==='arena')return `<span class="eyebrow">GAME · IN DEVELOPMENT</span><h2>PvP with something<br>at stake.</h2><p>Manual aiming. Distinct classes. Essence worth fighting for.</p><div class="steps"><div class="step"><div><h3>Find a fight.</h3><p>Meet in Nix, join the shared queue and vote for a match type.</p></div></div><div class="step"><div><h3>Carry essence.</h3><p>Earn essence from eligible kills. What you carry stays at risk.</p></div></div><div class="step"><div><h3>Bring it home.</h3><p>Deposit essence to secure it. Progress comes from active play.</p></div></div></div><div class="mode-list"><span>Free-for-all</span><span>Squads of three</span><span>Factions</span></div><p class="small-note">This is the planned game loop. Rules and availability are still in development.</p><button class="quiet" id="try-journey">Try collecting lights in Nix</button>`;
+  if(place==='hall')return `<span class="eyebrow">RANKINGS</span><h2>Rankings preview</h2><p>Sample players and scores. Live rankings are not connected yet.</p><div class="tabs" role="group" aria-label="Ranking category"><button class="active" data-rank="essence" aria-pressed="true">Essence</button><button data-rank="support" aria-pressed="false">Support</button></div><div id="ranks">${rankRows('essence')}</div><p class="small-note">Categories, seasons and public profiles are still being designed.</p>`;
+  if(place==='gate')return `<span class="eyebrow">DOWNLOAD</span><h2>Download Entia</h2><p>No game download is available in this preview.</p><div class="download-card"><span class="status">NOT AVAILABLE YET</span><h3>Entia for desktop</h3><p class="platform">The release build and supported platforms will be listed here.</p><button class="primary" disabled>Download unavailable</button></div><button class="quiet" data-place="arena">About the game</button>`;
+  return '';
+}
 function rankRows(mode){const rows=mode==='support'?[names[3],names[5],names[7],names[1],names[8],names[4],names[0],names[2],names[9],names[6]]:names;return rows.map((n,i)=>`<div class="rank-row"><span class="rank-number">${String(i+1).padStart(2,'0')}</span><img class="rank-avatar" src="assets/portraits/${i%3}.png" alt=""><span class="rank-info"><b>${n[0]}</b><small>${n[1]}</small></span><span class="rank-score">${mode==='essence'?n[2]:Math.round(930-i*67).toLocaleString()}</span></div>`).join('');}
 
 function startGame() {
+  heldDirections.clear();
   route=null;spell=null;rings=[];atPlace=null;game=true;collected=0;
   treasures.forEach(p=>p.collected=false);
   setAim(false);$('#world').classList.remove('traveling','panel-open');$('#world').classList.add('walking');
   $('#intro').hidden=true;$('#panel').hidden=true;$('#essence-game').hidden=false;
-  $('#location-state').textContent='Exploring the square';updateKeeperStates();
-  $('#essence-count').textContent='0 / 3 essence';
+  $('#location-state').textContent='Collect the three lights';updateKeeperStates();
+  $('#essence-count').textContent='0 / 3 lights';
   for(const button of $$('[data-essence]')){button.disabled=false;button.textContent=`Light ${Number(button.dataset.essence)+1}`;}
-  toast('Choose a light in the square, or use the three Light buttons.');requestDraw();
+  toast('Walk to a light, click it, or use a Light button.');requestDraw();
+}
+function takeLight(index) {
+  const p=treasures[index];if(!game||!p||p.collected)return;
+  p.collected=true;collected++;
+  $('#essence-count').textContent=`${collected} / 3 lights`;
+  const button=$(`[data-essence="${index}"]`);button.textContent=`Light ${index+1} collected`;button.disabled=true;
+  if(collected===3)toast('All three collected. Return to Home.');requestDraw();
 }
 function collectLight(index) {
   const p=treasures[index];if(!game||!p||p.collected)return;
-  moveHero(walkingPath(p),{complete:()=>{
-    if(!game||p.collected)return;
-    p.collected=true;collected++;
-    $('#essence-count').textContent=`${collected} / 3 essence`;
-    const button=$(`[data-essence="${index}"]`);button.textContent=`Light ${index+1} collected`;button.disabled=true;
-    if(collected===3)toast('All three collected. Return to the Innkeeper.');requestDraw();
-  }});
+  heldDirections.clear();
+  moveHero(walkingPath(p),{complete:()=>takeLight(index)});
 }
 function focusContentIfNeeded(trigger) {
   // Keep navigation focus in place. Content links that disappear hand focus to the new section.
@@ -409,7 +465,7 @@ function focusContentIfNeeded(trigger) {
   }
 }
 document.addEventListener('click',event=>{
-  const destination=event.target.closest('[data-place]');
+  const destination=event.target.closest('button[data-place], a[data-place]');
   if(destination){event.preventDefault();go(destination.dataset.place,{cast:true});focusContentIfNeeded(destination);return;}
   const rank=event.target.closest('[data-rank]');
   if(rank){
@@ -418,7 +474,6 @@ document.addEventListener('click',event=>{
   }
   const light=event.target.closest('[data-essence]');if(light){collectLight(Number(light.dataset.essence));return;}
   if(event.target.closest('#try-journey')){startGame();$('#main-content').focus({preventScroll:true});}
-  if(event.target.closest('#download-status')){$('#download-notice').hidden=false;$('#download-status').setAttribute('aria-expanded','true');}
 });
 canvas.addEventListener('click',event=>{
   if(!ready)return;
@@ -426,9 +481,10 @@ canvas.addEventListener('click',event=>{
   const keeper=keepers.find(k=>Math.hypot(k.x-x,(k.y-25)-y)<46);
   if(keeper){go(keeper.place,{cast:true});return;}
   if(game){const index=treasures.findIndex(p=>!p.collected&&Math.hypot(p.x-x,p.y-y)<55);if(index>=0){collectLight(index);return;}}
-  if(aiming){toast('Choose a named keeper to cast Apocalipsis.');return;}
-  if(x>720&&x<1300&&y>400&&y<780 && !(x>1140&&y<650)){
-    atPlace=null;spell=null;$('#world').classList.remove('traveling');moveHero(walkingPath({x,y}));$('#location-state').textContent='Exploring the square';updateKeeperStates();
+  if(aiming){toast('Click Home, Game, Rankings or Download.');return;}
+  if(isWalkable(x,y)){
+    heldDirections.clear();beginManualMovement();
+    moveHero(walkingPath({x,y}),{complete:checkWalkingProgress});
   }
 });
 $('#wander').onclick=()=>{startGame();$('#main-content').focus({preventScroll:true});};
@@ -439,11 +495,24 @@ $('#motion').onclick=()=>{paused=!paused;setMotionState();};
 $('#zoom-in').onclick=()=>{zoom=Math.min(1.18,zoom+.06);resize();};
 $('#zoom-out').onclick=()=>{zoom=Math.max(.88,zoom-.06);resize();};
 $('#reset-view').onclick=()=>{zoom=1;camera.x=camera.targetX;camera.y=camera.targetY;resize();};
-$('#about').onclick=()=>$('#notes').showModal();
+$('#about').onclick=()=>{clearMovementInput();$('#notes').showModal();};
 $('#close-notes').onclick=()=>$('#notes').close();
 $('#retry-load').onclick=load;
 document.addEventListener('keydown',event=>{
-  if(event.altKey||event.ctrlKey||event.metaKey||event.target.matches('input,textarea,select,[contenteditable="true"]')||$('#notes').open)return;
+  if(event.altKey||event.ctrlKey||event.metaKey||event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')||$('#notes').open)return;
+  const movementKey=event.key.length===1?event.key.toLowerCase():event.key;
+  if(Object.hasOwn(movementKeys,movementKey)){
+    if(!ready)return;
+    event.preventDefault();
+    if(event.repeat)return;
+    beginManualMovement();
+    if(motionOff()){
+      startKeyboardStep(movementKeys[movementKey]);
+    }else{
+      heldDirections.set(movementKey,movementKeys[movementKey]);startKeyboardStep();requestDraw();
+    }
+    return;
+  }
   if(event.key==='Escape'){
     if(aiming){setAim(false);$('#spell').focus({preventScroll:true});}
     else if(current!=='home'||game){go('home');$('.nav[data-place="home"]').focus({preventScroll:true});}
@@ -452,12 +521,19 @@ document.addEventListener('keydown',event=>{
   if(event.key.toLowerCase()==='c'){event.preventDefault();setAim(!aiming,{focus:true});return;}
   const key=Number(event.key);if(key>=1&&key<=4){event.preventDefault();go(Object.keys(spots)[key-1],{cast:true});}
 });
+document.addEventListener('keyup',event=>{
+  heldDirections.delete(event.key.length===1?event.key.toLowerCase():event.key);
+});
+document.addEventListener('focusin',event=>{
+  if(event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),dialog'))clearMovementInput();
+});
+window.addEventListener('blur',clearMovementInput);
 function restoreHash(){const hash=location.hash.slice(1);if(hash==='main-content')return;go(spots[hash]?hash:'home',{history:false,announce:false});}
 window.addEventListener('popstate',restoreHash);
 window.addEventListener('hashchange',()=>{const place=location.hash.slice(1);if(place!==current)restoreHash();});
 window.addEventListener('resize',resize);
 document.addEventListener('visibilitychange',()=>{
-  if(document.hidden){if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;}
+  if(document.hidden){clearMovementInput();if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;}
   else{last=performance.now();requestDraw();}
 });
 motionPreference.addEventListener('change',setMotionState);
