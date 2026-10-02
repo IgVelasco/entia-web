@@ -172,43 +172,18 @@ function drawDestination() {
     ellipse(ring.x,ring.y,20+u*48,8+u*18,`rgba(235,206,135,${(1-u)*.8})`,true,2-u);
   }
 }
-// Website adaptation of spell 25 / particle 127 at artwork ref 410676c.
-// The original uses five additive, stationary coils rotating 300 degrees over 50/60 s.
-// Its legacy texture is deliberately not shipped with this improved-art prototype.
-let apocalipsisTexture=null;
-function buildApocalipsisTexture() {
-  const texture=document.createElement('canvas');texture.width=192;texture.height=192;
-  const c=texture.getContext('2d');c.translate(96,96);
-  const halo=c.createRadialGradient(0,0,2,0,0,80);
-  halo.addColorStop(0,'#ffd19a80');halo.addColorStop(.3,'#ee8a4030');halo.addColorStop(1,'#c24e7500');
-  c.fillStyle=halo;c.fillRect(-96,-96,192,192);
-  const copper=c.createLinearGradient(-64,-64,64,64);
-  copper.addColorStop(0,'#c24e75');copper.addColorStop(.33,'#a43c10');copper.addColorStop(.66,'#c7883c');copper.addColorStop(1,'#ff6800');
-  c.lineCap='round';c.shadowColor='#f58245';c.shadowBlur=9;c.strokeStyle=copper;
-  for(let arm=0;arm<3;arm++)for(let i=0;i<56;i++){
-    const u=i/56,v=(i+1)/56,angle=arm*Math.PI*2/3;
-    const r=5+u*67,nextR=5+v*67;
-    c.lineWidth=1+(1-u)*8;
-    c.beginPath();c.moveTo(Math.cos(angle+u*4.6)*r,Math.sin(angle+u*4.6)*r);
-    c.lineTo(Math.cos(angle+v*4.6)*nextR,Math.sin(angle+v*4.6)*nextR);c.stroke();
-  }
-  c.shadowBlur=0;
-  return texture;
-}
+// The actual 60-PPT Apocalipsis sheet and canonical playback from RAO d92bcdee.
+// Four columns, 32 frames at 16 fps; source-over, unrotated, 32/60 world scale.
+const apocalipsis = {columns:4, frames:32, frameWidth:273, frameHeight:243, duration:2, worldScale:32/60};
 function drawSpell() {
-  if(!spell)return;
-  const t=clamp((spell.age-spell.delay)/(spell.duration-spell.delay),0,1);
-  if(spell.age<spell.delay){
-    const charge=spell.age/spell.delay;
-    ellipse(spell.sx,spell.sy,3+charge*5,3+charge*5,`rgba(245,172,104,${charge*.65})`);
-    return;
-  }
-  if(!apocalipsisTexture)apocalipsisTexture=buildApocalipsisTexture();
-  const envelope=Math.sin(Math.PI*Math.pow(t,.64));
-  ctx.save();ctx.translate(spell.x,spell.y);ctx.rotate(t*Math.PI*5/3);
-  ctx.globalCompositeOperation='lighter';ctx.globalAlpha=envelope*.18;
-  // All five layers share one position and angle, as in the game definition.
-  for(let layer=0;layer<5;layer++)ctx.drawImage(apocalipsisTexture,-72,-72,144,144);
+  if(!spell || spell.age<spell.delay || !images.apocalipsis)return;
+  const elapsed=spell.age-spell.delay;
+  if(elapsed>=apocalipsis.duration)return;
+  const frame=Math.min(apocalipsis.frames-1,Math.floor(elapsed/apocalipsis.duration*apocalipsis.frames));
+  const {frameWidth:fw,frameHeight:fh,columns,worldScale}=apocalipsis;
+  const dw=fw*worldScale,dh=fh*worldScale;
+  ctx.save();ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
+  ctx.drawImage(images.apocalipsis,(frame%columns)*fw,Math.floor(frame/columns)*fh,fw,fh,spell.x-dw/2,spell.y-dh/2,dw,dh);
   ctx.restore();
 }
 function advanceSpell(dt) {
@@ -382,7 +357,7 @@ function go(place,{history:writeHistory=true,instant=false,announce=true,cast=fa
   const points=flightPath(place);
   if(cast&&!motionOff()&&!instant&&ready){
     rings.push({x:hero.x,y:hero.y,age:0,duration:.32});
-    spell={place,sx:hero.x+12,sy:hero.y-53,x:spots[place].x,y:spots[place].y-30,age:0,delay:.12,duration:.12+50/60,hit:false};
+    spell={place,x:spots[place].x,y:spots[place].y-32,age:0,delay:.12,duration:.12+apocalipsis.duration,hit:false};
     hero.dir=heading(spots[place].x-hero.x,spots[place].y-hero.y);
   }
   $('#location-state').textContent=`Traveling to ${spots[place].name.toLowerCase()}…`;

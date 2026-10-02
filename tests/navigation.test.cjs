@@ -7,7 +7,7 @@ const vm = require('node:vm');
 // Exercise the actual navigation state machine with a deterministic clock.
 // Rendering and browser layout are checked separately in the live preview.
 async function village({reduced=false, hash=''}={}) {
-  const nodes=new Map(), frames=new Map();let nextFrame=0;
+  const nodes=new Map(), frames=new Map(), draws=[];let nextFrame=0;
   const makeNode=()=>{
     const attributes=new Map(),classes=new Set(),children=new Map();
     return {hidden:false,disabled:false,textContent:'',innerHTML:'',style:{},dataset:{},scrollTop:0,
@@ -16,7 +16,7 @@ async function village({reduced=false, hash=''}={}) {
       addEventListener(){},append(){},focus(){},animate(){},getAnimations:()=>[],matches:()=>false,contains:()=>false,
       querySelector(key){if(!children.has(key))children.set(key,makeNode());return children.get(key);},
       getBoundingClientRect:()=>({width:1440,height:820,left:0,top:80}),
-      getContext:()=>new Proxy({createRadialGradient:()=>({addColorStop(){}}),createPattern:()=>({})},{get:(obj,key)=>obj[key]||(()=>{})})
+      getContext:()=>new Proxy({drawImage:(...args)=>draws.push(args),createRadialGradient:()=>({addColorStop(){}}),createPattern:()=>({})},{get:(obj,key)=>obj[key]||(()=>{})})
     };
   };
   const get=key=>{if(!nodes.has(key))nodes.set(key,makeNode());return nodes.get(key);};
@@ -28,14 +28,14 @@ async function village({reduced=false, hash=''}={}) {
   const history={pushState:(_,__,value)=>{location.hash=value;}};
   const document={hidden:false,querySelector:get,querySelectorAll:key=>key==='.nav'?nav:key==='[data-essence]'?lights:[],createElement:()=>makeNode(),addEventListener:(key,cb)=>{listeners[key]=cb;}};
   const context=vm.createContext({document,window:{history,addEventListener(){}},location,matchMedia:()=>preference,devicePixelRatio:1,
-    Image:class{constructor(){this.width=768;this.height=640;}set src(_){this.onload();}},
-    fetch:async()=>({ok:true,json:async()=>({images:{hero:'hero.png',rogue:'rogue.png',mage:'mage.png',grass:'grass.png',path:'path.png',stone:'stone.png',house:'house.png',house2:'house2.png',tree:'tree.png',tree2:'tree2.png',pine:'pine.png'}})}),
+    Image:class{constructor(){this.width=768;this.height=640;}set src(value){this.path=value;this.onload();}},
+    fetch:async()=>({ok:true,json:async()=>JSON.parse(readFileSync(join(__dirname,'../dist/assets/site-assets.json'),'utf8'))}),
     requestAnimationFrame:callback=>{frames.set(++nextFrame,callback);return nextFrame;},cancelAnimationFrame:id=>frames.delete(id),
     setTimeout:()=>0,clearTimeout(){},console,performance:{now:()=>0},history
   });
   vm.runInContext(readFileSync(join(__dirname,'../dist/app.js'),'utf8'),context);
   await new Promise(resolve=>setImmediate(resolve));
-  const api=vm.runInContext(`({go,advanceRoute,advanceSpell,startGame,collectLight,restoreHash,
+  const api=vm.runInContext(`({go,advanceRoute,advanceSpell,drawSpell,startGame,collectLight,restoreHash,
     pause(){paused=true;setMotionState();},
     reduced(value){motionPreference.matches=value;setMotionState();},
     finish(){if(route)advanceRoute(2);},
@@ -44,7 +44,7 @@ async function village({reduced=false, hash=''}={}) {
     reaction:place=>keepers.find(k=>k.place===place).reaction
   })`,context);
   assert.equal(api.state().ready,true);
-  return {api,get,location,preference,nav,frames};
+  return {api,get,location,preference,nav,frames,draws};
 }
 
 test('a spell opens content and marks the section before its journey completes',async()=>{
@@ -124,7 +124,24 @@ test('Apocalipsis strikes the chosen keeper once and its burst expires',async()=
   api.go('arena',{cast:true});
   api.advanceSpell(.1);assert.equal(api.state().spellHit,false);
   api.advanceSpell(.03);assert.equal(api.state().spellHit,true);assert.equal(api.reaction('arena'),1.1);
-  api.advanceSpell(.9);assert.equal(api.state().spell,false);
+  api.advanceSpell(1.98);assert.equal(api.state().spell,true);
+  api.advanceSpell(.02);assert.equal(api.state().spell,false);
+});
+
+test('Apocalipsis plays the original 60-PPT sheet in order at canonical scale without looping',async()=>{
+  const {api,draws}=await village();
+  api.go('arena',{cast:true});
+  api.drawSpell();assert.equal(draws.length,0);
+  api.advanceSpell(.12);api.drawSpell();
+  const first=draws.pop();
+  assert.equal(first[0].path,'assets/apocalipsis_60.png');
+  assert.deepEqual(first.slice(1,5),[0,0,273,243]);
+  assert.deepEqual(first.slice(5),[1190-72.8,345-32-64.8,145.6,129.6]);
+  api.advanceSpell(.4);api.drawSpell();
+  assert.deepEqual(draws.pop().slice(1,5),[546,243,273,243]);
+  api.advanceSpell(1.59);api.drawSpell();
+  assert.deepEqual(draws.pop().slice(1,5),[819,1701,273,243]);
+  api.advanceSpell(.02);api.drawSpell();assert.equal(draws.length,0);
 });
 
 test('a new cast replaces the old Apocalipsis target before impact',async()=>{

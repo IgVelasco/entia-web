@@ -1,1 +1,31 @@
-{"images": {"hero": "hero.png", "rogue": "rogue.png", "mage": "mage.png", "grass": "grass.png", "path": "path.png", "stone": "stone.png", "tree": "tree.png", "pine": "pine.png", "tree2": "tree2.png", "house": "house.png", "house2": "house2.png"}, "source_sha": "410676cc2e11170c494ad90eb160944ce8d635cf"}
+{
+  "images": {
+    "hero": "hero.png",
+    "rogue": "rogue.png",
+    "mage": "mage.png",
+    "grass": "grass.png",
+    "path": "path.png",
+    "stone": "stone.png",
+    "tree": "tree.png",
+    "pine": "pine.png",
+    "tree2": "tree2.png",
+    "house": "house.png",
+    "house2": "house2.png",
+    "apocalipsis": "apocalipsis_60.png"
+  },
+  "source_sha": "410676cc2e11170c494ad90eb160944ce8d635cf",
+  "spell_source": {
+    "repository": "IgVelasco/rao-client",
+    "branch": "feat/fixed-world-hud-layout",
+    "commit": "d92bcdee3e291bf4dca2a9cf9f0dbc4e482c2a43",
+    "path": "assets/sprites/spells/apocalipsis_60.png",
+    "sha256": "eb4b62ace9a72677e0773f8a411c8898cf0a322a77111394cb91df104d2df95f",
+    "definitions": "assets/canonical/spell_particle_visuals.json",
+    "frames": 32,
+    "columns": 4,
+    "frame_width": 273,
+    "frame_height": 243,
+    "duration_seconds": 2,
+    "source_ppt": 60
+  }
+}
