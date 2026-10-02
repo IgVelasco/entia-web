@@ -3,6 +3,11 @@
   "commit": "e0684d0998862f5b673c604ac3b63c9cbe611f1d",
   "font": "SpriteFontService.FONT_DIALOG",
   "display_scale": 1,
+  "faction_colors": {
+    "source": "scripts/ActorOverlayPolicy.gd",
+    "army": "#2051FB",
+    "chaos": "#C40005"
+  },
   "assets": {
     "21485": {
       "source": "assets/sprites/legacy_font_21485.png",

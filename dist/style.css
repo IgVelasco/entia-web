@@ -60,11 +60,12 @@ p{font-size:16px;line-height:1.75;color:var(--muted)}
 .keeper-label{position:absolute;top:100%;left:50%;transform:translateX(-50%);display:flex;align-items:center;flex-direction:column;width:max-content;padding:0 6px}
 .game-text{font-size:0!important;line-height:0!important;letter-spacing:0!important}
 .game-glyphs{display:flex;align-items:flex-start;justify-content:center;filter:drop-shadow(1px 1px 0 #050905)}
-.game-glyphs img{display:block;flex:none;image-rendering:pixelated;filter:sepia(.65)}
+.game-glyphs img{display:block;flex:none;image-rendering:pixelated}
 .keeper-label .keeper-clan{margin-top:-2px}
-.keeper.selected .game-glyphs img,.keeper:hover .game-glyphs img{filter:sepia(1) saturate(2)}
-.keeper.selected .keeper-label strong,.keeper.selected .keeper-clan{color:#f6d68a}
-.keeper:hover .keeper-label strong,.keeper:focus-visible .keeper-label strong{color:#ffe6ac}
+/* Exact faction colors from the client's ActorOverlayPolicy; selection never overrides them. */
+.name-color-filters{position:absolute;pointer-events:none}
+.keeper-label strong .game-glyphs{filter:url(#chaos-name) drop-shadow(1px 1px 0 #270001)}
+#player-label .game-glyphs{filter:url(#army-name) drop-shadow(1px 1px 0 #061032)}
 .keeper:focus-visible{outline:none}.keeper:focus-visible .keeper-label{outline:2px solid #f3d69b;outline-offset:4px}
 #player-label{position:absolute;top:0;left:0;z-index:4;pointer-events:none;font-size:10px;letter-spacing:1.3px;font-weight:800;color:#f4dc9f;text-shadow:0 1px 3px #09130f}
 #keeper-reply{position:absolute;top:0;left:0;z-index:4;max-width:190px;padding:9px 12px;background:#e5d5aa;color:#233022;text-align:center;font:400 14px/1.4 Georgia,serif;pointer-events:none;box-shadow:0 4px 20px #06150d44}
