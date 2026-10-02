@@ -45,8 +45,8 @@ for (const keeper of keepers) {
   button.className = 'keeper';
   button.dataset.place = keeper.place;
   button.dataset.cast = 'true';
-  button.setAttribute('aria-label', `Cast Waylight to ${keeper.keeper}: ${keeper.section}`);
-  button.innerHTML = `<span class="keeper-hit" aria-hidden="true"><span class="target-reticle">⌖</span></span><span class="keeper-label"><small>${keeper.keeper}</small><strong>${keeper.section}</strong><span class="keeper-state">Cast Waylight</span></span>`;
+  button.setAttribute('aria-label', `Cast Apocalipsis to ${keeper.keeper}: ${keeper.section}`);
+  button.innerHTML = `<span class="keeper-hit" aria-hidden="true"><span class="target-reticle">⌖</span></span><span class="keeper-label"><small>${keeper.keeper}</small><strong>${keeper.section}</strong><span class="keeper-state">Cast Apocalipsis</span></span>`;
   button.addEventListener('pointerenter', () => { hovered=keeper.place; requestDraw(); });
   button.addEventListener('pointerleave', () => { hovered=null; requestDraw(); });
   button.addEventListener('focus', () => { hovered=keeper.place; requestDraw(); });
@@ -172,17 +172,54 @@ function drawDestination() {
     ellipse(ring.x,ring.y,20+u*48,8+u*18,`rgba(235,206,135,${(1-u)*.8})`,true,2-u);
   }
 }
-function spellPoint(s,u) {
-  return {x:s.sx+(s.x-s.sx)*u,y:s.sy+(s.y-s.sy)*u-Math.sin(u*Math.PI)*55};
+// Website adaptation of spell 25 / particle 127 at artwork ref 410676c.
+// The original uses five additive, stationary coils rotating 300 degrees over 50/60 s.
+// Its legacy texture is deliberately not shipped with this improved-art prototype.
+let apocalipsisTexture=null;
+function buildApocalipsisTexture() {
+  const texture=document.createElement('canvas');texture.width=192;texture.height=192;
+  const c=texture.getContext('2d');c.translate(96,96);
+  const halo=c.createRadialGradient(0,0,2,0,0,80);
+  halo.addColorStop(0,'#ffd19a80');halo.addColorStop(.3,'#ee8a4030');halo.addColorStop(1,'#c24e7500');
+  c.fillStyle=halo;c.fillRect(-96,-96,192,192);
+  const copper=c.createLinearGradient(-64,-64,64,64);
+  copper.addColorStop(0,'#c24e75');copper.addColorStop(.33,'#a43c10');copper.addColorStop(.66,'#c7883c');copper.addColorStop(1,'#ff6800');
+  c.lineCap='round';c.shadowColor='#f58245';c.shadowBlur=9;c.strokeStyle=copper;
+  for(let arm=0;arm<3;arm++)for(let i=0;i<56;i++){
+    const u=i/56,v=(i+1)/56,angle=arm*Math.PI*2/3;
+    const r=5+u*67,nextR=5+v*67;
+    c.lineWidth=1+(1-u)*8;
+    c.beginPath();c.moveTo(Math.cos(angle+u*4.6)*r,Math.sin(angle+u*4.6)*r);
+    c.lineTo(Math.cos(angle+v*4.6)*nextR,Math.sin(angle+v*4.6)*nextR);c.stroke();
+  }
+  c.shadowBlur=0;
+  return texture;
 }
 function drawSpell() {
   if(!spell)return;
-  const u=clamp(spell.age/spell.duration,0,1);
-  for(let i=12;i>=0;i--){
-    const v=Math.max(0,u-i*.018),p=spellPoint(spell,v),alpha=(1-i/13)*.9;
-    ellipse(p.x,p.y,Math.max(1,4-i*.23),Math.max(1,4-i*.23),`rgba(241,215,149,${alpha})`);
+  const t=clamp((spell.age-spell.delay)/(spell.duration-spell.delay),0,1);
+  if(spell.age<spell.delay){
+    const charge=spell.age/spell.delay;
+    ellipse(spell.sx,spell.sy,3+charge*5,3+charge*5,`rgba(245,172,104,${charge*.65})`);
+    return;
   }
-  const p=spellPoint(spell,u);glow(p.x,p.y,30);ellipse(p.x,p.y,3,3,'#fff1c9');
+  if(!apocalipsisTexture)apocalipsisTexture=buildApocalipsisTexture();
+  const envelope=Math.sin(Math.PI*Math.pow(t,.64));
+  ctx.save();ctx.translate(spell.x,spell.y);ctx.rotate(t*Math.PI*5/3);
+  ctx.globalCompositeOperation='lighter';ctx.globalAlpha=envelope*.18;
+  // All five layers share one position and angle, as in the game definition.
+  for(let layer=0;layer<5;layer++)ctx.drawImage(apocalipsisTexture,-72,-72,144,144);
+  ctx.restore();
+}
+function advanceSpell(dt) {
+  if(!spell)return;
+  spell.age+=dt;
+  if(!spell.hit&&spell.age>=spell.delay){
+    spell.hit=true;
+    const receiver=keepers.find(k=>k.place===spell.place);
+    if(receiver){receiver.reaction=1.1;receiver.dir=heading(hero.x-receiver.x,hero.y-receiver.y);}
+  }
+  if(spell.age>=spell.duration)spell=null;
 }
 function draw() {
   if(!ready)return;
@@ -232,7 +269,7 @@ function tick(now) {
       if(!tail||Math.hypot(tail.x-hero.x,tail.y-(hero.y-hero.lift-18))>6)flightTrail.push({x:hero.x,y:hero.y-hero.lift-18,age:0});
     }
     flightTrail=flightTrail.filter(p=>(p.age+=dt)<.3).slice(-18);
-    if(spell){spell.age+=dt;if(spell.age>=spell.duration){rings.push({x:spell.x,y:spell.y+36,age:0,duration:.45});const receiver=keepers.find(k=>k.place===current);receiver.reaction=1.1;spell=null;}}
+    advanceSpell(dt);
     rings=rings.filter(r=>(r.age+=dt)<r.duration);
     for(const n of [...npcs,...keepers]){
       if(n.reaction>0){n.reaction=Math.max(0,n.reaction-dt);n.dir=heading(hero.x-n.x,hero.y-n.y);continue;}
@@ -304,7 +341,7 @@ function updateKeeperStates() {
     const active=k.place===current;
     k.button.classList.toggle('selected',active);
     if(active)k.button.setAttribute('aria-current','location');else k.button.removeAttribute('aria-current');
-    k.button.querySelector('.keeper-state').textContent=active?(route?.kind==='flight'?'Arriving':atPlace===current?'You are here':'Section open'):'Cast Waylight';
+    k.button.querySelector('.keeper-state').textContent=active?(route?.kind==='flight'?'Arriving':atPlace===current?'You are here':'Section open'):'Cast Apocalipsis';
   }
 }
 function setAim(value,{focus=false}={}) {
@@ -345,7 +382,7 @@ function go(place,{history:writeHistory=true,instant=false,announce=true,cast=fa
   const points=flightPath(place);
   if(cast&&!motionOff()&&!instant&&ready){
     rings.push({x:hero.x,y:hero.y,age:0,duration:.32});
-    spell={sx:hero.x+12,sy:hero.y-53,x:spots[place].x,y:spots[place].y-36,age:0,duration:.34};
+    spell={place,sx:hero.x+12,sy:hero.y-53,x:spots[place].x,y:spots[place].y-30,age:0,delay:.12,duration:.12+50/60,hit:false};
     hero.dir=heading(spots[place].x-hero.x,spots[place].y-hero.y);
   }
   $('#location-state').textContent=`Traveling to ${spots[place].name.toLowerCase()}…`;
@@ -426,7 +463,7 @@ canvas.addEventListener('click',event=>{
   const keeper=keepers.find(k=>Math.hypot(k.x-x,(k.y-25)-y)<46);
   if(keeper){go(keeper.place,{cast:true});return;}
   if(game){const index=treasures.findIndex(p=>!p.collected&&Math.hypot(p.x-x,p.y-y)<55);if(index>=0){collectLight(index);return;}}
-  if(aiming){toast('Choose a named keeper to cast Waylight.');return;}
+  if(aiming){toast('Choose a named keeper to cast Apocalipsis.');return;}
   if(x>680&&x<1300&&y>400&&y<790){
     atPlace=null;spell=null;$('#world').classList.remove('traveling');moveHero([{x,y}]);$('#location-state').textContent='Exploring the square';updateKeeperStates();
   }

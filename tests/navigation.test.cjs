@@ -35,11 +35,11 @@ async function village({reduced=false, hash=''}={}) {
   });
   vm.runInContext(readFileSync(join(__dirname,'../dist/app.js'),'utf8'),context);
   await new Promise(resolve=>setImmediate(resolve));
-  const api=vm.runInContext(`({go,advanceRoute,startGame,collectLight,restoreHash,
+  const api=vm.runInContext(`({go,advanceRoute,advanceSpell,startGame,collectLight,restoreHash,
     pause(){paused=true;setMotionState();},
     reduced(value){motionPreference.matches=value;setMotionState();},
     finish(){if(route)advanceRoute(2);},
-    state:()=>({ready,current,route:!!route,spell:!!spell,rings:rings.length,trail:flightTrail.length,lift:hero.lift,x:hero.x,y:hero.y,atPlace,game,collected,cameraX:camera.x,cameraTargetX:camera.targetX}),
+    state:()=>({ready,current,route:!!route,spell:!!spell,spellPlace:spell?.place,spellHit:spell?.hit,rings:rings.length,trail:flightTrail.length,lift:hero.lift,x:hero.x,y:hero.y,atPlace,game,collected,cameraX:camera.x,cameraTargetX:camera.targetX}),
     target:place=>spots[place].land,
     reaction:place=>keepers.find(k=>k.place===place).reaction
   })`,context);
@@ -116,4 +116,21 @@ test('leaving an essence collection cancels its pending reward',async()=>{
   api.startGame();api.collectLight(0);api.advanceRoute(.1);
   api.go('gate');api.finish();
   assert.equal(api.state().game,false);assert.equal(api.state().collected,0);assert.equal(api.state().atPlace,'gate');
+});
+
+
+test('Apocalipsis strikes the chosen keeper once and its burst expires',async()=>{
+  const {api}=await village();
+  api.go('arena',{cast:true});
+  api.advanceSpell(.1);assert.equal(api.state().spellHit,false);
+  api.advanceSpell(.03);assert.equal(api.state().spellHit,true);assert.equal(api.reaction('arena'),1.1);
+  api.advanceSpell(.9);assert.equal(api.state().spell,false);
+});
+
+test('a new cast replaces the old Apocalipsis target before impact',async()=>{
+  const {api}=await village();
+  api.go('hall',{cast:true});api.advanceSpell(.08);
+  api.go('gate',{cast:true});api.advanceSpell(.13);
+  assert.equal(api.state().spellPlace,'gate');assert.equal(api.state().spellHit,true);
+  assert.equal(api.reaction('hall'),0);assert.equal(api.reaction('gate'),1.1);
 });

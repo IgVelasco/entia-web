@@ -106,3 +106,7 @@ dialog{border:1px solid #bfa76a66;background:#0f201a;color:var(--ink);max-width:
 @media(max-width:370px){header{gap:6px}nav{gap:10px}.nav{font-size:11px}.nav-download{padding:8px}.brand{font-size:21px}#spell small{font-size:9px}.scene-controls button{width:31px}.keeper{width:100px}.keeper-label{min-width:90px}.intro-actions{flex-wrap:wrap}}
 .motion-off *, .motion-off *:before, .motion-off *:after{transition:none!important;animation:none!important}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* Apocalipsis keeps the warm copper / magenta palette of the spell definition. */
+#spell{border-color:#d483597d}#spell .spell-glyph{color:#efa76e}#spell:hover,#spell[aria-pressed="true"]{background:#33251e;border-color:#efa76e}.aiming .target-reticle,.keeper:hover .target-reticle{color:#f2a47b}
+@media(max-width:370px){#spell strong{font-size:16px}}

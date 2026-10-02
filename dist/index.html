@@ -22,14 +22,14 @@
     </nav>
   </header>
   <main id="world" data-place="home">
-    <canvas id="scene" aria-label="Nix village with four keepers. Use the labeled keeper buttons to cast a travel spell." role="img"></canvas>
+    <canvas id="scene" aria-label="Nix village with four keepers. Use the labeled keeper buttons to cast Apocalipsis." role="img"></canvas>
     <div class="vignette" aria-hidden="true"></div>
     <div class="world-meta">
       <span class="eyebrow">NIX · THE GATHERING PLACE</span>
       <div class="where"><span class="compass" aria-hidden="true">✦</span><strong id="location-name">The inn</strong><span id="location-section">Home</span></div>
       <span id="location-state">You are here</span>
     </div>
-    <div id="locations" role="group" aria-label="Cast Waylight to a keeper" aria-describedby="spell-hint"></div>
+    <div id="locations" role="group" aria-label="Cast Apocalipsis to a keeper" aria-describedby="spell-hint"></div>
     <div id="player-label" aria-hidden="true"><span>YOU</span></div>
     <div id="keeper-reply" aria-hidden="true" hidden></div>
     <section id="main-content" tabindex="-1" aria-label="Current section">
@@ -38,7 +38,7 @@
         <h1>Find your way<br>through <em>Nix.</em></h1>
         <p>A gathering place before the next rivalry. The keepers will show you around.</p>
         <div class="intro-actions"><button class="primary" data-place="gate">Find the download</button><button class="quiet" data-place="arena">Discover the game</button></div>
-        <div class="world-invitation"><span class="spell-glyph" aria-hidden="true">✧</span><div><strong>A little magic goes a long way.</strong><p>Choose a keeper to cast Waylight and travel to their part of the world.</p></div></div>
+        <div class="world-invitation"><span class="spell-glyph" aria-hidden="true">✧</span><div><strong>Cast Apocalipsis. Find your next destination.</strong><p>Choose a keeper to cast Apocalipsis and travel to their part of the world.</p></div></div>
         <button class="text-button" id="wander">Or take an essence walk</button>
       </div>
       <aside id="panel" aria-labelledby="section-heading" hidden>
@@ -53,14 +53,14 @@
       </div>
     </section>
     <div class="world-toolbar">
-      <button id="spell" aria-pressed="false" aria-describedby="spell-hint"><span class="spell-glyph" aria-hidden="true">✧</span><span><strong>Waylight</strong><small id="spell-hint">Cast at a keeper</small></span><kbd aria-hidden="true">C</kbd></button>
+      <button id="spell" aria-pressed="false" aria-describedby="spell-hint"><span class="spell-glyph" aria-hidden="true">✧</span><span><strong>Apocalipsis</strong><small id="spell-hint">Cast at a keeper</small></span><kbd aria-hidden="true">C</kbd></button>
       <div class="scene-controls" aria-label="World controls"><button id="motion" aria-label="Pause world animation" aria-pressed="false" title="Pause animation">Ⅱ</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="zoom-in" aria-label="Zoom in">+</button><button id="reset-view" aria-label="Reset view" title="Reset view">⌖</button></div>
     </div>
     <div id="travel-toast" role="status" aria-live="polite"></div>
     <footer><span>✦ <b>NIX</b> <span class="footer-divider">/</span> <span id="footer-place">THE INN</span></span><button id="about">Prototype notes</button></footer>
     <div id="loading" role="status"><span class="brand-mark" aria-hidden="true">R</span><p>Opening the gates of Nix…</p><button id="retry-load" class="quiet" hidden>Try again</button></div>
   </main>
-  <dialog id="notes" aria-labelledby="notes-heading"><button id="close-notes" aria-label="Close notes">×</button><span class="eyebrow">ABOUT THIS PREVIEW</span><h2 id="notes-heading">A world in the making.</h2><p>This is an interactive website prototype, using RAO’s improved artwork. The PvP loop is a product-design direction, not a statement that every feature is live.</p><p>Rankings use illustrative characters, and a game download has not been connected. Waylight and the essence walk are website interactions, separate from the game’s spells and economy.</p><p>Use the navigation, click a keeper, or press C to choose a spell target. Keys 1–4 open sections. Pause freezes the world; reduced-motion preferences are respected.</p></dialog>
+  <dialog id="notes" aria-labelledby="notes-heading"><button id="close-notes" aria-label="Close notes">×</button><span class="eyebrow">ABOUT THIS PREVIEW</span><h2 id="notes-heading">A world in the making.</h2><p>This is an interactive website prototype, using RAO’s improved artwork. The PvP loop is a product-design direction, not a statement that every feature is live.</p><p>Rankings use illustrative characters, and a game download has not been connected. This Apocalipsis effect is a website adaptation. Casting and the essence walk are separate from gameplay and the game’s economy.</p><p>Use the navigation, click a keeper, or press C to choose a spell target. Keys 1–4 open sections. Pause freezes the world; reduced-motion preferences are respected.</p></dialog>
 </div>
 <script src="app.js"></script>
 </body>
