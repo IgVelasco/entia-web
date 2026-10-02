@@ -7,7 +7,7 @@ const W = 1440, H = 900;
 const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
 let width = 0, height = 0, dpr = 1, scale = 1, ox = 0, oy = 0, zoom = 1;
 let time = 0, last = 0, frameRequest = 0, paused = false, ready = false;
-let images = {}, current = 'home', route = null, spell = null, rings = [], flightTrail = [], aiming = false;
+let images = {}, current = 'home', route = null, spell = null, rings = [], aiming = false;
 let atPlace = 'home', hovered = null, game = false, collected = 0, toastTimer, replyTimer;
 const camera = {x: 990, y: 520, targetX: 990, targetY: 520};
 const spots = {
@@ -16,12 +16,12 @@ const spots = {
   hall: {x: 1170, y: 655, name: 'Hall of names', section: 'Rankings', keeper: 'Chronicler', body: 'mage', greeting: 'Every name has a story.', land: {x: 1075, y: 680}},
   gate: {x: 780, y: 715, name: 'The crossing', section: 'Download', keeper: 'Gatekeeper', body: 'hero', greeting: 'The next journey starts here.', land: {x: 880, y: 725}}
 };
-const hero = {x: 870, y: 470, body: 'hero', dir: 2, lift: 0, gait: 0, hero: true};
+const hero = {x: 870, y: 470, body: 'hero', dir: 2, gait: 0, hero: true};
 const keepers = Object.entries(spots).map(([place, p]) => ({...p, place, dir: 2, isKeeper: true, reaction: 0}));
 const npcs = [
-  {x: 975, y: 490, body: 'rogue', dir: 1, way: [[975,490],[1070,490],[1070,530],[975,530]], idx: 1, speed: 25, gait: 0, reaction: 0},
-  {x: 1010, y: 730, body: 'mage', dir: 2, way: [[1010,730],[1190,730],[1190,695],[1010,695]], idx: 1, speed: 19, gait: 0, reaction: 0},
-  {x: 742, y: 565, body: 'rogue', dir: 0, way: [[742,565],[750,625],[815,625],[815,565]], idx: 1, speed: 23, gait: 0, reaction: 0}
+  {x: 975, y: 490, body: 'rogue', dir: 1, way: [[975,490],[1070,490],[1070,530],[975,530]], idx: 1, gait: 0, reaction: 0},
+  {x: 1010, y: 730, body: 'mage', dir: 2, way: [[1010,730],[1190,730],[1190,695],[1010,695]], idx: 1, gait: 0, reaction: 0},
+  {x: 742, y: 565, body: 'rogue', dir: 0, way: [[742,565],[742,625],[815,625],[815,565]], idx: 1, gait: 0, reaction: 0}
 ];
 const scenery = [
   {id:'house',x:775,y:390,w:240,h:320}, {id:'house2',x:1250,y:630,w:180,h:240},
@@ -29,11 +29,13 @@ const scenery = [
   {id:'pine',x:1385,y:640,w:280,h:280}, {id:'tree',x:652,y:865,w:260,h:325}, {id:'tree2',x:325,y:750,w:310,h:387},
   {id:'tree',x:555,y:115,w:225,h:282}, {id:'pine',x:960,y:142,w:200,h:200}, {id:'tree2',x:1395,y:890,w:250,h:312}
 ];
-const treasures = [{x:914,y:505},{x:1255,y:485},{x:990,y:755}].map(p => ({...p,collected:false}));
+const treasures = [{x:914,y:505},{x:1255,y:745},{x:990,y:755}].map(p => ({...p,collected:false}));
 const ground = document.createElement('canvas');
 ground.width = W; ground.height = H;
 let groundReady = false;
-const easeOut = t => 1 - Math.pow(1 - t, 3);
+// RAO movement: 32 world units per tile, 0.20 s/player step, 0.40 s/NPC step.
+const WALK_TILE = 32, WALK_SPEED = WALK_TILE/.20, NPC_SPEED = WALK_TILE/.40;
+const walkCycleTiles = {hero:2, rogue:1, mage:2};
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
 const motionOff = () => paused || motionPreference.matches;
 const heading = (dx,dy) => Math.abs(dx)>Math.abs(dy) ? (dx>0?1:3) : (dy>0?2:0);
@@ -79,7 +81,7 @@ function positionLabels() {
     const p = screen(k);
     k.button.style.transform = `translate3d(${Math.round(p.x)}px,${Math.round(p.y)}px,0) translate(-50%, -72px)`;
   }
-  const p = screen({x:hero.x,y:hero.y-hero.lift});
+  const p = screen(hero);
   $('#player-label').style.transform = `translate3d(${Math.round(p.x)}px,${Math.round(p.y+13)}px,0) translateX(-50%)`;
   const destination = screen(spots[current]);
   $('#keeper-reply').style.transform = `translate3d(${Math.round(destination.x)}px,${Math.round(destination.y-100*scale)}px,0) translate(-50%,-100%)`;
@@ -137,19 +139,14 @@ function glow(x,y,r,alpha=1) {
 }
 function drawActor(a) {
   const im=images[a.body]; if(!im)return;
-  const flying=a.hero && route?.kind==='flight';
-  const walking=a.hero ? route?.kind==='walk' : (!a.isKeeper && a.reaction<=0 && !motionOff());
-  const frame=walking ? 1+Math.floor((a.gait||0)/(a.hero?18:7))%7 : 0;
+  const walking=!motionOff() && (a.hero ? !!route : !a.isKeeper && a.reaction<=0);
+  // Body 156 walks through seven drawings over two tiles; body 502 over one.
+  const stride=(a.gait||0)/(WALK_TILE*walkCycleTiles[a.body]);
+  const frame=walking ? 1+Math.floor((stride%1)*7) : 0;
   const fw=im.width/8, fh=im.height/4, dw=60, dh=fh/fw*dw;
-  const lift=a.lift||0;
-  ellipse(a.x,a.y+2,18-lift*.055,6-lift*.015,`rgba(7,20,12,${.62-lift*.006})`);
-  if(a.hero){
-    ellipse(a.x,a.y+2,25,10, '#e7c885',true,1.5);
-    if(flying)glow(a.x,a.y-lift-25,40,.6);
-  }
-  if(flying)return;
-  const nod=a.reaction>0 ? Math.sin((1-a.reaction/1.1)*Math.PI)*3 : 0;
-  ctx.drawImage(im,frame*fw,a.dir*fh,fw,fh,Math.round(a.x-dw/2),Math.round(a.y-dh-lift-nod),dw,dh);
+  ellipse(a.x,a.y+2,18,6,'rgba(7,20,12,.62)');
+  if(a.hero)ellipse(a.x,a.y+2,25,10,'#e7c885',true,1.5);
+  ctx.drawImage(im,frame*fw,a.dir*fh,fw,fh,Math.round(a.x-dw/2),Math.round(a.y-dh),dw,dh);
 }
 function drawDestination() {
   for(const [key,p] of Object.entries(spots)) {
@@ -202,20 +199,12 @@ function draw() {
   ctx.translate(ox,oy);ctx.scale(scale,scale);ctx.imageSmoothingEnabled=false;
   if(!groundReady)buildGround();ctx.drawImage(ground,0,0);
   drawDestination();
-  for(const mote of flightTrail){
-    const alpha=(1-mote.age/.3)*.55;ctx.fillStyle=`rgba(235,208,144,${alpha})`;ctx.fillRect(mote.x-2,mote.y-2,4,4);
-  }
   const layers=[...scenery.map(s=>({...s,type:'scenery'})),...npcs,...keepers,hero].sort((a,b)=>a.y-b.y);
   for(const a of layers){
     if(a.type==='scenery'){
       ellipse(a.x+15,a.y+7,a.w*.38,a.w*.1,'#07130c40');
       ctx.drawImage(images[a.id],a.x-a.w/2,a.y-a.h,a.w,a.h);
     }else drawActor(a);
-  }
-  // Flying characters render above roofs; their shadow remains on the ground.
-  if(route?.kind==='flight'){
-    const im=images.hero,fw=im.width/8,fh=im.height/4;
-    ctx.drawImage(im,0,hero.dir*fh,fw,fh,hero.x-30,hero.y-100-hero.lift,60,100);
   }
   if(game)for(let i=0;i<treasures.length;i++){
     const p=treasures[i];if(p.collected)continue;
@@ -239,17 +228,12 @@ function tick(now) {
   if(!motionOff()){
     time+=dt;
     if(route)advanceRoute(dt);
-    if(route?.kind==='flight'&&hero.lift>8){
-      const tail=flightTrail.at(-1);
-      if(!tail||Math.hypot(tail.x-hero.x,tail.y-(hero.y-hero.lift-18))>6)flightTrail.push({x:hero.x,y:hero.y-hero.lift-18,age:0});
-    }
-    flightTrail=flightTrail.filter(p=>(p.age+=dt)<.3).slice(-18);
     advanceSpell(dt);
     rings=rings.filter(r=>(r.age+=dt)<r.duration);
     for(const n of [...npcs,...keepers]){
       if(n.reaction>0){n.reaction=Math.max(0,n.reaction-dt);n.dir=heading(hero.x-n.x,hero.y-n.y);continue;}
       if(n.isKeeper)continue;
-      const [x,y]=n.way[n.idx],dx=x-n.x,dy=y-n.y,d=Math.hypot(dx,dy),step=Math.min(n.speed*dt,d);
+      const [x,y]=n.way[n.idx],dx=x-n.x,dy=y-n.y,d=Math.hypot(dx,dy),step=Math.min(NPC_SPEED*dt,d);
       n.dir=heading(dx,dy);
       if(d<1)n.idx=(n.idx+1)%n.way.length;else{n.x+=dx/d*step;n.y+=dy/d*step;n.gait+=step;}
     }
@@ -263,7 +247,7 @@ function reactToArrival(place) {
   for(const n of [...npcs,...keepers])if(n.place===place||Math.hypot(n.x-hero.x,n.y-hero.y)<200){n.reaction=1.1;n.dir=heading(hero.x-n.x,hero.y-n.y);}
 }
 function arrive(place,announce=true) {
-  atPlace=place;hero.lift=0;hero.dir=heading(spots[place].x-hero.x,spots[place].y-hero.y);
+  atPlace=place;hero.dir=heading(spots[place].x-hero.x,spots[place].y-hero.y);
   $('#location-state').textContent='You are here';
   $('#world').classList.remove('traveling');
   updateKeeperStates();
@@ -278,7 +262,7 @@ function arrive(place,announce=true) {
 function advanceRoute(dt) {
   const r=route;r.elapsed+=dt;
   const u=clamp(r.elapsed/r.duration,0,1);
-  const distance=r.length*(r.kind==='flight'?easeOut(u):u);
+  const distance=r.length*u;
   let remaining=distance,from={x:r.sx,y:r.sy},p=r.target;
   for(let i=0;i<r.points.length;i++){
     const to=r.points[i],length=Math.hypot(to.x-from.x,to.y-from.y);
@@ -289,34 +273,38 @@ function advanceRoute(dt) {
     }
     remaining-=length;from=to;
   }
-  hero.gait+=Math.hypot(p.x-hero.x,p.y-hero.y);hero.x=p.x;hero.y=p.y;
-  hero.lift=r.kind==='flight'?Math.sin(Math.PI*u)*48:0;
-  if(u===1){route=null;hero.lift=0;r.complete?.();}
+  hero.gait+=distance-r.distance;r.distance=distance;hero.x=p.x;hero.y=p.y;
+  if(u===1){route=null;r.complete?.();}
 }
-function moveHero(points,{kind='walk',complete,instant=false}={}) {
+function moveHero(points,{complete,instant=false}={}) {
   const target=points.at(-1);let from=hero,length=0;
   for(const p of points){length+=Math.hypot(p.x-from.x,p.y-from.y);from=p;}
   // Every new action replaces the previous route and its completion callback.
-  route=null;hero.lift=0;
+  route=null;
   if(motionOff()||instant||length<2){hero.x=target.x;hero.y=target.y;complete?.();requestDraw();return;}
-  route={sx:hero.x,sy:hero.y,target,points,segment:0,kind,length,elapsed:0,duration:kind==='flight'?clamp(length/700,.56,.84):clamp(length/210,.18,1.2),complete};
+  route={sx:hero.x,sy:hero.y,target,points,segment:0,length,distance:0,elapsed:0,duration:length/WALK_SPEED,complete};
   requestDraw();
 }
-function flightPath(destination) {
-  // A shallow curve across the open square; the separate lift keeps the shadow grounded.
-  const target=spots[destination].land;
-  const control={x:(hero.x+target.x)/2-24,y:(hero.y+target.y)/2-18};
-  return Array.from({length:18},(_,i)=>{
-    const t=(i+1)/18,v=1-t;
-    return {x:v*v*hero.x+2*v*t*control.x+t*t*target.x,y:v*v*hero.y+2*v*t*control.y+t*t*target.y};
-  });
+function walkingPath(target) {
+  const points=[];let from={x:hero.x,y:hero.y};
+  const add=(x,y)=>{if(Math.hypot(x-from.x,y-from.y)>.001){from={x,y};points.push(from);}};
+  // Finish the current cardinal footstep before a newly requested turn.
+  if(route){
+    const next=route.points[route.segment],remaining=Math.hypot(next.x-hero.x,next.y-hero.y);
+    const step=Math.min(WALK_TILE-(hero.gait%WALK_TILE),remaining);
+    if(remaining>.001)add(hero.x+(next.x-hero.x)/remaining*step,hero.y+(next.y-hero.y)/remaining*step);
+  }
+  // Walk around the eastern house when returning from the lower square.
+  if(from.x>1140&&target.y<650)add(1100,from.y);
+  add(from.x,target.y);add(target.x,target.y);
+  return points.length?points:[{x:target.x,y:target.y}];
 }
 function updateKeeperStates() {
   for(const k of keepers){
     const active=k.place===current;
     k.button.classList.toggle('selected',active);
     if(active)k.button.setAttribute('aria-current','location');else k.button.removeAttribute('aria-current');
-    k.button.querySelector('.keeper-state').textContent=active?(route?.kind==='flight'?'Arriving':atPlace===current?'You are here':'Section open'):'Cast Apocalipsis';
+    k.button.querySelector('.keeper-state').textContent=active?(route&&$('#world').classList.contains('traveling')?'Walking here':atPlace===current?'You are here':'Section open'):'Cast Apocalipsis';
   }
 }
 function setAim(value,{focus=false}={}) {
@@ -351,18 +339,18 @@ function go(place,{history:writeHistory=true,instant=false,announce=true,cast=fa
   atPlace=null;current=place;setAim(false);clearTimeout(replyTimer);$('#keeper-reply').hidden=true;
   setContent(place);
   if(writeHistory && location.hash!=='#'+place)window.history.pushState(null,'','#'+place);
-  spell=null;rings=[];flightTrail=[];
+  spell=null;rings=[];
   camera.targetX=990+(spots[place].x-990)*.07;camera.targetY=530+(spots[place].y-530)*.05;
   if(motionOff()||instant){camera.x=camera.targetX;camera.y=camera.targetY;}
-  const points=flightPath(place);
+  const points=walkingPath(spots[place].land);
   if(cast&&!motionOff()&&!instant&&ready){
     rings.push({x:hero.x,y:hero.y,age:0,duration:.32});
     spell={place,x:spots[place].x,y:spots[place].y-32,age:0,delay:.12,duration:.12+apocalipsis.duration,hit:false};
     hero.dir=heading(spots[place].x-hero.x,spots[place].y-hero.y);
   }
-  $('#location-state').textContent=`Traveling to ${spots[place].name.toLowerCase()}…`;
+  $('#location-state').textContent=`Walking to ${spots[place].name.toLowerCase()}…`;
   $('#world').classList.add('traveling');
-  moveHero(points,{kind:'flight',instant:instant||!ready,complete:()=>{arrive(place,announce);if(secured)toast('All three lights carried home. Journey complete.');}});
+  moveHero(points,{instant:instant||!ready,complete:()=>{arrive(place,announce);if(secured)toast('All three lights carried home. Journey complete.');}});
   updateKeeperStates();requestDraw();
 }
 function toast(message) {
@@ -379,7 +367,7 @@ function setMotionState() {
   $('#motion').title=motionPreference.matches?'Following your reduced-motion preference':paused?'Resume animation':'Pause animation';
   if(off){
     if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;
-    const pending=route;route=null;spell=null;rings=[];flightTrail=[];hero.lift=0;
+    const pending=route;route=null;spell=null;rings=[];
     if(pending){hero.x=pending.target.x;hero.y=pending.target.y;pending.complete?.();}
     camera.x=camera.targetX;camera.y=camera.targetY;
     for(const a of [...npcs,...keepers])a.reaction=0;
@@ -395,7 +383,7 @@ if(place==='gate')return `<span class="eyebrow">THE CROSSING</span><h2>The world
 function rankRows(mode){const rows=mode==='support'?[names[3],names[5],names[7],names[1],names[8],names[4],names[0],names[2],names[9],names[6]]:names;return rows.map((n,i)=>`<div class="rank-row"><span class="rank-number">${String(i+1).padStart(2,'0')}</span><img class="rank-avatar" src="assets/portraits/${i%3}.png" alt=""><span class="rank-info"><b>${n[0]}</b><small>${n[1]}</small></span><span class="rank-score">${mode==='essence'?n[2]:Math.round(930-i*67).toLocaleString()}</span></div>`).join('');}
 
 function startGame() {
-  route=null;spell=null;rings=[];flightTrail=[];hero.lift=0;atPlace=null;game=true;collected=0;
+  route=null;spell=null;rings=[];atPlace=null;game=true;collected=0;
   treasures.forEach(p=>p.collected=false);
   setAim(false);$('#world').classList.remove('traveling','panel-open');$('#world').classList.add('walking');
   $('#intro').hidden=true;$('#panel').hidden=true;$('#essence-game').hidden=false;
@@ -406,7 +394,7 @@ function startGame() {
 }
 function collectLight(index) {
   const p=treasures[index];if(!game||!p||p.collected)return;
-  moveHero([p],{complete:()=>{
+  moveHero(walkingPath(p),{complete:()=>{
     if(!game||p.collected)return;
     p.collected=true;collected++;
     $('#essence-count').textContent=`${collected} / 3 essence`;
@@ -439,8 +427,8 @@ canvas.addEventListener('click',event=>{
   if(keeper){go(keeper.place,{cast:true});return;}
   if(game){const index=treasures.findIndex(p=>!p.collected&&Math.hypot(p.x-x,p.y-y)<55);if(index>=0){collectLight(index);return;}}
   if(aiming){toast('Choose a named keeper to cast Apocalipsis.');return;}
-  if(x>680&&x<1300&&y>400&&y<790){
-    atPlace=null;spell=null;$('#world').classList.remove('traveling');moveHero([{x,y}]);$('#location-state').textContent='Exploring the square';updateKeeperStates();
+  if(x>720&&x<1300&&y>400&&y<780 && !(x>1140&&y<650)){
+    atPlace=null;spell=null;$('#world').classList.remove('traveling');moveHero(walkingPath({x,y}));$('#location-state').textContent='Exploring the square';updateKeeperStates();
   }
 });
 $('#wander').onclick=()=>{startGame();$('#main-content').focus({preventScroll:true});};

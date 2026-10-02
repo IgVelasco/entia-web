@@ -35,11 +35,14 @@ async function village({reduced=false, hash=''}={}) {
   });
   vm.runInContext(readFileSync(join(__dirname,'../dist/app.js'),'utf8'),context);
   await new Promise(resolve=>setImmediate(resolve));
-  const api=vm.runInContext(`({go,advanceRoute,advanceSpell,drawSpell,startGame,collectLight,restoreHash,
+  const api=vm.runInContext(`({go,advanceRoute,advanceSpell,drawSpell,drawActor,startGame,collectLight,restoreHash,
     pause(){paused=true;setMotionState();},
     reduced(value){motionPreference.matches=value;setMotionState();},
-    finish(){if(route)advanceRoute(2);},
-    state:()=>({ready,current,route:!!route,spell:!!spell,spellPlace:spell?.place,spellHit:spell?.hit,rings:rings.length,trail:flightTrail.length,lift:hero.lift,x:hero.x,y:hero.y,atPlace,game,collected,cameraX:camera.x,cameraTargetX:camera.targetX}),
+    finish(){if(route)advanceRoute(route.duration);},
+    drawHero(){drawActor(hero);},
+    drawKeeper(){drawActor(keepers[0]);},
+    path:()=>route?.points,
+    state:()=>({ready,current,route:!!route,spell:!!spell,spellPlace:spell?.place,spellHit:spell?.hit,rings:rings.length,gait:hero.gait,dir:hero.dir,x:hero.x,y:hero.y,atPlace,game,collected,cameraX:camera.x,cameraTargetX:camera.targetX}),
     target:place=>spots[place].land,
     reaction:place=>keepers.find(k=>k.place===place).reaction
   })`,context);
@@ -54,7 +57,7 @@ test('a spell opens content and marks the section before its journey completes',
   assert.equal(api.state().route,true);
   assert.equal(api.state().spell,true);
   assert.match(get('#panel-content').innerHTML,/PVP VISION/);
-  assert.equal(get('#location-state').textContent,'Traveling to the arena…');
+  assert.equal(get('#location-state').textContent,'Walking to the arena…');
   assert.equal(nav[1].getAttribute('aria-current'),'page');
   api.finish();
   assert.equal(get('#location-state').textContent,'You are here');
@@ -73,11 +76,43 @@ test('interrupting travel cannot complete an obsolete destination',async()=>{
   assert.equal(get('#location-name').textContent,'The crossing');
 });
 
-test('pause during flight lands at the latest destination and clears motion',async()=>{
+test('walking advances one grounded cardinal tile in 0.20 seconds with the game stride',async()=>{
+  const {api,draws}=await village();
+  api.go('arena');
+  const start=api.state();
+  api.advanceRoute(.2);
+  const step=api.state();
+  assert.equal(step.x,start.x);assert.equal(step.y,start.y-32);assert.equal(step.dir,0);
+  api.drawHero();
+  const walking=draws.pop();
+  assert.equal(walking[1],4*96); // Body 156: half of the two-tile stride.
+  assert.equal(walking[6]+walking[8],step.y); // Feet never lift off the ground.
+  api.finish();api.drawHero();
+  const idle=draws.pop();assert.equal(idle[1],0);
+  assert.equal(idle[6]+idle[8],api.state().y);
+});
+
+test('retargeting finishes the current footstep before turning and keeps routes cardinal',async()=>{
+  const {api}=await village();
+  api.go('arena');api.advanceRoute(.1);
+  const before=api.state();
+  api.go('hall');api.advanceRoute(.05);
+  assert.equal(api.state().x,before.x);assert.equal(api.state().y,before.y-8);
+  for(const place of ['hall','gate','home','arena']){
+    api.go(place);let from=api.state();
+    for(const point of api.path()){
+      assert.ok(point.x===from.x || point.y===from.y,'no diagonal movement');
+      from=point;
+    }
+    api.finish();assert.equal(api.state().atPlace,place);
+  }
+});
+
+test('pause during walking arrives at the latest destination and clears motion',async()=>{
   const {api,get}=await village();
   api.go('hall',{cast:true});api.advanceRoute(.2);api.pause();
   const s=api.state();
-  assert.equal(s.route,false);assert.equal(s.spell,false);assert.equal(s.rings,0);assert.equal(s.trail,0);assert.equal(s.lift,0);
+  assert.equal(s.route,false);assert.equal(s.spell,false);assert.equal(s.rings,0);
   assert.equal(s.x,api.target('hall').x);assert.equal(s.y,api.target('hall').y);
   assert.equal(s.cameraX,s.cameraTargetX);
   assert.equal(get('#location-state').textContent,'You are here');
@@ -90,13 +125,13 @@ test('reduced motion from first load still supports every spell destination',asy
   assert.equal(api.state().atPlace,'hall');
   for(const destination of ['arena','gate','home']){
     api.go(destination,{cast:true});
-    assert.equal(api.state().route,false);assert.equal(api.state().spell,false);assert.equal(api.state().lift,0);
+    assert.equal(api.state().route,false);assert.equal(api.state().spell,false);
     assert.equal(api.state().atPlace,destination);
   }
   assert.equal(get('#motion').disabled,true);
 });
 
-test('a live reduced-motion change resolves a pending flight immediately',async()=>{
+test('a live reduced-motion change resolves a pending walk immediately',async()=>{
   const {api}=await village();
   api.go('arena',{cast:true});api.advanceRoute(.1);api.reduced(true);
   assert.equal(api.state().atPlace,'arena');assert.equal(api.state().route,false);assert.equal(api.state().spell,false);
