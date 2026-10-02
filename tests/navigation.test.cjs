@@ -364,3 +364,19 @@ test('walking near characters does not interrupt collecting lights',async()=>{
   assert.equal(v.get('#essence-game').hidden,false);assert.equal(v.get('#panel').hidden,true);
   assert.deepEqual(v.historyCalls,[]);
 });
+
+
+test('world controls suppress native text gestures without suppressing navigation',async()=>{
+  const {api,get}=await village();
+  for(const selector of ['#scene','#locations','#player-label','#keeper-reply']){
+    for(const type of ['selectstart','dragstart','contextmenu']){
+      let prevented=false;
+      get(selector).events[type]({preventDefault(){prevented=true;}});
+      assert.equal(prevented,true,`${selector} cancels ${type}`);
+    }
+  }
+  assert.equal(get('#main-content').events.contextmenu,undefined,'normal page content keeps its browser menu');
+  api.go('arena',{cast:true});
+  assert.equal(api.state().current,'arena');
+  assert.equal(api.state().spell,true);
+});

@@ -15,6 +15,11 @@
     "map_zoom_independent": true,
     "army": "#7DADFF",
     "chaos": "#FF777B",
-    "note": "Uses the exact current-game font. Larger stable screen sizes and brighter faction shades improve readability on the website."
+    "note": "Uses the exact current-game font. Larger stable screen sizes and brighter faction shades improve readability on the website.",
+    "shadow": "2px 2px black at 85% opacity, no blur or outline"
+  },
+  "verified_artwork_branches": {
+    "feat/fixed-world-hud-layout": "d92bcdee3e291bf4dca2a9cf9f0dbc4e482c2a43",
+    "feat/standard-artwork-density": "410676cc2e11170c494ad90eb160944ce8d635cf"
   }
 }

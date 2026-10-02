@@ -51,13 +51,15 @@ p{font-size:16px;line-height:1.75;color:var(--muted)}
 .world-invitation strong{font:400 18px Georgia,serif;color:#e2d6b6}.world-invitation p{font-size:14px;line-height:1.6;margin:0 0 6px;color:#c2cdba}
 .spell-glyph{font-size:33px;color:#ead098;line-height:1;flex-shrink:0}
 #locations{position:absolute;inset:0;pointer-events:none;z-index:3}
+#scene,#locations,#locations *,#player-label,#keeper-reply{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.keeper{touch-action:manipulation}
 .keeper{position:absolute;left:0;top:0;width:140px;border:0;padding:0;background:none;color:#e8e6cf;pointer-events:auto;text-align:center;transform-origin:50% 72px}
 .keeper-hit{height:72px;display:flex;align-items:center;justify-content:center;position:relative}
-.target-reticle{font-size:56px;line-height:1;color:#f5d893;opacity:0;transform:scale(.84);transition:opacity .18s,transform .18s var(--ease)}
+.target-reticle{display:block;width:48px;height:48px;fill:none;stroke:currentColor;stroke-width:1.5;pointer-events:none;color:#f5d893;opacity:0;transform:scale(.84);transition:opacity .18s,transform .18s var(--ease)}
 .keeper:hover .target-reticle,.keeper:focus-visible .target-reticle,.aiming .target-reticle{opacity:.85;transform:scale(1)}
 .keeper-label{position:absolute;top:100%;left:50%;transform:translateX(-50%);display:flex;align-items:center;flex-direction:column;width:max-content;padding:3px 6px;white-space:nowrap}
 /* The active game renderer uses Inter Regular with a dark offset shadow. */
-.game-text{font-family:'Entia Game',Arial,sans-serif;font-size:17px;font-weight:400;font-style:normal;font-synthesis:none;line-height:21px;letter-spacing:0;text-shadow:2px 2px 0 #000d,0 0 3px #000;white-space:nowrap}
+.game-text{font-family:'Entia Game',Arial,sans-serif;font-size:17px;font-weight:400;font-style:normal;font-synthesis:none;line-height:21px;letter-spacing:0;text-shadow:2px 2px 0 #000000d9;-webkit-font-smoothing:antialiased;white-space:nowrap}
 .keeper-label .keeper-clan{margin-top:0;font-size:13px;line-height:17px;color:#e0e5d8}
 /* Brighter faction shades stay legible against the village scenery. */
 .keeper-label strong{color:#ff777b}
@@ -109,7 +111,7 @@ dialog{border:1px solid #bfa76a66;background:#0f201a;color:var(--ink);max-width:
   #world{padding-top:480px}#scene,.vignette{height:480px}
   .world-meta{left:18px;top:16px}.world-meta>.eyebrow{font-size:9px;letter-spacing:1.3px}.where{gap:9px;margin-top:8px}.where strong{font-size:20px}.where>span:last-child{font-size:10px}.compass{font-size:22px}#location-state{font-size:11px;margin-left:31px}
   #main-content{padding:16px 22px 28px}h1{font-size:46px}#intro>p{font-size:15px}.intro-actions{gap:18px}.primary,.quiet{font-size:13px}.world-invitation strong{font-size:18px}
-  .keeper{width:100px}.keeper-label{max-width:126px;padding:3px 5px}.game-text{font-size:16px;line-height:20px}.target-reticle{font-size:40px}
+  .keeper{width:100px}.keeper-label{max-width:126px;padding:3px 5px}.game-text{font-size:16px;line-height:20px}.target-reticle{width:36px;height:36px}
   #keeper-reply{max-width:155px;font-size:12px;padding:7px 10px}
   .world-toolbar{top:400px;left:18px;right:18px;gap:10px}#spell{min-width:0;flex:1;max-width:220px;padding:9px 10px;gap:9px}#spell strong{font-size:18px}#spell small{font-size:10px}.spell-glyph{font-size:27px}#spell kbd{display:none}
   .scene-controls button{width:35px;height:43px;font-size:20px}#travel-toast{top:358px;font-size:11px;padding:8px 10px}

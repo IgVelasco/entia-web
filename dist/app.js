@@ -61,7 +61,7 @@ for (const keeper of keepers) {
   button.dataset.place = keeper.place;
   button.dataset.cast = 'true';
   button.setAttribute('aria-label', `Open ${keeper.section} with Apocalipsis`);
-  button.innerHTML = `<span class="keeper-label"><strong>${keeper.section}</strong><small class="keeper-clan">&lt;${keeper.clan}&gt;</small></span><span class="keeper-hit" aria-hidden="true"><span class="target-reticle">⌖</span></span>`;
+  button.innerHTML = `<span class="keeper-label"><strong>${keeper.section}</strong><small class="keeper-clan">&lt;${keeper.clan}&gt;</small></span><span class="keeper-hit" aria-hidden="true"><svg class="target-reticle" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><circle cx="24" cy="24" r="13"/><path d="M24 3v13m0 16v13M3 24h13m16 0h13"/></svg></span>`;
   setGameText(button.querySelector('strong'), keeper.section);
   button.addEventListener('pointerenter', () => { hovered=keeper.place; requestDraw(); });
   button.addEventListener('pointerleave', () => { hovered=null; requestDraw(); });
@@ -71,6 +71,15 @@ for (const keeper of keepers) {
   keeper.button = button;
 }
 setGameText($('#player-label span'), 'YOU');
+
+// World sprites are game controls, not selectable page content. Keep normal
+// browser selection and context menus available everywhere outside this surface.
+for (const surface of [canvas, $('#locations'), $('#player-label'), $('#keeper-reply')]) {
+  for (const type of ['selectstart', 'dragstart', 'contextmenu']) {
+    surface.addEventListener(type, event => event.preventDefault());
+  }
+}
+
 
 function viewport() {
   const compact = width <= 900;
