@@ -63,7 +63,7 @@ async function village({reduced=false, hash=''}={}) {
     return prevented;
   };
   const clickGround=(x,y)=>get('#scene').events.click(api.groundPoint(x,y));
-  return {api,get,location,preference,nav,frames,draws,listeners,windowListeners,document,key,clickGround,historyCalls};
+  return {api,get,location,preference,nav,frames,draws,listeners,windowListeners,document,key,clickGround,historyCalls,history};
 }
 
 test('a spell opens content and marks the section before its journey completes',async()=>{
@@ -382,3 +382,8 @@ test('Back and Forward restore the embedded view without reinitializing Home',as
 test('demo messages require both the expected origin and iframe source',async()=>{const v=await village();const frame=v.get('#demo-frame');frame.contentWindow={postMessage(){}};v.api.showDemo(true);v.windowListeners.message({origin:'https://wrong.test',source:frame.contentWindow,data:{type:'entia-demo-ready'}});assert(!v.api.demoState().loaded);v.windowListeners.message({origin:v.location.origin,source:{},data:{type:'entia-demo-ready'}});assert(!v.api.demoState().loaded);v.windowListeners.message({origin:v.location.origin,source:frame.contentWindow,data:{type:'entia-demo-ready'}});assert(v.api.demoState().loaded);assert.equal(v.get('#demo-loading').hidden,true);});
 
 test('a fast initial iframe load keeps the first how-to-play popup',async()=>{const v=await village(),messages=[];const frame=v.get('#demo-frame');frame.contentWindow={postMessage:m=>messages.push(m)};v.windowListeners.message({origin:v.location.origin,source:frame.contentWindow,data:{type:'entia-demo-ready'}});messages.length=0;v.api.showDemo(true);assert(!messages.some(m=>m.type==='entia-demo-resume'));});
+
+test('return closes immediately without depending on joint iframe history.back',async()=>{const v=await village();v.api.showDemo(true);v.history.back=()=>{throw Error('Must not call history.back to close');};v.api.closeDemo(true);assert(!v.api.demoState().open);assert.equal(v.location.hash,'#home');assert.equal(v.get('#app').inert,false);});
+test('iframe uses replacement navigation and remains mounted on re-entry',async()=>{const v=await village();let loads=0;const frame=v.get('#demo-frame');frame.contentWindow={location:{replace:url=>{assert.match(url,/demo/);loads++;}},postMessage(){}};v.api.showDemo(true);v.api.closeDemo(true);v.api.showDemo(true);assert.equal(loads,1);});
+
+test('explicit return opens Home even if the portal was entered from another section',async()=>{const v=await village();v.api.go('arena',{instant:true});const before=v.api.state();v.api.showDemo(true);v.api.closeDemo(true);assert.equal(v.api.state().current,'home');assert.equal(v.location.hash,'#home');assert.equal(v.api.state().x,before.x);assert.equal(v.api.state().y,before.y);});

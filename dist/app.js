@@ -40,7 +40,7 @@ const homePortal=onTownGrid({x:1010,y:420});
 const townObstacles=scenery.map(s=>s.id.startsWith('house')?{x:s.x-s.w*.43,y:s.y-s.h*.60,w:s.w*.86,h:s.h*.60}:{x:s.x-22,y:s.y-28,w:44,h:38});
 townObstacles.push({x:homePortal.x-74,y:homePortal.y-35,w:30,h:45},{x:homePortal.x+44,y:homePortal.y-35,w:30,h:45});
 const townPhysics=WorldPhysics.create({width:W,height:H,radius:10,obstacles:townObstacles});
-let enteringPortal=false,demoOpen=false,demoEverOpened=false,demoLoaded=false,demoFailed=false,demoExitPending=false,demoHistoryOwned=false,portalReentryBlocked=false;
+let enteringPortal=false,demoOpen=false,demoFrameStarted=false,demoCloseEpoch=0,demoEverOpened=false,demoLoaded=false,demoFailed=false,demoExitPending=false,demoHistoryOwned=false,portalReentryBlocked=false;
 let demoReturnHash="#home",demoLoadTimer=0;
 function enterPortal(){
  if(enteringPortal)return;enteringPortal=true;clearMovementInput();route=null;
@@ -49,31 +49,36 @@ function enterPortal(){
  const p=screen(homePortal),veil=document.createElement('div');veil.id='portal-transition';veil.setAttribute('aria-hidden','true');
  veil.style.setProperty('--portal-x',p.x+'px');veil.style.setProperty('--portal-y',(p.y+canvas.getBoundingClientRect().top)+'px');
  document.body.append(veil);$('#world').classList.add('entering-portal');
- setTimeout(()=>{if(enteringPortal)showDemo(true);},760);
+ setTimeout(()=>{if(enteringPortal)showDemo(true);},460);
 }
-function walkToPortal(){portalReentryBlocked=false;heldDirections.clear();beginManualMovement();moveHero(walkingPath(homePortal),{explore:true,complete:enterPortal});}
+function walkToPortal(){ensureDemoFrame();portalReentryBlocked=false;heldDirections.clear();beginManualMovement();moveHero(walkingPath(homePortal),{explore:true,complete:enterPortal});}
 function portalCrossing(){if(portalReentryBlocked){if(Math.hypot(hero.x-homePortal.x,hero.y-homePortal.y)>48)portalReentryBlocked=false;return;}if(!enteringPortal&&Math.abs(hero.x-homePortal.x)<24&&Math.abs(hero.y-homePortal.y)<20)enterPortal();}
 function ensureDemoFrame(){
- const frame=$('#demo-frame');if(frame.getAttribute('src')&&!demoFailed)return;demoFailed=false;demoLoaded=false;
- frame.src='demo/?embedded=1';$('#demo-loading').hidden=false;
+ const frame=$('#demo-frame');if(demoFrameStarted&&!demoFailed)return;demoFrameStarted=true;demoFailed=false;demoLoaded=false;
+ const url=location.origin+'/demo/?embedded=1';if(frame.contentWindow?.location?.replace)frame.contentWindow.location.replace(url);else frame.src=url;$('#demo-loading').hidden=false;
  demoLoadTimer=setTimeout(()=>{if(!demoLoaded)$('#demo-load-message').textContent='The demo is taking longer to load. You can return to Nix while it finishes.';},20000);
 }
 function showDemo(push=true){
  if(demoOpen)return;const resumed=demoEverOpened;demoEverOpened=true;ensureDemoFrame();demoReturnHash=location.hash==='#demo'?'#home':location.hash||'#home';
- demoOpen=true;enteringPortal=false;clearMovementInput();route=null;if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;
+ demoCloseEpoch++;$('#demo-host').classList.remove('closing');demoOpen=true;enteringPortal=false;clearMovementInput();route=null;if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;
  $('#portal-transition')?.remove();$('#world').classList.remove('entering-portal');$('#app').inert=true;document.body.classList.add('demo-open');$('#demo-host').hidden=false;
  if(push&&location.hash!=='#demo'){window.history.pushState({entiaDemo:true},'','#demo');demoHistoryOwned=true;}
- if(demoLoaded&&resumed)$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-resume'},location.origin);
+ if(demoLoaded)$('#demo-frame').contentWindow?.postMessage({type:resumed?'entia-demo-resume':'entia-demo-activate'},location.origin);
 }
 function closeDemo(changeHistory=true){
- if(!demoOpen)return;if(changeHistory&&demoHistoryOwned&&location.hash==='#demo'){if(!demoExitPending){demoExitPending=true;window.history.back();}return;}demoExitPending=false;$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-pause'},location.origin);
- demoOpen=false;enteringPortal=false;portalReentryBlocked=true;$('#demo-host').hidden=true;$('#app').inert=false;document.body.classList.remove('demo-open');
- if(changeHistory)window.history.replaceState(null,'',demoReturnHash);
+ if(!demoOpen)return;
+ // Closing the view never depends on joint iframe/browser history advancing.
+ const epoch=++demoCloseEpoch;$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-pause'},location.origin);
+ demoOpen=false;demoExitPending=false;enteringPortal=false;portalReentryBlocked=true;$('#app').inert=false;document.body.classList.remove('demo-open');
+ if(changeHistory){current='home';game=false;atPlace=null;setContent('home');updateKeeperStates();$('#location-state').textContent='Back in Nix';if(location.hash==='#demo')window.history.replaceState(null,'','#home');}
+ const host=$('#demo-host');host.classList.add('closing');
+ if(motionOff())host.hidden=true;else setTimeout(()=>{if(epoch===demoCloseEpoch&&!demoOpen){host.hidden=true;host.classList.remove('closing');}},420);
  last=performance.now();resize();requestDraw();canvas.focus({preventScroll:true});
 }
+
 window.addEventListener('message',event=>{
  if(event.origin!==location.origin||event.source!==$('#demo-frame').contentWindow)return;
- if(event.data?.type==='entia-demo-ready'){demoLoaded=true;clearTimeout(demoLoadTimer);$('#demo-loading').hidden=true;if(!demoOpen&&!enteringPortal)$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-pause'},location.origin);}
+ if(event.data?.type==='entia-demo-ready'){demoLoaded=true;clearTimeout(demoLoadTimer);$('#demo-loading').hidden=true;if(demoOpen)$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-activate'},location.origin);if(!demoOpen&&!enteringPortal)$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-pause'},location.origin);}
  else if(event.data?.type==='entia-demo-exit')closeDemo(true);
  else if(event.data?.type==='entia-demo-error'){demoFailed=true;$('#demo-load-message').textContent='The demo artwork could not load. Return to Nix and try again.';}
 });
