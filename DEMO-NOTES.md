@@ -1,43 +1,36 @@
-# Portal / essence demo — revised October 4
+# Entia web demo — current behavior
 
-The real animated portal now stands in the Home town at world (1010,420). Walking through its opening, or using the accessible Walk into the portal button to walk there, loads demo/. The demo starts inside the training ground; its return portal leads back to Home.
+## Entry and UI
+The actual animated portal stands in Home. Walking into it loads demo/ with an emerald transition; reduced motion skips the effect. Browser Back clears the entry lock. Demo starts with a how-to-play popup. P opens the same pause/controls menu.
 
-## Interaction
-- Nix and the demo share cardinal foot-level collision primitives. Pathfinding uses only orthogonal segments. Trees have trunk footprints, buildings have solid base footprints, portal pillars are solid, and actors block each other. Camera centers the player in the usable play area.
-- In Nix: C arms a pointer spell, then click the desired ground point. Section buttons open their sections without automatically casting. Click open ground to walk via collision-aware routes.
-- In the demo: move with WASD/arrows or the touch directional pad. Aim and click/tap to cast at that position, or press Space/Cast once using the pointer. Clicking a rival's visible body resolves to that rival's foot position. No nearest-rival fallback exists. Range and line of sight apply; a clicked actor receives damage immediately; ground clicks do not select a nearby actor. Each click/key press casts once, without hold-to-repeat.
-- Defeated rivals drop essence as a ground item. Walk over it or press E within pickup reach. Player death also drops carried essence at the death location, allowing recovery. Secured essence remains safe.
-- After the first pickup, the new essence-banking reliquary appears south of the return portal. E near it deposits carried essence after 1.5 seconds; movement, casting or damage cancels. Banking controls are absent before unlock.
-- All three bots approach the player and telegraph melee attacks. They take two or three targeted hits and deal gentler damage.
+The right-hand HUD contains life, mana, carried/secured essence, Spells and Inventory. Mobile uses a right-hand Character drawer and compact vitals. The existing Entia look and improved RAO artwork are retained.
 
-## Scope
-This is an explicitly labelled single-player tutorial, not production RAO mechanics or a backend integration. Rewards, health, enemies, the 60-essence goal and timings are illustrative. Reload/restart clears the demo, and no account persistence is implied.
+## Play
+- WASD/arrows: cardinal 32-unit steps; latest direction wins
+- C or Prepare: arm Apocalipsis; point and release-click a target to cast once. Every attempt disarms, including rejections. Bare clicks inspect. Escape cancels aiming before pausing
+- Space: strike a nearby actor in the facing direction
+- Q or contextual touch button: pick up essence underfoot
+- N: meditate to recover mana; movement cancels
+- E: interact with the return portal
+- Bot spell markers telegraph incoming strikes. Their casts do 12 health damage; they take 2–3 targeted hits
 
-## Artwork
-Uses the site's approved improved actors, scenery, terrain and Apocalipsis sprites, plus the approved 240×320 portal animation. New transparent essence-bank artwork is generated in the reference style; its emerald center supplies the ground-item icon.
+## Essence and bank
+Kills and player death produce ground drops. Items snap to the same 32-unit tile centers as actors and props; blocked centers choose a nearby free tile. Drops on the same tile merge. The pickup sprite is drawn centered on that point, not offset above it.
+
+The compact stone bank appears after the first pickup. Remain within its radius for one second and essence transfers automatically at 12 per second. Tiny crystal particles arc from the player to the bank. Leaving stops further transfers; already secured essence remains safe. The animation is cosmetic feedback for atomic balance transfers. There is no amount/confirmation popup. Pausing suspends the simulation and animation. Reach 60 secured essence to complete the tutorial.
+
+The demo has no trees or tree collisions. Nix is unchanged. Ground textures, actor/prop anchors and item placement share a 32-unit grid. Portal pillars, bank footprint, world bounds and actors remain solid.
+
+## References and limits
+This is a single-player browser simulation. It does not connect to RAO accounts or a game server; reloading or restarting clears progress. Balance, timing and banking rules are tutorial choices, not claims of production parity.
+
+Read-only reference sources:
+- https://github.com/dcatanzaro/aoweb/blob/main/frontend/components/game/core/useRendererBootstrap.ts
+- https://github.com/dcatanzaro/aoweb/blob/main/frontend/lib/hotkeys.ts
+- https://github.com/dcatanzaro/aoweb/blob/main/frontend/components/game/core/useMovementSync.ts
+- Locally available RAO InputController, InputEventController, CombatActionController and commerce UI snapshots
+
+No AO Web code or artwork was copied; its root licence was not verified. Approved RAO artwork and newly generated coffer/crystal assets are used. The coffer renderer uses a tight source-object crop to avoid most of its generated outer halo; original alpha is preserved.
 
 ## Validation
-Run node --test tests/*.test.cjs (59 tests). Tests cover cardinal motion for player and NPCs, source-driven camera positioning, collision tunnelling and actor occupancy, obstacle-aware pathfinding, portal reachability, pointer targeting, kill drops and exactly-once pickup, death drops/recovery, banking unlock/atomicity/cancellation, bot damage/dodging, pause and restart, and prior navigation regression cases. Controllers execute with mocked DOM/canvas. A deterministic simulation checks long-run bounds and nonnegative counters. Local cloud-browser preview was inaccessible and hosted page requires sign-in; real-browser visual/mobile QA remains unverified.
-
-Portal entry expands an emerald light from its on-screen position before navigating; the demo reveals itself with a short matching dissolve. Reduced-motion skips both effects. Repeated entry is guarded.
-
-
-## AO / RAO interaction alignment
-Current website layout and improved RAO art are retained. Apocalipsis is prepared with C or the visible button, then cast on release-click at the explicitly targeted actor. Bare clicks inspect; successful and rejected targeting attempts disarm, and Escape cancels before pausing. Each attempt is one shot. Demo mana cost is 15, with sanctuary recovery and N meditation. Space strikes the facing neighbour, Q deliberately picks up nearby ground essence, WASD/arrows use latest-direction cardinal 32-unit steps. E remains a clearly labelled demo deposit/return convenience.
-
-References inspected read-only:
-- https://github.com/dcatanzaro/aoweb/blob/main/frontend/components/game/core/useRendererBootstrap.ts (release-click and clear targeting)
-- https://github.com/dcatanzaro/aoweb/blob/main/frontend/lib/hotkeys.ts (WASD, Q, Space, N)
-- https://github.com/dcatanzaro/aoweb/blob/main/frontend/components/game/core/useMovementSync.ts (cardinal tile movement)
-- Local pinned RAO InputController.gd / InputEventController.gd / CombatActionController.gd: macro arms cursor; bare click does not attack; Escape cancels and facing governs melee
-
-No AO Web code or artwork was copied. The supplied aoweb repository had no verified root licence; its runtime combat settings were not assumed to equal the older argentumonlineweb-cliente defaults. Tutorial cost, cooldown and bot balance remain illustrative rather than claimed server parity.
-
-## Right-hand HUD, banking and casting rivals
-Life/mana, carried/secured balances, a Spells/Inventory tabset and action buttons now live in the right-hand character panel. On narrow phones that panel is a right-hand drawer opened with Character; compact life/mana remains on the playfield. Full controls and instructions are in the pause/how-to-play dialog, automatically shown on entry. Gameplay pauses while those instructions are open.
-
-Banking now opens a modal only within the shrine's demo range. It shows both balances, an editable integer amount, All and Confirm deposit. Pending deposits block repeat submissions. Partial deposits preserve the remainder; invalid/excess amounts and remote submissions are rejected. Closing before completion cancels without transferring essence. This adapts RAO's selection/quantity/feedback pattern; it is not a production essence-bank port or real server confirmation.
-
-Bots launch telegraphed Apocalipsis casts at the player's marked location, for gentle 12-health hits with a 2.4-second recovery. The safe refuge remains protected. Player targets still take 2–3 successful hits. New low stone coffer and independent crystal assets replace the tall shrine and cropped crystal. The wide green sanctuary overlay is removed. The coffer is rendered from its tight source-object crop to avoid most of the generated outer halo; source alpha remains unchanged.
-
-Final automated suite: 62 passing tests. Real-browser visual/mobile QA remains unverified. No connected multiplayer backend has been built or implied.
+node --test tests/*.test.cjs: 63 passing tests covering navigation, cardinal movement, collision/pathfinding, camera positioning, input modes, spell targeting, mana, bot spell/dodge behavior, essence pickup/drop/recovery, shared tile centers, sprite draw anchoring, proximity banking conservation/interruption, stream rendering, pause/help and restart. Controller tests use mocked DOM/canvas. Real-browser visual/mobile QA remains unverified because local preview access and hosted authentication were unavailable.
