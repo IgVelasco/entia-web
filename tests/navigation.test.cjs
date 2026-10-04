@@ -24,9 +24,9 @@ async function village({reduced=false, hash=''}={}) {
   const lights=[0,1,2].map(i=>{const node=get(`[data-essence="${i}"]`);node.dataset.essence=String(i);return node;});
   const listeners={},windowListeners={};
   const preference={matches:reduced,addEventListener:(_,cb)=>{preference.change=cb;}};
-  const location={hash};
-  const historyCalls=[];
-  const history={pushState:(_,__,value)=>{location.hash=value;historyCalls.push(['push',value]);},replaceState:(_,__,value)=>{location.hash=value;historyCalls.push(['replace',value]);}};
+  const location={hash,origin:"https://entia.test"};
+  const historyCalls=[],historyStack=[];
+  const history={back:()=>{location.hash=historyStack.pop()||'#home';windowListeners.popstate?.();},pushState:(_,__,value)=>{historyStack.push(location.hash||'#home');location.hash=value;historyCalls.push(['push',value]);},replaceState:(_,__,value)=>{location.hash=value;historyCalls.push(['replace',value]);}};
   const document={body:makeNode(),hidden:false,querySelector:get,querySelectorAll:key=>key==='.nav'?nav:key==='[data-essence]'?lights:[],createElement:()=>makeNode(),addEventListener:(key,cb)=>{listeners[key]=cb;}};
   const context=vm.createContext({document,window:{location:{assign(){}},history,addEventListener:(key,cb)=>{windowListeners[key]=cb;}},location,matchMedia:()=>preference,devicePixelRatio:1,
     Image:class{constructor(){this.width=768;this.height=640;}set src(value){this.path=value;this.onload();}},
@@ -42,7 +42,8 @@ async function village({reduced=false, hash=''}={}) {
     pause(){paused=true;setMotionState();},
     reduced(value){motionPreference.matches=value;setMotionState();},
     finish(){for(let i=0;i<500&&route;i++)advanceRoute(.1);},
-    tick,viewport,walkToPortal,castPointer,
+    tick,viewport,walkToPortal,castPointer,showDemo,closeDemo,
+    demoState:()=>({open:demoOpen,loaded:demoLoaded,blocked:portalReentryBlocked}),
     townEntities:()=>[hero,...keepers,...npcs,...scenery,homePortal,...treasures],
     placeHero(x,y){hero.x=x;hero.y=y;viewport();positionLabels();},
     heroScreen:()=>screen(hero),viewportSize:()=>({width,height}),npcPositions:()=>npcs.map(n=>({x:n.x,y:n.y})),
@@ -375,3 +376,7 @@ test('returning with browser Back clears the portal transition lock',async()=>{c
 
 test('Home entities, props and pickups start on tile centers',async()=>{const v=await village();for(const p of v.api.townEntities()){assert.equal(p.x%32,16);assert.equal(p.y%32,16);}});
 test('Home name labels keep their horizontal anchor and separate when near',async()=>{const v=await village();v.api.placeHero(784,432);assert.equal(v.get('#player-label').dataset.placement,'above');const p=v.api.heroScreen();assert.match(v.get('#player-label').style.transform,new RegExp('translate3d\\('+Math.round(p.x)+'px,'));v.api.placeHero(900,600);assert.equal(v.get('#player-label').dataset.placement,'below');});
+
+test('inline demo opens in Home and exit preserves character position',async()=>{const v=await village();v.api.placeHero(912,496);const before=v.api.state();v.api.showDemo(true);assert(v.api.demoState().open);assert.equal(v.location.hash,'#demo');assert.equal(v.get('#app').inert,true);assert.match(v.get('#demo-frame').src,/demo/);v.api.closeDemo(true);assert.equal(v.api.demoState().open,false);assert.equal(v.location.hash,'#home');assert.equal(v.api.state().x,before.x);assert.equal(v.api.state().y,before.y);assert.equal(v.get('#app').inert,false);assert(v.api.demoState().blocked);});
+test('Back and Forward restore the embedded view without reinitializing Home',async()=>{const v=await village();v.api.placeHero(912,496);v.api.showDemo(true);v.location.hash='#home';v.windowListeners.popstate();assert(!v.api.demoState().open);assert.equal(v.api.state().x,912);v.location.hash='#demo';v.windowListeners.popstate();assert(v.api.demoState().open);assert.equal(v.api.state().x,912);});
+test('demo messages require both the expected origin and iframe source',async()=>{const v=await village();const frame=v.get('#demo-frame');frame.contentWindow={postMessage(){}};v.api.showDemo(true);v.windowListeners.message({origin:'https://wrong.test',source:frame.contentWindow,data:{type:'entia-demo-ready'}});assert(!v.api.demoState().loaded);v.windowListeners.message({origin:v.location.origin,source:{},data:{type:'entia-demo-ready'}});assert(!v.api.demoState().loaded);v.windowListeners.message({origin:v.location.origin,source:frame.contentWindow,data:{type:'entia-demo-ready'}});assert(v.api.demoState().loaded);assert.equal(v.get('#demo-loading').hidden,true);});

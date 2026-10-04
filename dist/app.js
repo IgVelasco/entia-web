@@ -40,17 +40,44 @@ const homePortal=onTownGrid({x:1010,y:420});
 const townObstacles=scenery.map(s=>s.id.startsWith('house')?{x:s.x-s.w*.43,y:s.y-s.h*.60,w:s.w*.86,h:s.h*.60}:{x:s.x-22,y:s.y-28,w:44,h:38});
 townObstacles.push({x:homePortal.x-74,y:homePortal.y-35,w:30,h:45},{x:homePortal.x+44,y:homePortal.y-35,w:30,h:45});
 const townPhysics=WorldPhysics.create({width:W,height:H,radius:10,obstacles:townObstacles});
-let enteringPortal=false;
+let enteringPortal=false,demoOpen=false,demoLoaded=false,demoFailed=false,demoExitPending=false,demoHistoryOwned=false,portalReentryBlocked=false;
+let demoReturnHash="#home",demoLoadTimer=0;
 function enterPortal(){
  if(enteringPortal)return;enteringPortal=true;clearMovementInput();route=null;
- if(motionOff()){window.location.assign('demo/');return;}
+ ensureDemoFrame();
+ if(motionOff()){showDemo(true);return;}
  const p=screen(homePortal),veil=document.createElement('div');veil.id='portal-transition';veil.setAttribute('aria-hidden','true');
  veil.style.setProperty('--portal-x',p.x+'px');veil.style.setProperty('--portal-y',(p.y+canvas.getBoundingClientRect().top)+'px');
  document.body.append(veil);$('#world').classList.add('entering-portal');
- setTimeout(()=>window.location.assign('demo/'),760);
+ setTimeout(()=>{if(enteringPortal)showDemo(true);},760);
 }
-function walkToPortal(){heldDirections.clear();beginManualMovement();moveHero(walkingPath(homePortal),{explore:true,complete:enterPortal});}
-function portalCrossing(){if(!enteringPortal&&Math.abs(hero.x-homePortal.x)<24&&Math.abs(hero.y-homePortal.y)<20)enterPortal();}
+function walkToPortal(){portalReentryBlocked=false;heldDirections.clear();beginManualMovement();moveHero(walkingPath(homePortal),{explore:true,complete:enterPortal});}
+function portalCrossing(){if(portalReentryBlocked){if(Math.hypot(hero.x-homePortal.x,hero.y-homePortal.y)>48)portalReentryBlocked=false;return;}if(!enteringPortal&&Math.abs(hero.x-homePortal.x)<24&&Math.abs(hero.y-homePortal.y)<20)enterPortal();}
+function ensureDemoFrame(){
+ const frame=$('#demo-frame');if(frame.getAttribute('src')&&!demoFailed)return;demoFailed=false;demoLoaded=false;
+ frame.src='demo/?embedded=1';$('#demo-loading').hidden=false;
+ demoLoadTimer=setTimeout(()=>{if(!demoLoaded)$('#demo-load-message').textContent='The demo is taking longer to load. You can return to Nix while it finishes.';},20000);
+}
+function showDemo(push=true){
+ if(demoOpen)return;ensureDemoFrame();demoReturnHash=location.hash==='#demo'?'#home':location.hash||'#home';
+ demoOpen=true;enteringPortal=false;clearMovementInput();route=null;if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;
+ $('#portal-transition')?.remove();$('#world').classList.remove('entering-portal');$('#app').inert=true;document.body.classList.add('demo-open');$('#demo-host').hidden=false;
+ if(push&&location.hash!=='#demo'){window.history.pushState({entiaDemo:true},'','#demo');demoHistoryOwned=true;}
+ if(demoLoaded)$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-resume'},location.origin);
+}
+function closeDemo(changeHistory=true){
+ if(!demoOpen)return;if(changeHistory&&demoHistoryOwned&&location.hash==='#demo'){if(!demoExitPending){demoExitPending=true;window.history.back();}return;}demoExitPending=false;$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-pause'},location.origin);
+ demoOpen=false;enteringPortal=false;portalReentryBlocked=true;$('#demo-host').hidden=true;$('#app').inert=false;document.body.classList.remove('demo-open');
+ if(changeHistory)window.history.replaceState(null,'',demoReturnHash);
+ last=performance.now();resize();requestDraw();canvas.focus({preventScroll:true});
+}
+window.addEventListener('message',event=>{
+ if(event.origin!==location.origin||event.source!==$('#demo-frame').contentWindow)return;
+ if(event.data?.type==='entia-demo-ready'){demoLoaded=true;clearTimeout(demoLoadTimer);$('#demo-loading').hidden=true;}
+ else if(event.data?.type==='entia-demo-exit')closeDemo(true);
+ else if(event.data?.type==='entia-demo-error'){demoFailed=true;$('#demo-load-message').textContent='The demo artwork could not load. Return to Nix and try again.';}
+});
+$('#demo-loading-back').onclick=()=>closeDemo(true);
 function drawHomePortal(){if(!images.portal)return;const f=motionOff()?0:Math.floor(time*10)%8;ctx.drawImage(images.portal,f%4*240,Math.floor(f/4)*320,240,320,homePortal.x-90,homePortal.y-238,180,240);ctx.font='13px Inter';ctx.textAlign='center';ctx.fillStyle='#e7d390';ctx.fillText('ENTER THE VEIL',homePortal.x,homePortal.y+24);}
 function castPointer(x,y){heldDirections.clear();route=null;spell={x,y,age:0,delay:0,duration:apocalipsis.duration,hit:false};hero.dir=heading(x-hero.x,y-hero.y);setAim(false);requestDraw();}
 const treasures = [{x:914,y:505},{x:1255,y:745},{x:990,y:755}].map(p => ({...onTownGrid(p),collected:false}));
@@ -153,7 +180,7 @@ async function load() {
     $('#loading').hidden = true;
     const initial = spots[location.hash.slice(1)] ? location.hash.slice(1) : 'home';
     go(initial, {history:false, instant:true, announce:false});
-    resize(); requestDraw();
+    resize(); requestDraw();if(location.hash==='#demo')showDemo(false);
   } catch(error) {
     $('#loading p').textContent='Nix could not load. You can still explore using the navigation above.';
     $('#retry-load').hidden=false;
@@ -266,7 +293,7 @@ function draw() {
   }
 }
 function requestDraw() {
-  if(!ready||document.hidden||frameRequest)return;
+  if(!ready||document.hidden||demoOpen||frameRequest)return;
   frameRequest=requestAnimationFrame(tick);
 }
 function tick(now) {
@@ -561,7 +588,7 @@ $('#about').onclick=()=>{clearMovementInput();$('#notes').showModal();};
 $('#close-notes').onclick=()=>$('#notes').close();
 $('#retry-load').onclick=load;
 document.addEventListener('keydown',event=>{
-  if(enteringPortal)return;
+  if(enteringPortal||demoOpen)return;
   if(event.altKey||event.ctrlKey||event.metaKey||event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')||$('#notes').open)return;
   const movementKey=event.key.length===1?event.key.toLowerCase():event.key;
   if(Object.hasOwn(movementKeys,movementKey)){
@@ -591,7 +618,7 @@ document.addEventListener('focusin',event=>{
   if(event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),dialog'))clearMovementInput();
 });
 window.addEventListener('blur',clearMovementInput);
-function restoreHash(){const hash=location.hash.slice(1);if(hash==='main-content')return;go(spots[hash]?hash:'home',{history:false,announce:false});}
+function restoreHash(){const hash=location.hash.slice(1);if(enteringPortal&&hash!=='demo'){enteringPortal=false;$('#portal-transition')?.remove();$('#world').classList.remove('entering-portal');}if(hash==='main-content')return;if(hash==='demo'){showDemo(false);return;}if(demoOpen){closeDemo(false);if(current===(spots[hash]?hash:'home'))return;}go(spots[hash]?hash:'home',{history:false,announce:false});}
 window.addEventListener('popstate',restoreHash);
 window.addEventListener('hashchange',()=>{const place=location.hash.slice(1);if(place!==current)restoreHash();});
 window.addEventListener('resize',resize);
