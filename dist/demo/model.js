@@ -10,9 +10,9 @@ obstacles.push({x:80,y:395,w:38,h:92},{x:212,y:395,w:38,h:92});
 const bankObstacle={x:banker.x-37,y:banker.y-27,w:74,h:35};
 const physics=Physics.create({width:WIDTH,height:HEIGHT,minY:160,radius:RADIUS,obstacles});
 function create(){return {phase:'arena',player:{x:300,y:445,dir:1,gait:0,hp:100},carried:0,secured:0,dropped:0,kills:0,bank:0,bankUnlocked:false,cooldown:0,time:0,fx:[],drops:[],nextDrop:1,notice:'Aim with the pointer. Defeat a rival, then walk over the essence it drops.',noticeId:1,flash:1,won:false,enemies:[
- {name:'Wanderer',body:'rogue',x:495,y:360,homeX:495,homeY:360,hp:3,maxHp:3,reward:15,dir:2,gait:0,wind:0,cooldown:1,respawn:0,kind:'melee',speed:125},
- {name:'Keeper',body:'mage',x:920,y:570,homeX:920,homeY:570,hp:4,maxHp:4,reward:25,dir:3,gait:0,wind:0,cooldown:1,respawn:0,kind:'ranged',speed:100},
- {name:'Sentinel',body:'hero',x:655,y:760,homeX:655,homeY:760,hp:5,maxHp:5,reward:30,dir:0,gait:0,wind:0,cooldown:1,respawn:0,kind:'melee',speed:148}
+ {name:'Wanderer',body:'rogue',x:495,y:360,homeX:495,homeY:360,hp:2,maxHp:2,reward:15,dir:2,gait:0,wind:0,cooldown:1,respawn:0,kind:'melee',speed:105},
+ {name:'Keeper',body:'mage',x:920,y:570,homeX:920,homeY:570,hp:2,maxHp:2,reward:25,dir:3,gait:0,wind:0,cooldown:1,respawn:0,kind:'melee',speed:110},
+ {name:'Sentinel',body:'hero',x:655,y:760,homeX:655,homeY:760,hp:3,maxHp:3,reward:30,dir:0,gait:0,wind:0,cooldown:1,respawn:0,kind:'melee',speed:115}
 ]};}
 function tell(s,message){s.notice=message;s.noticeId++;}
 function nearGate(s){return Math.hypot(s.player.x-gateway.x,s.player.y-gateway.y)<65;}
@@ -25,7 +25,20 @@ function heading(x,y){return Math.abs(x)>Math.abs(y)?(x>0?1:3):(y>0?2:0);}
 function walkable(x,y,r=RADIUS){return physics.free(x,y);}
 function lineClear(a,b){return physics.clear(a,b);}
 function move(actor,dx,dy,others=[]){return physics.move(actor,dx,dy,others);}
-function cast(s,target){if(s.cooldown>0||!target||!Number.isFinite(target.x)||!Number.isFinite(target.y))return false;const p=s.player,d=Math.hypot(target.x-p.x,target.y-p.y);if(d>270){tell(s,'Out of range. Move closer to your target.');return false;}if(!lineClear(p,target)){tell(s,'The spell is blocked. Find a clear line of sight.');return false;}p.dir=heading(target.x-p.x,target.y-p.y);s.cooldown=.85;s.bank=0;s.fx.push({x:target.x,y:target.y,age:0,hit:false,owner:'player'});return true;}
+function cast(s,target){
+ if(s.cooldown>0||!target||!Number.isFinite(target.x)||!Number.isFinite(target.y))return false;
+ const p=s.player,d=Math.hypot(target.x-p.x,target.y-p.y);
+ if(d>270){tell(s,'Out of range. Move closer to your target.');return false;}
+ if(!lineClear(p,target)){tell(s,'The spell is blocked. Find a clear line of sight.');return false;}
+ p.dir=heading(target.x-p.x,target.y-p.y);s.cooldown=.65;s.bank=0;
+ // Only the actor explicitly under the pointer receives a targeted cast.
+ // Damage is committed on the click, so walking does not dodge a confirmed target.
+ const enemy=s.enemies.find(e=>e.name===target.enemyId&&e.hp>0&&Math.hypot(e.x-target.x,e.y-target.y)<1);
+ s.fx.push({x:target.x,y:target.y,age:0,hit:true,owner:'player'});
+ if(enemy){enemy.hp--;if(enemy.hp===0){s.kills++;enemy.respawn=14;enemy.wind=0;drop(s,enemy.x,enemy.y,enemy.reward,'rival');tell(s,`${enemy.name} dropped ${enemy.reward} essence. Walk over it to pick it up.`);}}
+ else tell(s,'No rival under the pointer. Aim at a character and click.');
+ return true;
+}
 function botStep(s,e,target,dt){const d=Math.hypot(target.x-e.x,target.y-e.y);if(d<4)return;const vector=cardinal(target.x-e.x,target.y-e.y),others=[s.player,...s.enemies.filter(a=>a.hp>0)];e.dir=heading(vector.x,vector.y);let moved=move(e,vector.x*e.speed*dt,vector.y*e.speed*dt,others);if(moved<.01){const alt={x:vector.x?0:Math.sign(target.x-e.x),y:vector.y?0:Math.sign(target.y-e.y)};moved=move(e,alt.x*e.speed*dt,alt.y*e.speed*dt,others);if(moved)e.dir=heading(alt.x,alt.y);}e.moving=moved>.01;}
 function update(s,dt,input={x:0,y:0}){dt=Math.max(0,Math.min(dt,.05));s.time+=dt;s.flash=Math.max(0,s.flash-dt*1.5);s.cooldown=Math.max(0,s.cooldown-dt);const p=s.player;const vector=cardinal(input.x||0,input.y||0);p.moving=false;
  // Banking uses the same solid footprint as other props once it appears.
@@ -35,12 +48,12 @@ function update(s,dt,input={x:0,y:0}){dt=Math.max(0,Math.min(dt,.05));s.time+=dt
  pickup(s);
  const safe=p.x<270;
  if(safe)p.hp=Math.min(100,p.hp+12*dt);
- for(const f of s.fx){f.age+=dt;if(!f.hit&&f.age>=.32){f.hit=true;if(f.owner==='player'){for(const e of s.enemies){if(e.hp<=0||Math.hypot(e.x-f.x,e.y-f.y)>34)continue;e.hp--;if(e.hp<=0){s.kills++;e.respawn=14;e.wind=0;drop(s,e.x,e.y,e.reward,'rival');tell(s,`${e.name} dropped ${e.reward} essence. Walk over it to pick it up.`);}}}else if(!safe&&Math.hypot(p.x-f.x,p.y-f.y)<42){p.hp-=22;s.bank=0;s.flash=.25;}}}s.fx=s.fx.filter(f=>f.age<2);
+ for(const f of s.fx){f.age+=dt;}s.fx=s.fx.filter(f=>f.age<2);
  if(s.bank){if(!nearBank(s))s.bank=0;else{s.bank+=dt;if(s.bank>=1.5){const amount=s.carried;s.secured+=amount;s.carried=0;s.bank=0;s.won=s.secured>=60;tell(s,s.won?`${amount} secured. Goal complete! Your banked essence survives defeat.`:`${amount} secured. Keep fighting or return to Nix.`);}}}
  for(const e of s.enemies){e.moving=false;e.cooldown=Math.max(0,e.cooldown-dt);if(e.hp<=0){e.respawn-=dt;if(e.respawn<=0&&Math.hypot(p.x-e.homeX,p.y-e.homeY)>70&&!s.enemies.some(a=>a!==e&&a.hp>0&&Math.hypot(a.x-e.homeX,a.y-e.homeY)<25)){e.hp=e.maxHp;e.x=e.homeX;e.y=e.homeY;e.cooldown=1;}continue;}
  const d=Math.hypot(p.x-e.x,p.y-e.y);
- if(e.wind>0){e.wind-=dt;if(e.wind<=0){e.cooldown=e.kind==='ranged'?2.0:1.15;if(e.kind==='ranged'){s.fx.push({x:e.aim.x,y:e.aim.y,age:0,hit:false,owner:'enemy'});}else if(!safe&&d<62&&lineClear(e,p)){p.hp-=19;s.flash=.2;s.bank=0;}}continue;}
- if(!safe&&d<360){if(e.kind==='ranged'&&d<235&&d>75&&lineClear(e,p)){if(e.cooldown===0){e.wind=.75;e.aim={x:p.x,y:p.y};}else{const away={x:e.x+(p.y>e.y?-45:45),y:e.y};botStep(s,e,away,dt);}}else if(d<52&&e.cooldown===0){e.wind=.55;e.aim={x:p.x,y:p.y};}else if(d>36)botStep(s,e,p,dt);}
+ if(e.wind>0){e.wind-=dt;if(e.wind<=0){e.cooldown=1.5;if(!safe&&d<62&&lineClear(e,p)){p.hp-=12;s.flash=.2;s.bank=0;}}continue;}
+ if(!safe&&d<480){if(d<52&&e.cooldown===0){e.wind=.65;e.aim={x:p.x,y:p.y};}else if(d>36)botStep(s,e,p,dt);}
  else if(Math.hypot(e.x-e.homeX,e.y-e.homeY)>5)botStep(s,e,{x:e.homeX,y:e.homeY},dt);
  }
  if(p.hp<=0){const amount=s.carried;drop(s,p.x,p.y,amount,'player');s.dropped+=amount;s.carried=0;s.bank=0;p.hp=100;p.x=165;p.y=550;s.flash=1;for(const e of s.enemies){e.wind=0;e.cooldown=Math.max(e.cooldown,1);}tell(s,`You fell and dropped ${amount} essence. Recover it from the ground. ${s.secured} secured stays safe.`);}

@@ -36,7 +36,14 @@ const townObstacles=scenery.map(s=>s.id.startsWith('house')?{x:s.x-s.w*.43,y:s.y
 townObstacles.push({x:homePortal.x-74,y:homePortal.y-35,w:30,h:45},{x:homePortal.x+44,y:homePortal.y-35,w:30,h:45});
 const townPhysics=WorldPhysics.create({width:W,height:H,radius:10,obstacles:townObstacles});
 let enteringPortal=false;
-function enterPortal(){if(enteringPortal)return;enteringPortal=true;clearMovementInput();window.location.assign('demo/');}
+function enterPortal(){
+ if(enteringPortal)return;enteringPortal=true;clearMovementInput();route=null;
+ if(motionOff()){window.location.assign('demo/');return;}
+ const p=screen(homePortal),veil=document.createElement('div');veil.id='portal-transition';veil.setAttribute('aria-hidden','true');
+ veil.style.setProperty('--portal-x',p.x+'px');veil.style.setProperty('--portal-y',(p.y+canvas.getBoundingClientRect().top)+'px');
+ document.body.append(veil);$('#world').classList.add('entering-portal');
+ setTimeout(()=>window.location.assign('demo/'),760);
+}
 function walkToPortal(){heldDirections.clear();beginManualMovement();moveHero(walkingPath(homePortal),{explore:true,complete:enterPortal});}
 function portalCrossing(){if(!enteringPortal&&Math.abs(hero.x-homePortal.x)<24&&Math.abs(hero.y-homePortal.y)<20)enterPortal();}
 function drawHomePortal(){if(!images.portal)return;const f=motionOff()?0:Math.floor(time*10)%8;ctx.drawImage(images.portal,f%4*240,Math.floor(f/4)*320,240,320,homePortal.x-90,homePortal.y-238,180,240);ctx.font='13px Inter';ctx.textAlign='center';ctx.fillStyle='#e7d390';ctx.fillText('ENTER THE VEIL',homePortal.x,homePortal.y+24);}
@@ -260,7 +267,7 @@ function tick(now) {
   const dt=Math.min((now-last)/1000||0,.04);last=now;
   if(!motionOff()){
     time+=dt;
-    advanceMovement(dt);
+    if(!enteringPortal)advanceMovement(dt);
     advanceSpell(dt);
     rings=rings.filter(r=>(r.age+=dt)<r.duration);
     for(const n of [...npcs,...keepers]){
@@ -522,7 +529,7 @@ document.addEventListener('click',event=>{
 });
 canvas.addEventListener('pointermove',event=>{canvas.style.cursor=aiming?'crosshair':'pointer';});
 canvas.addEventListener('click',event=>{
-  if(!ready)return;
+  if(!ready||enteringPortal)return;
   const bounds=canvas.getBoundingClientRect(),x=(event.clientX-bounds.left-ox)/scale,y=(event.clientY-bounds.top-oy)/scale;
   if(aiming){castPointer(x,y);return;}
   if(Math.abs(x-homePortal.x)<85&&y>homePortal.y-238&&y<homePortal.y+25){walkToPortal();return;}
@@ -547,6 +554,7 @@ $('#about').onclick=()=>{clearMovementInput();$('#notes').showModal();};
 $('#close-notes').onclick=()=>$('#notes').close();
 $('#retry-load').onclick=load;
 document.addEventListener('keydown',event=>{
+  if(enteringPortal)return;
   if(event.altKey||event.ctrlKey||event.metaKey||event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')||$('#notes').open)return;
   const movementKey=event.key.length===1?event.key.toLowerCase():event.key;
   if(Object.hasOwn(movementKeys,movementKey)){
@@ -586,3 +594,5 @@ document.addEventListener('visibilitychange',()=>{
 });
 motionPreference.addEventListener('change',setMotionState);
 setMotionState();resize();load();
+
+window.addEventListener('pageshow',()=>{if(enteringPortal){document.querySelector('#portal-transition')?.remove();$('#world').classList.remove('entering-portal');enteringPortal=false;hero.x=870;hero.y=470;route=null;resize();requestDraw();}});
