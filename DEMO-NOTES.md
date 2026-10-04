@@ -17,6 +17,18 @@ This is an explicitly labelled single-player tutorial, not production RAO mechan
 Uses the site's approved improved actors, scenery, terrain and Apocalipsis sprites, plus the approved 240×320 portal animation. New transparent essence-bank artwork is generated in the reference style; its emerald center supplies the ground-item icon.
 
 ## Validation
-Run node --test tests/*.test.cjs (53 tests). Tests cover cardinal motion for player and NPCs, source-driven camera positioning, collision tunnelling and actor occupancy, obstacle-aware pathfinding, portal reachability, pointer targeting, kill drops and exactly-once pickup, death drops/recovery, banking unlock/atomicity/cancellation, bot damage/dodging, pause and restart, and prior navigation regression cases. Controllers execute with mocked DOM/canvas. A deterministic simulation checks long-run bounds and nonnegative counters. Local cloud-browser preview was inaccessible and hosted page requires sign-in; real-browser visual/mobile QA remains unverified.
+Run node --test tests/*.test.cjs (59 tests). Tests cover cardinal motion for player and NPCs, source-driven camera positioning, collision tunnelling and actor occupancy, obstacle-aware pathfinding, portal reachability, pointer targeting, kill drops and exactly-once pickup, death drops/recovery, banking unlock/atomicity/cancellation, bot damage/dodging, pause and restart, and prior navigation regression cases. Controllers execute with mocked DOM/canvas. A deterministic simulation checks long-run bounds and nonnegative counters. Local cloud-browser preview was inaccessible and hosted page requires sign-in; real-browser visual/mobile QA remains unverified.
 
 Portal entry expands an emerald light from its on-screen position before navigating; the demo reveals itself with a short matching dissolve. Reduced-motion skips both effects. Repeated entry is guarded.
+
+
+## AO / RAO interaction alignment
+Current website layout and improved RAO art are retained. Apocalipsis is prepared with C or the visible button, then cast on release-click at the explicitly targeted actor. Bare clicks inspect; successful and rejected targeting attempts disarm, and Escape cancels before pausing. Each attempt is one shot. Demo mana cost is 15, with sanctuary recovery and N meditation. Space strikes the facing neighbour, Q deliberately picks up nearby ground essence, WASD/arrows use latest-direction cardinal 32-unit steps. E remains a clearly labelled demo deposit/return convenience.
+
+References inspected read-only:
+- https://github.com/dcatanzaro/aoweb/blob/main/frontend/components/game/core/useRendererBootstrap.ts (release-click and clear targeting)
+- https://github.com/dcatanzaro/aoweb/blob/main/frontend/lib/hotkeys.ts (WASD, Q, Space, N)
+- https://github.com/dcatanzaro/aoweb/blob/main/frontend/components/game/core/useMovementSync.ts (cardinal tile movement)
+- Local pinned RAO InputController.gd / InputEventController.gd / CombatActionController.gd: macro arms cursor; bare click does not attack; Escape cancels and facing governs melee
+
+No AO Web code or artwork was copied. The supplied aoweb repository had no verified root licence; its runtime combat settings were not assumed to equal the older argentumonlineweb-cliente defaults. Tutorial cost, cooldown and bot balance remain illustrative rather than claimed server parity.
