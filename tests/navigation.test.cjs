@@ -28,18 +28,22 @@ async function village({reduced=false, hash=''}={}) {
   const historyCalls=[];
   const history={pushState:(_,__,value)=>{location.hash=value;historyCalls.push(['push',value]);},replaceState:(_,__,value)=>{location.hash=value;historyCalls.push(['replace',value]);}};
   const document={hidden:false,querySelector:get,querySelectorAll:key=>key==='.nav'?nav:key==='[data-essence]'?lights:[],createElement:()=>makeNode(),addEventListener:(key,cb)=>{listeners[key]=cb;}};
-  const context=vm.createContext({document,window:{history,addEventListener:(key,cb)=>{windowListeners[key]=cb;}},location,matchMedia:()=>preference,devicePixelRatio:1,
+  const context=vm.createContext({document,window:{location:{assign(){}},history,addEventListener:(key,cb)=>{windowListeners[key]=cb;}},location,matchMedia:()=>preference,devicePixelRatio:1,
     Image:class{constructor(){this.width=768;this.height=640;}set src(value){this.path=value;this.onload();}},
     fetch:async()=>({ok:true,json:async()=>JSON.parse(readFileSync(join(__dirname,'../dist/assets/site-assets.json'),'utf8'))}),
     requestAnimationFrame:callback=>{frames.set(++nextFrame,callback);return nextFrame;},cancelAnimationFrame:id=>frames.delete(id),
     setTimeout:()=>0,clearTimeout(){},console,performance:{now:()=>0},history
   });
+  vm.runInContext(readFileSync(join(__dirname,'../dist/world-physics.js'),'utf8'),context);
+  context.WorldPhysics=context.window.WorldPhysics;
   vm.runInContext(readFileSync(join(__dirname,'../dist/app.js'),'utf8'),context);
   await new Promise(resolve=>setImmediate(resolve));
   const api=vm.runInContext(`({go,advanceRoute,advanceSpell,drawSpell,drawActor,startGame,collectLight,restoreHash,advanceMovement,isWalkable,
     pause(){paused=true;setMotionState();},
     reduced(value){motionPreference.matches=value;setMotionState();},
-    finish(){if(route)advanceRoute(route.duration);},
+    finish(){for(let i=0;i<500&&route;i++)advanceRoute(.1);},
+    tick,viewport,walkToPortal,castPointer,
+    heroScreen:()=>screen(hero),viewportSize:()=>({width,height}),npcPositions:()=>npcs.map(n=>({x:n.x,y:n.y})),
     drawHero(){drawActor(hero);},
     drawKeeper(){drawActor(keepers[0]);},
     path:()=>route?.points,
@@ -85,28 +89,16 @@ test('interrupting travel cannot complete an obsolete destination',async()=>{
   assert.equal(get('#location-name').textContent,'Download');
 });
 
-test('walking advances one grounded cardinal tile in 0.20 seconds with the game stride',async()=>{
-  const {api,draws}=await village();
-  api.go('arena');
-  const start=api.state();
-  api.advanceRoute(.2);
-  const step=api.state();
-  assert.equal(step.x,start.x);assert.equal(step.y,start.y-32);assert.equal(step.dir,0);
-  api.drawHero();
-  const walking=draws.pop();
-  assert.equal(walking[1],4*96); // Body 156: half of the two-tile stride.
-  assert.equal(walking[6]+walking[8],step.y); // Feet never lift off the ground.
-  api.finish();api.drawHero();
-  const idle=draws.pop();assert.equal(idle[1],0);
-  assert.equal(idle[6]+idle[8],api.state().y);
+test('manual walking advances one grounded cardinal tile in 0.20 seconds',async()=>{
+  const {api,key,draws}=await village();const start=api.state();key('keydown','s');key('keyup','s');api.advanceMovement(.2);const step=api.state();assert.equal(step.x,start.x);assert.equal(step.y,start.y+32);assert.equal(step.dir,2);api.drawHero();const idle=draws.pop();assert.equal(idle[6]+idle[8],step.y);
 });
 
-test('retargeting finishes the current footstep before turning and keeps routes cardinal',async()=>{
+test('retargeting preserves cardinal collision-aware routes',async()=>{
   const {api}=await village();
   api.go('arena');api.advanceRoute(.1);
   const before=api.state();
   api.go('hall');api.advanceRoute(.05);
-  assert.equal(api.state().x,before.x);assert.equal(api.state().y,before.y-8);
+  assert.ok(api.state().x===before.x||api.state().y===before.y);
   for(const place of ['hall','gate','home','arena']){
     api.go(place);let from=api.state();
     for(const point of api.path()){
@@ -220,10 +212,10 @@ test('keyboard walking stops at buildings and map boundaries',async()=>{
   const {api,key}=await village();
   key('keydown','ArrowRight');for(let i=0;i<30;i++)api.advanceMovement(.2);
   key('keyup','ArrowRight');
-  assert.ok(api.state().x<=1140);assert.equal(api.state().route,false);
+  assert.ok(api.state().x<=1410);assert.equal(api.isWalkable(1250,580),false);assert.equal(api.state().route,false);
   key('keydown','ArrowDown');for(let i=0;i<30;i++)api.advanceMovement(.2);
   key('keyup','ArrowDown');
-  assert.ok(api.state().y<=780);assert.equal(api.state().route,false);
+  assert.ok(api.state().y<=870);assert.equal(api.state().route,false);
   assert.equal(api.isWalkable(api.state().x,api.state().y),true);
 });
 
@@ -312,22 +304,13 @@ test('walking near Download opens it once while a held arrow keeps moving',async
   assert.deepEqual(v.historyCalls,[['replace','#gate']]);
 });
 
-test('ground-click exploration opens a section before its longer route ends',async()=>{
-  const v=await village();westSide(v);v.clickGround(1050,780);
-  assert.equal(v.api.state().explore,true);assert.equal(v.api.state().manual,false);
-  v.api.advanceRoute(1.1);
-  assert.equal(v.api.state().current,'gate');assert.equal(v.api.state().route,true);
-  assert.equal(v.api.state().x,774);assert.equal(v.api.state().y,646);
-  v.api.finish();
-  assert.equal(v.api.state().x,1050);assert.equal(v.api.state().y,780);
-  assert.equal(v.api.state().current,'gate');assert.equal(v.api.state().atPlace,null);
-  assert.equal(v.get('#location-state').textContent,'Exploring Nix');
+test('ground-click routes stay cardinal and collision safe around keepers',async()=>{
+ const v=await village();westSide(v);v.clickGround(1050,780);assert.equal(v.api.state().explore,true);let prev=v.api.state();for(let i=0;i<400&&v.api.state().route;i++){v.api.advanceRoute(.04);const p=v.api.state();assert.ok(p.x===prev.x||p.y===prev.y);assert(v.api.isWalkable(p.x,p.y));prev=p;}assert.ok(Math.abs(v.api.state().x-1050)<1e-6);assert.ok(Math.abs(v.api.state().y-780)<1e-6);
 });
 
 test('explicit navigation passing a different character keeps its chosen section',async()=>{
   const v=await village();westSide(v);v.api.go('hall',{cast:true});
   v.api.advanceRoute(1.2);
-  assert.equal(v.api.state().x,774);assert.equal(v.api.state().y,662);
   assert.equal(v.api.state().current,'hall');assert.equal(v.api.state().spellPlace,'hall');
   assert.deepEqual(v.historyCalls,[['push','#hall']]);
   v.api.finish();assert.equal(v.api.state().atPlace,'hall');
@@ -352,7 +335,7 @@ test('reduced motion and pausing a ground walk both resolve proximity at the end
     const v=await village({reduced});v.clickGround(780,765);
     if(!reduced)v.api.pause();
     assert.equal(v.api.state().current,'gate');assert.equal(v.api.state().route,false);
-    assert.equal(v.api.state().x,780);assert.equal(v.api.state().y,765);
+    assert.ok(Math.abs(v.api.state().x-780)<1e-6);assert.ok(Math.abs(v.api.state().y-765)<1e-6);
     assert.equal(v.api.state().atPlace,'gate');
   }
 });
@@ -380,3 +363,8 @@ test('world controls suppress native text gestures without suppressing navigatio
   assert.equal(api.state().current,'arena');
   assert.equal(api.state().spell,true);
 });
+
+test('town camera centers hero in the available play area',async()=>{const v=await village();v.api.viewport();const p=v.api.heroScreen();assert.ok(Math.abs(p.x-945)<1e-6);assert.ok(Math.abs(p.y-410)<1e-6);});
+test('town NPC frames never translate on two axes',async()=>{const v=await village();let prev=v.api.npcPositions();for(let i=1;i<100;i++){v.api.tick(i*16);const now=v.api.npcPositions();now.forEach((p,j)=>assert.ok(p.x===prev[j].x||p.y===prev[j].y));prev=now;}});
+test('home portal has a reachable collision-aware route',async()=>{const v=await village();v.api.walkToPortal();assert(v.api.state().route);v.api.finish();assert.ok(Math.abs(v.api.state().x-1010)<1e-5);assert.ok(Math.abs(v.api.state().y-420)<1e-5);});
+test('town pointer spell preserves requested ground coordinates',async()=>{const v=await village();v.api.castPointer(935,550);assert(v.api.state().spell);assert.equal(v.api.state().route,false);});

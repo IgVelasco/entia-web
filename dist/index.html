@@ -8,7 +8,7 @@
   <meta name="description" content="Your journey starts here. Explore Entia’s world, its PvP vision, rankings preview and client availability.">
   <link rel="icon" href="favicon.svg?v=entia" type="image/svg+xml">
   <link rel="preload" href="assets/fonts/Inter-Regular.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="style.css?v=d517150c17">
+  <link rel="stylesheet" href="style.css?v=portal2">
 </head>
 <body>
 <div id="app">
@@ -40,7 +40,7 @@
         <p>Explore Entia’s world and its planned PvP.</p>
         <div class="intro-actions"><button class="primary" data-place="gate">Download</button><button class="quiet" data-place="arena">About the game</button></div>
         <div class="world-invitation"><span class="spell-glyph" aria-hidden="true">✧</span><div><p>Walk up to a character to open its section. Use WASD, arrow keys, or click the ground.</p></div></div>
-        <a class="primary portal-demo-link" href="demo/">Enter the portal · Play the essence demo</a><button class="text-button" id="wander">Collect lights in Nix</button>
+        <button class="primary portal-demo-link" id="portal-journey">Walk into the portal</button><button class="text-button" id="wander">Collect lights in Nix</button>
       </div>
       <aside id="panel" aria-labelledby="section-heading" hidden>
         <button id="close-panel" aria-label="Return to Home">×</button>
@@ -54,7 +54,7 @@
       </div>
     </section>
     <div class="world-toolbar">
-      <button id="spell" aria-pressed="false" aria-describedby="spell-hint"><span class="spell-glyph" aria-hidden="true">✧</span><span><strong>Apocalipsis</strong><small id="spell-hint">Choose a character</small></span><kbd aria-hidden="true">C</kbd></button>
+      <button id="spell" aria-pressed="false" aria-describedby="spell-hint"><span class="spell-glyph" aria-hidden="true">✧</span><span><strong>Apocalipsis</strong><small id="spell-hint">Aim a spell</small></span><kbd aria-hidden="true">C</kbd></button>
       <p id="movement-help" class="movement-help"><kbd>WASD</kbd> <span>or</span> <kbd>↑ ← ↓ →</kbd> <span>to walk</span></p>
       <div class="scene-controls" aria-label="World controls"><button id="motion" aria-label="Pause world animation" aria-pressed="false" title="Pause animation">Ⅱ</button><button id="zoom-out" aria-label="Zoom out">−</button><button id="zoom-in" aria-label="Zoom in">+</button><button id="reset-view" aria-label="Reset view" title="Reset view">⌖</button></div>
     </div>
@@ -62,8 +62,8 @@
     <footer><span>✦ <b>NIX</b> <span class="footer-divider">/</span> <span id="footer-place">HOME</span></span><button id="about">Prototype notes</button></footer>
     <div id="loading" role="status"><img class="loading-mark" src="favicon.svg?v=entia" alt="" width="64" height="64"><p>Opening the gates of Nix…</p><button id="retry-load" class="quiet" hidden>Try again</button></div>
   </main>
-  <dialog id="notes" aria-labelledby="notes-heading"><button id="close-notes" aria-label="Close notes">×</button><span class="eyebrow">ABOUT THIS PREVIEW</span><h2 id="notes-heading">About this preview</h2><p>This is a website preview of Entia. The game is in development; downloads and live rankings are not connected yet.</p><p>Apocalipsis and collecting lights here are website interactions. They do not affect the game’s economy.</p><p>Walk with WASD or arrow keys, or click open ground. Walk up to a named character to open its section, or click one to cast Apocalipsis. Press C to choose a spell target, then Enter to cast. Keys 1–4 open sections.</p><p>Pause stops world animation. With reduced motion or pause enabled, each movement key press takes one step.</p></dialog>
+  <dialog id="notes" aria-labelledby="notes-heading"><button id="close-notes" aria-label="Close notes">×</button><span class="eyebrow">ABOUT THIS PREVIEW</span><h2 id="notes-heading">About this preview</h2><p>This is a website preview of Entia. The game is in development; downloads and live rankings are not connected yet.</p><p>Apocalipsis and collecting lights here are website interactions. They do not affect the game’s economy.</p><p>Walk with WASD or arrow keys, or click open ground. Walk up to a named character to open its section, Press C, aim with the pointer, then click to cast Apocalipsis. Walk into the portal to enter the essence demo. Keys 1–4 open sections.</p><p>Pause stops world animation. With reduced motion or pause enabled, each movement key press takes one step.</p></dialog>
 </div>
-<script src="app.js?v=776711a492"></script>
+<script src="world-physics.js?v=2"></script><script src="app.js?v=portal2"></script>
 </body>
 </html>

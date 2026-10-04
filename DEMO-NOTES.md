@@ -1,11 +1,20 @@
-# Portal / essence demo
+# Portal / essence demo — revised October 4
 
-Open dist/demo/index.html through an HTTP server. The existing homepage links into it.
+The real animated portal now stands in the Home town at world (1010,420). Walking through its opening, or using the accessible Walk into the portal button to walk there, loads demo/. The demo starts inside the training ground; its return portal leads back to Home.
 
-Artwork reuses Entia's shipped improved actor, terrain, scenery and Apocalipsis assets. Portal uses the previously approved 240×320, eight-frame animation.
+## Interaction
+- Nix and the demo share cardinal foot-level collision primitives. Pathfinding uses only orthogonal segments. Trees have trunk footprints, buildings have solid base footprints, portal pillars are solid, and actors block each other. Camera centers the player in the usable play area.
+- In Nix: C arms a pointer spell, then click the desired ground point. Section buttons open their sections without automatically casting. Click open ground to walk via collision-aware routes.
+- In the demo: move with WASD/arrows or the touch directional pad. Aim and click/tap to cast at that position, or hold Space/Cast using the pointer. Clicking a rival's visible body resolves to that rival's foot position. No nearest-rival fallback exists. Range and line of sight apply; strikes are delayed so moving targets can evade them.
+- Defeated rivals drop essence as a ground item. Walk over it or press E within pickup reach. Player death also drops carried essence at the death location, allowing recovery. Secured essence remains safe.
+- After the first pickup, the new essence-banking reliquary appears south of the return portal. E near it deposits carried essence after 1.5 seconds; movement, casting or damage cancels. Banking controls are absent before unlock.
+- Melee bots pursue faster and telegraph attacks. The ranged keeper strafes and marks the ground before casting, giving a dodge window.
 
-This is an explicitly labelled single-player tutorial, not production RAO mechanics or a backend integration. Enemy values, rewards, full carried loss and the 60-essence tutorial target are demonstrative. Secured essence survives defeat, but resets on reload/restart; no account persistence is represented.
+## Scope
+This is an explicitly labelled single-player tutorial, not production RAO mechanics or a backend integration. Rewards, health, enemies, the 60-essence goal and timings are illustrative. Reload/restart clears the demo, and no account persistence is implied.
 
-Player movement uses radius-expanded scenery/arch footprints with substeps and axis sliding. Actors also block each other. Tree crowns overlap visually and are not solid walls. Spell targeting checks range and line of sight. Banking cancels on movement, distance or casting; completion transfers once. Losing focus or hiding the page pauses gameplay and clears held input. Keyboard and touch controls are supported.
+## Artwork
+Uses the site's approved improved actors, scenery, terrain and Apocalipsis sprites, plus the approved 240×320 portal animation. New transparent essence-bank artwork is generated in the reference style; its emerald center supplies the ground-item icon.
 
-Validation: node --test tests/*.test.cjs. Includes pre-existing navigation regression tests, collision tunnelling, actor occupancy, line-of-sight, reward deduplication, deposit cancellation/atomicity, death/secured preservation, restart and a deterministic 240-second simulation. Controller smoke executes actual loading, draw, HUD and pause/restart code with mocked DOM/canvas.
+## Validation
+Run node --test tests/*.test.cjs (50 tests). Tests cover cardinal motion for player and NPCs, source-driven camera positioning, collision tunnelling and actor occupancy, obstacle-aware pathfinding, portal reachability, pointer targeting, kill drops and exactly-once pickup, death drops/recovery, banking unlock/atomicity/cancellation, bot damage/dodging, pause and restart, and prior navigation regression cases. Controllers execute with mocked DOM/canvas. A deterministic simulation checks long-run bounds and nonnegative counters. Local cloud-browser preview was inaccessible and hosted page requires sign-in; real-browser visual/mobile QA remains unverified.

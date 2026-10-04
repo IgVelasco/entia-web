@@ -11,7 +11,7 @@ let images = {}, current = 'home', route = null, spell = null, rings = [], aimin
 let atPlace = 'home', hovered = null, game = false, collected = 0, toastTimer, replyTimer;
 let nearbyPlace = null;
 const NEAR_ENTER = 72, NEAR_EXIT = 104;
-const camera = {x: 990, y: 520, targetX: 990, targetY: 520};
+const camera = {x: 870, y: 470, targetX: 870, targetY: 470};
 const spots = {
   home: {x: 800, y: 440, section: 'Home', clan: 'Nix', body: 'rogue', greeting: 'Welcome to Nix.', land: {x: 870, y: 470}},
   arena: {x: 1190, y: 345, section: 'Game', clan: 'PvP', body: 'hero', greeting: 'Find your next rival.', land: {x: 1100, y: 410}},
@@ -31,6 +31,16 @@ const scenery = [
   {id:'pine',x:1385,y:640,w:280,h:280}, {id:'tree',x:652,y:865,w:260,h:325}, {id:'tree2',x:325,y:750,w:310,h:387},
   {id:'tree',x:555,y:115,w:225,h:282}, {id:'pine',x:960,y:142,w:200,h:200}, {id:'tree2',x:1395,y:890,w:250,h:312}
 ];
+const homePortal={x:1010,y:420};
+const townObstacles=scenery.map(s=>s.id.startsWith('house')?{x:s.x-s.w*.43,y:s.y-s.h*.60,w:s.w*.86,h:s.h*.60}:{x:s.x-22,y:s.y-28,w:44,h:38});
+townObstacles.push({x:homePortal.x-74,y:homePortal.y-35,w:30,h:45},{x:homePortal.x+44,y:homePortal.y-35,w:30,h:45});
+const townPhysics=WorldPhysics.create({width:W,height:H,radius:10,obstacles:townObstacles});
+let enteringPortal=false;
+function enterPortal(){if(enteringPortal)return;enteringPortal=true;clearMovementInput();window.location.assign('demo/');}
+function walkToPortal(){heldDirections.clear();beginManualMovement();moveHero(walkingPath(homePortal),{explore:true,complete:enterPortal});}
+function portalCrossing(){if(!enteringPortal&&Math.abs(hero.x-homePortal.x)<24&&Math.abs(hero.y-homePortal.y)<20)enterPortal();}
+function drawHomePortal(){if(!images.portal)return;const f=motionOff()?0:Math.floor(time*10)%8;ctx.drawImage(images.portal,f%4*240,Math.floor(f/4)*320,240,320,homePortal.x-90,homePortal.y-238,180,240);ctx.font='13px Inter';ctx.textAlign='center';ctx.fillStyle='#e7d390';ctx.fillText('ENTER THE VEIL',homePortal.x,homePortal.y+24);}
+function castPointer(x,y){heldDirections.clear();route=null;spell={x,y,age:0,delay:0,duration:apocalipsis.duration,hit:false};hero.dir=heading(x-hero.x,y-hero.y);setAim(false);requestDraw();}
 const treasures = [{x:914,y:505},{x:1255,y:745},{x:990,y:755}].map(p => ({...p,collected:false}));
 const ground = document.createElement('canvas');
 ground.width = W; ground.height = H;
@@ -60,7 +70,7 @@ for (const keeper of keepers) {
   button.className = 'keeper';
   button.dataset.place = keeper.place;
   button.dataset.cast = 'true';
-  button.setAttribute('aria-label', `Open ${keeper.section} with Apocalipsis`);
+  button.setAttribute('aria-label', `Open ${keeper.section}`);
   button.innerHTML = `<span class="keeper-label"><strong>${keeper.section}</strong><small class="keeper-clan">&lt;${keeper.clan}&gt;</small></span><span class="keeper-hit" aria-hidden="true"><svg class="target-reticle" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><circle cx="24" cy="24" r="13"/><path d="M24 3v13m0 16v13M3 24h13m16 0h13"/></svg></span>`;
   setGameText(button.querySelector('strong'), keeper.section);
   button.addEventListener('pointerenter', () => { hovered=keeper.place; requestDraw(); });
@@ -82,16 +92,13 @@ for (const surface of [canvas, $('#locations'), $('#player-label'), $('#keeper-r
 
 
 function viewport() {
-  const compact = width <= 900;
-  const left = compact ? 0 : clamp(width*.33, 320, 450);
-  const bottom = compact ? (width <= 600 ? 110 : 96) : 100;
-  // On small screens content follows the square, instead of covering its keepers.
-  const sceneHeight = compact ? Math.min(height, width <= 600 ? 480 : 570) : height;
-  const availableWidth = width-left;
-  scale = Math.min(availableWidth/770, (sceneHeight-120)/680, 1.32)*zoom;
-  scale = Math.max(scale, .38);
-  ox = left + availableWidth*.50 - camera.x*scale;
-  oy = 94 + (sceneHeight-94-bottom)*.50 - camera.y*scale;
+  const compact=width<=900, left=compact?0:clamp(width*.33,320,450);
+  const sceneHeight=compact?Math.min(height,width<=600?480:570):height;
+  scale=Math.max(.5,Math.min((width-left)/650,(sceneHeight-80)/560,1.32))*zoom;
+  // The player stays centered in the playable surface, outside the content column.
+  camera.x=camera.targetX=hero.x;camera.y=camera.targetY=hero.y;
+  ox=left+(width-left)/2-hero.x*scale;
+  oy=sceneHeight/2-hero.y*scale;
 }
 function resize() {
   const rect = canvas.getBoundingClientRect();
@@ -225,9 +232,9 @@ function draw() {
   ctx.translate(ox,oy);ctx.scale(scale,scale);ctx.imageSmoothingEnabled=false;
   if(!groundReady)buildGround();ctx.drawImage(ground,0,0);
   drawDestination();
-  const layers=[...scenery.map(s=>({...s,type:'scenery'})),...npcs,...keepers,hero].sort((a,b)=>a.y-b.y);
+  const layers=[...scenery.map(s=>({...s,type:'scenery'})),{...homePortal,type:'portal'},...npcs,...keepers,hero].sort((a,b)=>a.y-b.y);
   for(const a of layers){
-    if(a.type==='scenery'){
+    if(a.type==='portal'){drawHomePortal();}else if(a.type==='scenery'){
       ellipse(a.x+15,a.y+7,a.w*.38,a.w*.1,'#07130c40');
       ctx.drawImage(images[a.id],a.x-a.w/2,a.y-a.h,a.w,a.h);
     }else drawActor(a);
@@ -259,9 +266,15 @@ function tick(now) {
     for(const n of [...npcs,...keepers]){
       if(n.reaction>0){n.reaction=Math.max(0,n.reaction-dt);n.dir=heading(hero.x-n.x,hero.y-n.y);continue;}
       if(n.isKeeper)continue;
-      const [x,y]=n.way[n.idx],dx=x-n.x,dy=y-n.y,d=Math.hypot(dx,dy),step=Math.min(NPC_SPEED*dt,d);
+      const [x,y]=n.way[n.idx];
+      if(!n.path?.length)n.path=townPhysics.path(n,{x,y},[hero,...keepers,...npcs.filter(a=>a!==n)]);
+      const next=n.path[0];
+      if(!next){n.idx=(n.idx+1)%n.way.length;continue;}
+      const dx=next.x-n.x,dy=next.y-n.y,d=Math.hypot(dx,dy),step=Math.min(NPC_SPEED*dt,d);
       n.dir=heading(dx,dy);
-      if(d<1)n.idx=(n.idx+1)%n.way.length;else{n.x+=dx/d*step;n.y+=dy/d*step;n.gait+=step;}
+      const moved=townPhysics.move(n,d?dx/d*step:0,d?dy/d*step:0,[hero,...keepers,...npcs.filter(a=>a!==n)]);
+      if(d<1){n.path.shift();if(!n.path.length)n.idx=(n.idx+1)%n.way.length;}
+      else if(moved<.01)n.path=[];
     }
     const blend=1-Math.exp(-dt*7);
     camera.x+=(camera.targetX-camera.x)*blend;camera.y+=(camera.targetY-camera.y)*blend;
@@ -285,24 +298,20 @@ function arrive(place,announce=true) {
   }
 }
 function advanceRoute(dt) {
-  const r=route;r.elapsed+=dt;
-  const u=clamp(r.elapsed/r.duration,0,1);
-  const distance=r.length*u;
-  let remaining=distance,from={x:r.sx,y:r.sy},p=r.target;
-  for(let i=0;i<r.points.length;i++){
-    const to=r.points[i],length=Math.hypot(to.x-from.x,to.y-from.y);
-    if(remaining<=length||i===r.points.length-1){
-      const t=length?clamp(remaining/length,0,1):1;
-      p={x:from.x+(to.x-from.x)*t,y:from.y+(to.y-from.y)*t};
-      hero.dir=heading(to.x-from.x,to.y-from.y);r.segment=i;break;
-    }
-    remaining-=length;from=to;
+  const r=route;r.elapsed+=dt;let budget=WALK_SPEED*dt;
+  if(route===r&&budget>0&&r.segment<r.points.length){
+    const target=r.points[r.segment],dx=target.x-hero.x,dy=target.y-hero.y,d=Math.hypot(dx,dy);
+    if(d<.01){r.segment++;if(r.segment>=r.points.length){route=null;r.complete?.();}return;}
+    const step=Math.min(budget,d),moved=townPhysics.move(hero,dx/d*step,dy/d*step,[...keepers,...npcs]);
+    hero.dir=heading(dx,dy);r.distance+=moved;budget-=step;
+    if(moved+1e-5<step){route=null;return;}
+    if(step>=d-.001){hero.x=target.x;hero.y=target.y;r.segment++;}
+    if(r.explore){portalCrossing();checkNearbySection();}
   }
-  hero.gait+=distance-r.distance;r.distance=distance;hero.x=p.x;hero.y=p.y;
-  if(r.explore)checkNearbySection();
-  if(u===1){route=null;r.complete?.();}
+  if(route===r&&r.segment>=r.points.length){route=null;r.complete?.();}
 }
 function moveHero(points,{complete,instant=false,manual=false,explore=manual}={}) {
+  if(!points.length){route=null;toast('That route is blocked. Try another spot.');return;}
   const target=points.at(-1);let from=hero,length=0;
   for(const p of points){length+=Math.hypot(p.x-from.x,p.y-from.y);from=p;}
   // Every new action replaces the previous route and its completion callback.
@@ -312,25 +321,10 @@ function moveHero(points,{complete,instant=false,manual=false,explore=manual}={}
   requestDraw();
 }
 function walkingPath(target) {
-  const points=[];let from={x:hero.x,y:hero.y};
-  const add=(x,y)=>{if(Math.hypot(x-from.x,y-from.y)>.001){from={x,y};points.push(from);}};
-  // Finish the current cardinal footstep before a newly requested turn.
-  if(route){
-    const next=route.points[route.segment],remaining=Math.hypot(next.x-hero.x,next.y-hero.y);
-    const step=Math.min(WALK_TILE-(hero.gait%WALK_TILE),remaining);
-    if(remaining>.001)add(hero.x+(next.x-hero.x)/remaining*step,hero.y+(next.y-hero.y)/remaining*step);
-  }
-  // Walk around the eastern house when returning from the lower square.
-  if(from.x>1140&&target.y<650)add(1100,from.y);
-  if(target.y<400&&from.x<1075)add(1100,from.y);
-  add(from.x,target.y);add(target.x,target.y);
-  return points.length?points:[{x:target.x,y:target.y}];
+  return townPhysics.path(hero,target,[...keepers,...npcs]);
 }
 function isWalkable(x,y) {
-  const square=x>=720&&x<=1300&&y>=400&&y<=780 && !(x>1140&&y<650);
-  const arena=x>=1075&&x<=1320&&y>=310&&y<=390;
-  const passage=x>=1075&&x<=1140&&y>=390&&y<=400;
-  return square||arena||passage;
+  return townPhysics.free(x,y,[...keepers,...npcs],hero);
 }
 function clearMovementInput() {
   heldDirections.clear();
@@ -364,6 +358,7 @@ function advanceMovement(dt) {
   if(!route)startKeyboardStep();
 }
 function checkWalkingProgress() {
+  portalCrossing();
   if(!game)return;
   treasures.forEach((light,index)=>{if(Math.hypot(light.x-hero.x,light.y-hero.y)<27)takeLight(index);});
   if(collected===3&&Math.hypot(hero.x-spots.home.land.x,hero.y-spots.home.land.y)<27)go('home');
@@ -404,8 +399,8 @@ function updateKeeperStates() {
 function setAim(value,{focus=false}={}) {
   if(value)clearMovementInput();
   aiming=value;$('#world').classList.toggle('aiming',value);$('#spell').setAttribute('aria-pressed',String(value));
-  $('#spell-hint').textContent=value?'Click a character':'Choose a character';
-  if(focus&&value)keepers.find(k=>k.place!==current).button.focus({preventScroll:true});
+  $('#spell-hint').textContent=value?'Aim with the pointer and click':'Aim a spell';
+  if(focus&&value)canvas.focus({preventScroll:true});
   requestDraw();
 }
 function setContent(place) {
@@ -514,8 +509,9 @@ function focusContentIfNeeded(trigger) {
   }
 }
 document.addEventListener('click',event=>{
+  if(event.target.closest('#portal-journey')){walkToPortal();canvas.focus({preventScroll:true});return;}
   const destination=event.target.closest('button[data-place], a[data-place]');
-  if(destination){event.preventDefault();go(destination.dataset.place,{cast:true});focusContentIfNeeded(destination);return;}
+  if(destination){event.preventDefault();if(aiming&&destination.dataset.cast){const p=spots[destination.dataset.place];castPointer(p.x,p.y-32);}else go(destination.dataset.place);focusContentIfNeeded(destination);return;}
   const rank=event.target.closest('[data-rank]');
   if(rank){
     $$('[data-rank]').forEach(b=>{b.classList.toggle('active',b===rank);b.setAttribute('aria-pressed',String(b===rank));});
@@ -524,11 +520,14 @@ document.addEventListener('click',event=>{
   const light=event.target.closest('[data-essence]');if(light){collectLight(Number(light.dataset.essence));return;}
   if(event.target.closest('#try-journey')){startGame();$('#main-content').focus({preventScroll:true});}
 });
+canvas.addEventListener('pointermove',event=>{canvas.style.cursor=aiming?'crosshair':'pointer';});
 canvas.addEventListener('click',event=>{
   if(!ready)return;
   const bounds=canvas.getBoundingClientRect(),x=(event.clientX-bounds.left-ox)/scale,y=(event.clientY-bounds.top-oy)/scale;
+  if(aiming){castPointer(x,y);return;}
+  if(Math.abs(x-homePortal.x)<85&&y>homePortal.y-238&&y<homePortal.y+25){walkToPortal();return;}
   const keeper=keepers.find(k=>Math.hypot(k.x-x,(k.y-25)-y)<46);
-  if(keeper){go(keeper.place,{cast:true});return;}
+  if(keeper){go(keeper.place);return;}
   if(game){const index=treasures.findIndex(p=>!p.collected&&Math.hypot(p.x-x,p.y-y)<55);if(index>=0){collectLight(index);return;}}
   if(aiming){toast('Click Home, Game, Rankings or Download.');return;}
   if(isWalkable(x,y)){
@@ -568,7 +567,7 @@ document.addEventListener('keydown',event=>{
     return;
   }
   if(event.key.toLowerCase()==='c'){event.preventDefault();setAim(!aiming,{focus:true});return;}
-  const key=Number(event.key);if(key>=1&&key<=4){event.preventDefault();go(Object.keys(spots)[key-1],{cast:true});}
+  const key=Number(event.key);if(key>=1&&key<=4){event.preventDefault();go(Object.keys(spots)[key-1]);}
 });
 document.addEventListener('keyup',event=>{
   heldDirections.delete(event.key.length===1?event.key.toLowerCase():event.key);
