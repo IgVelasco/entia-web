@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#081613"><title>Entia · Beyond the portal</title><link rel="icon" href="../favicon.svg"><link rel="stylesheet" href="demo.css?v=1"></head>
+<body>
+<header><a href="../#home" aria-label="Back to Entia"><img src="../assets/entia-logo.png" alt="Entia"></a><span class="chapter" id="chapter">NIX / THE THRESHOLD</span><button id="pause" aria-pressed="false">Pause <kbd>P</kbd></button></header>
+<main>
+<section class="stage" aria-label="Playable essence tutorial">
+<canvas id="game" tabindex="0" aria-label="Move with WASD or arrows. Space casts a spell. E interacts with the portal or banks essence. P pauses."></canvas>
+<div class="top-hud"><div class="vital"><span>AVHAROT</span><div class="health-track"><div id="health-fill"></div></div><small id="health">100 / 100</small></div><div class="essence"><div><span>Carried · at risk</span><strong id="carried">0</strong></div><div><span>Secured</span><strong id="secured">0</strong></div></div></div>
+<div class="objective"><span class="kicker" id="objective-label">YOUR FIRST CROSSING</span><h1 id="objective">Step into the unknown</h1><p id="hint">Walk up to the portal. Press E to enter.</p></div>
+<div id="message" role="status" aria-live="polite"></div>
+<div class="interact-area"><button id="interact" disabled>Approach the portal <kbd>E</kbd></button><div id="bank-progress" hidden><span></span></div></div>
+<div class="mobile-controls" aria-label="Touch controls"><div class="dpad"><button data-dir="up" aria-label="Move up">↑</button><button data-dir="left" aria-label="Move left">←</button><button data-dir="down" aria-label="Move down">↓</button><button data-dir="right" aria-label="Move right">→</button></div><button id="cast">Cast <span>✧</span></button></div>
+<div id="curtain"><div><span class="kicker">ENTIA / PLAYABLE STUDY</span><h2 id="curtain-title">Opening the portal…</h2><p id="curtain-text">Loading the world and character sprites</p><button id="resume" hidden>Continue</button><button id="retry" hidden>Retry loading</button></div></div>
+</section>
+<aside><div><span class="kicker">BEYOND THE PORTAL</span><h2>How much will you risk?</h2><p>Defeat training rivals to earn essence. Bring it back to the portal to secure it, or stay out for more.</p></div><ol><li><b>Enter</b><span>Cross the portal into the training grounds</span></li><li><b>Fight</b><span>Space or Cast targets the nearest rival in range. Trees block spells</span></li><li><b>Secure</b><span>Return to the portal and press E. Moving cancels the deposit</span></li></ol><div class="controls"><span><kbd>WASD</kbd> Move</span><span><kbd>SPACE</kbd> Cast</span><span><kbd>E</kbd> Interact</span></div><p class="disclaimer">A single-player illustration of Entia’s planned essence loop. Rivals, rewards and loss rules here are tutorial-only. Nothing affects your game account.</p><button id="restart">Restart tutorial</button></aside>
+</main><script src="model.js"></script><script src="demo.js"></script>
+</body></html>

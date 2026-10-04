@@ -135,3 +135,5 @@ dialog{border:1px solid #bfa76a66;background:#0f201a;color:var(--ink);max-width:
   #intro .entia-title{max-width:340px;margin:10px 0 8px}
   #intro>.intro-lead{font-size:34px;max-width:none;margin-bottom:18px}
 }
+
+.portal-demo-link{display:inline-block;margin:14px 0;text-decoration:none;font-size:14px;padding:12px 18px;border:1px solid #c7b477;border-radius:4px;background:#173d2c;color:#f2e5b8;box-shadow:0 0 24px #97c78022}.portal-demo-link:hover{background:#255237}.portal-demo-link:focus-visible{outline:2px solid #f4da9e;outline-offset:4px}
