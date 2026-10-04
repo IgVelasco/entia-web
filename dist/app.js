@@ -40,7 +40,7 @@ const homePortal=onTownGrid({x:1010,y:420});
 const townObstacles=scenery.map(s=>s.id.startsWith('house')?{x:s.x-s.w*.43,y:s.y-s.h*.60,w:s.w*.86,h:s.h*.60}:{x:s.x-22,y:s.y-28,w:44,h:38});
 townObstacles.push({x:homePortal.x-74,y:homePortal.y-35,w:30,h:45},{x:homePortal.x+44,y:homePortal.y-35,w:30,h:45});
 const townPhysics=WorldPhysics.create({width:W,height:H,radius:10,obstacles:townObstacles});
-let enteringPortal=false,demoOpen=false,demoLoaded=false,demoFailed=false,demoExitPending=false,demoHistoryOwned=false,portalReentryBlocked=false;
+let enteringPortal=false,demoOpen=false,demoEverOpened=false,demoLoaded=false,demoFailed=false,demoExitPending=false,demoHistoryOwned=false,portalReentryBlocked=false;
 let demoReturnHash="#home",demoLoadTimer=0;
 function enterPortal(){
  if(enteringPortal)return;enteringPortal=true;clearMovementInput();route=null;
@@ -59,11 +59,11 @@ function ensureDemoFrame(){
  demoLoadTimer=setTimeout(()=>{if(!demoLoaded)$('#demo-load-message').textContent='The demo is taking longer to load. You can return to Nix while it finishes.';},20000);
 }
 function showDemo(push=true){
- if(demoOpen)return;ensureDemoFrame();demoReturnHash=location.hash==='#demo'?'#home':location.hash||'#home';
+ if(demoOpen)return;const resumed=demoEverOpened;demoEverOpened=true;ensureDemoFrame();demoReturnHash=location.hash==='#demo'?'#home':location.hash||'#home';
  demoOpen=true;enteringPortal=false;clearMovementInput();route=null;if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;
  $('#portal-transition')?.remove();$('#world').classList.remove('entering-portal');$('#app').inert=true;document.body.classList.add('demo-open');$('#demo-host').hidden=false;
  if(push&&location.hash!=='#demo'){window.history.pushState({entiaDemo:true},'','#demo');demoHistoryOwned=true;}
- if(demoLoaded)$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-resume'},location.origin);
+ if(demoLoaded&&resumed)$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-resume'},location.origin);
 }
 function closeDemo(changeHistory=true){
  if(!demoOpen)return;if(changeHistory&&demoHistoryOwned&&location.hash==='#demo'){if(!demoExitPending){demoExitPending=true;window.history.back();}return;}demoExitPending=false;$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-pause'},location.origin);
@@ -73,7 +73,7 @@ function closeDemo(changeHistory=true){
 }
 window.addEventListener('message',event=>{
  if(event.origin!==location.origin||event.source!==$('#demo-frame').contentWindow)return;
- if(event.data?.type==='entia-demo-ready'){demoLoaded=true;clearTimeout(demoLoadTimer);$('#demo-loading').hidden=true;}
+ if(event.data?.type==='entia-demo-ready'){demoLoaded=true;clearTimeout(demoLoadTimer);$('#demo-loading').hidden=true;if(!demoOpen&&!enteringPortal)$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-pause'},location.origin);}
  else if(event.data?.type==='entia-demo-exit')closeDemo(true);
  else if(event.data?.type==='entia-demo-error'){demoFailed=true;$('#demo-load-message').textContent='The demo artwork could not load. Return to Nix and try again.';}
 });

@@ -3,7 +3,7 @@ let embedded=false;try{embedded=!!window.parent&&window.parent!==window&&window.
 function notifyParent(type){if(embedded)window.parent.postMessage({type},window.location.origin);}
 function returnToNix(){if(embedded)notifyParent('entia-demo-exit');else window.location.assign('../#home');}
 const M=window.EssenceDemo,canvas=document.querySelector('#game'),ctx=canvas.getContext('2d'),$=s=>document.querySelector(s);
-let state=M.create(),images={},ready=false,paused=false,previous=0,width=0,height=0,scale=1,ox=0,oy=0,dpr=1,noticeId=0,messageUntil=0,raf=0,pointer=null,selectedInventory='life';
+let state=M.create(),images={},ready=false,paused=false,previous=0,width=0,height=0,scale=1,ox=0,oy=0,dpr=1,noticeId=0,messageUntil=0,raf=0,pointer=null,selectedInventory='life',hostSuspended=false;
 const keys=new Set(),touches=new Map(),reduced=matchMedia('(prefers-reduced-motion: reduce)');
 const camera={x:510,y:490};
 const assets={hero:'hero.png',rogue:'rogue.png',mage:'mage.png',grass:'grass.png',path:'path.png',stone:'stone.png',portal:'portal.png',bank:'banking-coffer.png',essence:'essence-pickup.png',spell:'apocalipsis_60.png'};
@@ -58,8 +58,8 @@ function prepareSpell(){if(!ready||paused)return;document.body.classList.remove(
 function castAtPointer(){const point=aimPoint();if(point)M.cast(state,point);else M.tell?.(state,'Point at the world to aim.');}
 function interact(){const action=M.interact(state);if(action==='exit')returnToNix();else if(action==='bank')M.tell(state,'Stay near the bank. It draws in your carried essence automatically.');}
 
-function tick(now){raf=0;const dt=Math.min((now-previous)/1000||0,.04);previous=now;if(ready&&!paused&&!document.hidden){M.update(state,dt,input());}draw();ui();if(ready&&!document.hidden)schedule();}
-function schedule(){if(!raf&&!document.hidden)raf=requestAnimationFrame(tick);}
+function tick(now){raf=0;const dt=Math.min((now-previous)/1000||0,.04);previous=now;if(ready&&!paused&&!document.hidden){M.update(state,dt,input());}draw();ui();if(ready&&!document.hidden&&!hostSuspended)schedule();}
+function schedule(){if(!raf&&!document.hidden&&!hostSuspended)raf=requestAnimationFrame(tick);}
 function clear(){keys.clear();touches.clear();M.clearPotionKeys(state);}
 function showHelp(first=false){if(!ready)return;clear();paused=true;$('#help-title').textContent=first?'Welcome to the Veil':'Paused';$('#resume').textContent=first?'Enter the Veil':'Resume';$('#pause').setAttribute('aria-pressed','true');if(!$('#help-dialog').open)$('#help-dialog').showModal();}
 function hideHelp(){if($('#help-dialog').open)$('#help-dialog').close();paused=false;$('#pause').setAttribute('aria-pressed','false');document.body.classList.add('portal-arrival');canvas.focus({preventScroll:true});previous=performance.now();schedule();}
@@ -83,4 +83,4 @@ $('#autopot').addEventListener('change',e=>{state.autopotEnabled=e.target.checke
 for(const kind of ['life','mana']){const button=$('#macro-'+kind),key='pointer-'+kind;button.addEventListener('pointerdown',e=>{e.preventDefault();if(paused||!ready)return;canvas.focus({preventScroll:true});button.setPointerCapture(e.pointerId);M.pressPotion(state,key,kind);});button.addEventListener('pointerup',e=>{e.preventDefault();M.releasePotion(state,key);});button.addEventListener('pointercancel',()=>M.clearPotionKeys(state));button.addEventListener('lostpointercapture',()=>{state.heldPotions=state.heldPotions.filter(p=>p.key!==key);});button.addEventListener('click',e=>{if(e.detail===0&&!paused)M.usePotion(state,kind);});}
 
 document.addEventListener('click',e=>{const link=e.target.closest('a[href="../#home"]');if(link&&embedded&&!e.ctrlKey&&!e.metaKey&&!e.shiftKey){e.preventDefault();returnToNix();}});
-window.addEventListener('message',e=>{if(!embedded||e.source!==window.parent||e.origin!==window.location.origin)return;if(e.data?.type==='entia-demo-pause'){clear();showHelp();}else if(e.data?.type==='entia-demo-resume')hideHelp();});
+window.addEventListener('message',e=>{if(!embedded||e.source!==window.parent||e.origin!==window.location.origin)return;if(e.data?.type==='entia-demo-pause'){hostSuspended=true;clear();showHelp();if(raf)cancelAnimationFrame(raf);raf=0;}else if(e.data?.type==='entia-demo-resume'){hostSuspended=false;hideHelp();}});
