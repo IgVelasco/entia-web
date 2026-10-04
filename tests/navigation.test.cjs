@@ -43,6 +43,8 @@ async function village({reduced=false, hash=''}={}) {
     reduced(value){motionPreference.matches=value;setMotionState();},
     finish(){for(let i=0;i<500&&route;i++)advanceRoute(.1);},
     tick,viewport,walkToPortal,castPointer,
+    townEntities:()=>[hero,...keepers,...npcs,...scenery,homePortal,...treasures],
+    placeHero(x,y){hero.x=x;hero.y=y;viewport();positionLabels();},
     heroScreen:()=>screen(hero),viewportSize:()=>({width,height}),npcPositions:()=>npcs.map(n=>({x:n.x,y:n.y})),
     drawHero(){drawActor(hero);},
     drawKeeper(){drawActor(keepers[0]);},
@@ -172,7 +174,7 @@ test('Apocalipsis plays the original 60-PPT sheet in order at canonical scale wi
   const first=draws.pop();
   assert.equal(first[0].path,'assets/apocalipsis_60.png');
   assert.deepEqual(first.slice(1,5),[0,0,273,243]);
-  assert.deepEqual(first.slice(5),[1190-72.8,345-32-64.8,145.6,129.6]);
+  assert.deepEqual(first.slice(5),[1200-72.8,336-32-64.8,145.6,129.6]);
   api.advanceSpell(.4);api.drawSpell();
   assert.deepEqual(draws.pop().slice(1,5),[546,243,273,243]);
   api.advanceSpell(1.59);api.drawSpell();
@@ -292,7 +294,7 @@ test('walking near Download opens it once while a held arrow keeps moving',async
   for(let i=0;i<6;i++)v.api.advanceMovement(.2);
   const entered=v.api.state();
   assert.equal(entered.current,'gate');assert.equal(entered.atPlace,'gate');
-  assert.equal(entered.x,774);assert.equal(entered.y,662);
+  assert.equal(entered.x,784);assert.equal(entered.y,656);
   assert.equal(entered.held,1);assert.equal(entered.route,true);
   assert.equal(entered.spell,false);assert.equal(v.location.hash,'#gate');
   assert.match(v.get('#panel-content').innerHTML,/Download Entia/);
@@ -300,7 +302,7 @@ test('walking near Download opens it once while a held arrow keeps moving',async
   assert.equal(v.api.label('gate'),'<Now>');
   v.get('#main-content').scrollTop=40;
   v.api.advanceMovement(.2);
-  assert.equal(v.api.state().y,694);assert.equal(v.get('#main-content').scrollTop,40);
+  assert.equal(v.api.state().y,688);assert.equal(v.get('#main-content').scrollTop,40);
   assert.deepEqual(v.historyCalls,[['replace','#gate']]);
 });
 
@@ -366,7 +368,10 @@ test('world controls suppress native text gestures without suppressing navigatio
 
 test('town camera centers hero in the available play area',async()=>{const v=await village();v.api.viewport();const p=v.api.heroScreen();assert.ok(Math.abs(p.x-945)<1e-6);assert.ok(Math.abs(p.y-410)<1e-6);});
 test('town NPC frames never translate on two axes',async()=>{const v=await village();let prev=v.api.npcPositions();for(let i=1;i<100;i++){v.api.tick(i*16);const now=v.api.npcPositions();now.forEach((p,j)=>assert.ok(p.x===prev[j].x||p.y===prev[j].y));prev=now;}});
-test('home portal has a reachable collision-aware route',async()=>{const v=await village();v.api.walkToPortal();assert(v.api.state().route);v.api.finish();assert.ok(Math.abs(v.api.state().x-1010)<24);assert.ok(Math.abs(v.api.state().y-420)<20);});
+test('home portal has a reachable collision-aware route',async()=>{const v=await village();v.api.walkToPortal();assert(v.api.state().route);v.api.finish();assert.ok(Math.abs(v.api.state().x-1010)<24);assert.ok(Math.abs(v.api.state().y-432)<20);});
 test('town pointer spell preserves requested ground coordinates',async()=>{const v=await village();v.api.castPointer(935,550);assert(v.api.state().spell);assert.equal(v.api.state().route,false);});
 
-test('returning with browser Back clears the portal transition lock',async()=>{const v=await village();v.api.walkToPortal();v.api.finish();v.windowListeners.pageshow();assert.equal(v.api.state().x,870);assert.equal(v.api.state().y,470);assert.equal(v.api.state().route,false);});
+test('returning with browser Back clears the portal transition lock',async()=>{const v=await village();v.api.walkToPortal();v.api.finish();v.windowListeners.pageshow();assert.equal(v.api.state().x,880);assert.equal(v.api.state().y,464);assert.equal(v.api.state().route,false);});
+
+test('Home entities, props and pickups start on tile centers',async()=>{const v=await village();for(const p of v.api.townEntities()){assert.equal(p.x%32,16);assert.equal(p.y%32,16);}});
+test('Home name labels keep their horizontal anchor and separate when near',async()=>{const v=await village();v.api.placeHero(784,432);assert.equal(v.get('#player-label').dataset.placement,'above');const p=v.api.heroScreen();assert.match(v.get('#player-label').style.transform,new RegExp('translate3d\\('+Math.round(p.x)+'px,'));v.api.placeHero(900,600);assert.equal(v.get('#player-label').dataset.placement,'below');});

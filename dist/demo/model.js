@@ -10,7 +10,7 @@ const gateway={x:176,y:464},banker={x:176,y:688};
 const obstacles=[{x:gateway.x-85,y:gateway.y-75,w:38,h:92},{x:gateway.x+47,y:gateway.y-75,w:38,h:92}];
 const bankObstacle={x:banker.x-47,y:banker.y-10,w:94,h:24};
 const physics=Physics.create({width:WIDTH,height:HEIGHT,minY:160,radius:RADIUS,obstacles});
-function create(){return {phase:'arena',player:{x:304,y:432,dir:1,gait:0,hp:100,mana:100},carried:0,secured:0,dropped:0,kills:0,bank:0,bankAmount:0,bankFraction:0,streamParticles:[],bankUnlocked:false,armed:false,meditating:false,meleeCooldown:0,cooldown:0,time:0,fx:[],drops:[],nextDrop:1,notice:'Prepare Apocalipsis with C, then click a rival. Stand on its dropped essence and press Q.',noticeId:1,flash:1,won:false,enemies:[
+function create(){return {phase:'arena',player:{x:304,y:432,dir:1,gait:0,hp:100,mana:100},carried:0,secured:0,autoLife:true,autoMana:true,lifePotions:10,manaPotions:10,lifePotionCooldown:0,manaPotionCooldown:0,lifePulse:0,manaPulse:0,dropped:0,kills:0,bank:0,bankAmount:0,bankFraction:0,streamParticles:[],bankUnlocked:false,armed:false,meditating:false,meleeCooldown:0,cooldown:0,time:0,fx:[],drops:[],nextDrop:1,notice:'Prepare Apocalipsis with C, then click a rival. Stand on its dropped essence and press Q.',noticeId:1,flash:1,won:false,enemies:[
  {name:'Wanderer',body:'rogue',x:496,y:368,homeX:496,homeY:368,hp:2,maxHp:2,reward:15,dir:2,gait:0,wind:0,cooldown:1,respawn:0,kind:'ranged',speed:105},
  {name:'Keeper',body:'mage',x:912,y:560,homeX:912,homeY:560,hp:2,maxHp:2,reward:25,dir:3,gait:0,wind:0,cooldown:1,respawn:0,kind:'ranged',speed:110},
  {name:'Sentinel',body:'hero',x:656,y:752,homeX:656,homeY:752,hp:3,maxHp:3,reward:30,dir:0,gait:0,wind:0,cooldown:1,respawn:0,kind:'ranged',speed:110}
@@ -53,12 +53,17 @@ function melee(s){
  else tell(s,'Strike the rival directly in front of you.');return true;
 }
 function meditate(s){s.meditating=!s.meditating;s.armed=false;s.player.step=null;tell(s,s.meditating?'Meditating. Stay still to recover mana.':'Meditation stopped.');}
+function usePotion(s,kind){
+ const life=kind==='life';if(!life&&kind!=='mana')return false;const stock=life?'lifePotions':'manaPotions',cooldown=life?'lifePotionCooldown':'manaPotionCooldown',resource=life?'hp':'mana';
+ if(s.player.hp<=0||s[stock]<=0||s[cooldown]>0||s.player[resource]>=100)return false;
+ s[stock]--;s[cooldown]=.8;s.player[resource]=Math.min(100,s.player[resource]+(life?40:50));s[life?'lifePulse':'manaPulse']=.6;return true;
+}
 function botStep(s,e,target,dt){
  const others=[s.player,...s.enemies.filter(a=>a.hp>0)];
  if(!e.step){if(Math.hypot(target.x-e.x,target.y-e.y)<4)return;let v=cardinal(target.x-e.x,target.y-e.y),end={x:e.x+v.x*32,y:e.y+v.y*32};if(!physics.clear(e,end,others,e)){v={x:v.x?0:Math.sign(target.x-e.x),y:v.y?0:Math.sign(target.y-e.y)};end={x:e.x+v.x*32,y:e.y+v.y*32};if(!physics.clear(e,end,others,e))return;}e.step={...v,end,remaining:32};e.dir=heading(v.x,v.y);}
  const step=e.step,distance=Math.min(step.remaining,e.speed*dt),moved=move(e,step.x*distance,step.y*distance,others);e.moving=moved>.01;step.remaining-=moved;if(moved<distance-.001)e.step=null;else if(step.remaining<.001){e.x=step.end.x;e.y=step.end.y;e.step=null;}
 }
-function update(s,dt,input={x:0,y:0}){dt=Math.max(0,Math.min(dt,.05));s.time+=dt;s.flash=Math.max(0,s.flash-dt*1.5);s.cooldown=Math.max(0,s.cooldown-dt);s.meleeCooldown=Math.max(0,s.meleeCooldown-dt);const p=s.player;const vector=cardinal(input.x||0,input.y||0);p.moving=false;
+function update(s,dt,input={x:0,y:0}){dt=Math.max(0,Math.min(dt,.05));s.time+=dt;s.flash=Math.max(0,s.flash-dt*1.5);s.cooldown=Math.max(0,s.cooldown-dt);s.meleeCooldown=Math.max(0,s.meleeCooldown-dt);for(const key of ['lifePotionCooldown','manaPotionCooldown','lifePulse','manaPulse'])s[key]=Math.max(0,s[key]-dt);const p=s.player;const vector=cardinal(input.x||0,input.y||0);p.moving=false;
  // Banking uses the same solid footprint as other props once it appears.
  const activeObstacles=s.bankUnlocked?[bankObstacle]:[];
  const insideBank=(x,y)=>activeObstacles.some(o=>x+RADIUS>o.x&&x-RADIUS<o.x+o.w&&y+RADIUS>o.y&&y-RADIUS<o.y+o.h);
@@ -84,7 +89,9 @@ function update(s,dt,input={x:0,y:0}){dt=Math.max(0,Math.min(dt,.05));s.time+=dt
  if(!safe&&d<480){if(d<170&&e.cooldown===0&&lineClear(e,p)){e.wind=.85;e.aim={x:p.x,y:p.y};e.step=null;}else if(d>115)botStep(s,e,p,dt);}
  else if(Math.hypot(e.x-e.homeX,e.y-e.homeY)>5)botStep(s,e,{x:e.homeX,y:e.homeY},dt);
  }
+ if(s.autoLife&&p.hp>0&&p.hp<=50)usePotion(s,'life');
+ if(s.autoMana&&p.hp>0&&p.mana<=30)usePotion(s,'mana');
  if(p.hp<=0){const amount=s.carried;drop(s,p.x,p.y,amount,'player');s.dropped+=amount;s.carried=0;s.bank=0;p.step=null;p.hp=100;p.mana=100;s.armed=false;s.meditating=false;p.x=176;p.y=560;s.flash=1;for(const e of s.enemies){e.wind=0;e.cooldown=Math.max(e.cooldown,1);}tell(s,`You fell and dropped ${amount} essence. Recover it from the ground. ${s.secured} secured stays safe.`);}
 }
-const api={WIDTH,HEIGHT,RADIUS,TILE,tileCenter,scenery,obstacles,bankObstacle,gateway,banker,walkable,move,lineClear,create,nearGate,nearBank,interact,cast,update,drop,pickup,cardinal,tell,melee,meditate,cancelDeposit};if(typeof module!=='undefined')module.exports=api;root.EssenceDemo=api;
+const api={WIDTH,HEIGHT,RADIUS,TILE,tileCenter,scenery,obstacles,bankObstacle,gateway,banker,walkable,move,lineClear,create,nearGate,nearBank,interact,cast,update,drop,pickup,cardinal,tell,melee,meditate,cancelDeposit,usePotion};if(typeof module!=='undefined')module.exports=api;root.EssenceDemo=api;
 })(typeof window!=='undefined'?window:globalThis);

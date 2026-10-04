@@ -3,7 +3,9 @@ const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 const canvas = $('#scene');
 const ctx = canvas.getContext('2d');
-const W = 1440, H = 900;
+const W = 1440, H = 900, TOWN_TILE=32;
+const townTileCenter=value=>Math.floor(value/TOWN_TILE)*TOWN_TILE+TOWN_TILE/2;
+const onTownGrid=p=>({...p,x:townTileCenter(p.x),y:townTileCenter(p.y)});
 const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
 let width = 0, height = 0, dpr = 1, scale = 1, ox = 0, oy = 0, zoom = 1;
 let time = 0, last = 0, frameRequest = 0, paused = false, ready = false;
@@ -18,7 +20,8 @@ const spots = {
   hall: {x: 1170, y: 655, section: 'Rankings', clan: 'Preview', body: 'mage', greeting: 'Live rankings are coming later.', land: {x: 1075, y: 680}},
   gate: {x: 780, y: 715, section: 'Download', clan: 'Unavailable', body: 'hero', greeting: 'No download is linked yet.', land: {x: 880, y: 725}}
 };
-const hero = {x: 870, y: 470, body: 'hero', dir: 2, gait: 0, hero: true};
+for(const p of Object.values(spots)){p.x=townTileCenter(p.x);p.y=townTileCenter(p.y);p.land=onTownGrid(p.land);}
+const hero = {...spots.home.land, body:'hero',dir:2,gait:0,hero:true};
 const keepers = Object.entries(spots).map(([place, p]) => ({...p, place, dir: 2, isKeeper: true, reaction: 0}));
 const npcs = [
   {x: 975, y: 490, body: 'rogue', dir: 1, way: [[975,490],[1070,490],[1070,530],[975,530]], idx: 1, gait: 0, reaction: 0},
@@ -31,7 +34,9 @@ const scenery = [
   {id:'pine',x:1385,y:640,w:280,h:280}, {id:'tree',x:652,y:865,w:260,h:325}, {id:'tree2',x:325,y:750,w:310,h:387},
   {id:'tree',x:555,y:115,w:225,h:282}, {id:'pine',x:960,y:142,w:200,h:200}, {id:'tree2',x:1395,y:890,w:250,h:312}
 ];
-const homePortal={x:1010,y:420};
+for(const n of npcs){n.x=townTileCenter(n.x);n.y=townTileCenter(n.y);n.way=n.way.map(([x,y])=>[townTileCenter(x),townTileCenter(y)]);}
+for(const p of scenery){p.x=townTileCenter(p.x);p.y=townTileCenter(p.y);}
+const homePortal=onTownGrid({x:1010,y:420});
 const townObstacles=scenery.map(s=>s.id.startsWith('house')?{x:s.x-s.w*.43,y:s.y-s.h*.60,w:s.w*.86,h:s.h*.60}:{x:s.x-22,y:s.y-28,w:44,h:38});
 townObstacles.push({x:homePortal.x-74,y:homePortal.y-35,w:30,h:45},{x:homePortal.x+44,y:homePortal.y-35,w:30,h:45});
 const townPhysics=WorldPhysics.create({width:W,height:H,radius:10,obstacles:townObstacles});
@@ -48,7 +53,7 @@ function walkToPortal(){heldDirections.clear();beginManualMovement();moveHero(wa
 function portalCrossing(){if(!enteringPortal&&Math.abs(hero.x-homePortal.x)<24&&Math.abs(hero.y-homePortal.y)<20)enterPortal();}
 function drawHomePortal(){if(!images.portal)return;const f=motionOff()?0:Math.floor(time*10)%8;ctx.drawImage(images.portal,f%4*240,Math.floor(f/4)*320,240,320,homePortal.x-90,homePortal.y-238,180,240);ctx.font='13px Inter';ctx.textAlign='center';ctx.fillStyle='#e7d390';ctx.fillText('ENTER THE VEIL',homePortal.x,homePortal.y+24);}
 function castPointer(x,y){heldDirections.clear();route=null;spell={x,y,age:0,delay:0,duration:apocalipsis.duration,hit:false};hero.dir=heading(x-hero.x,y-hero.y);setAim(false);requestDraw();}
-const treasures = [{x:914,y:505},{x:1255,y:745},{x:990,y:755}].map(p => ({...p,collected:false}));
+const treasures = [{x:914,y:505},{x:1255,y:745},{x:990,y:755}].map(p => ({...onTownGrid(p),collected:false}));
 const ground = document.createElement('canvas');
 ground.width = W; ground.height = H;
 let groundReady = false;
@@ -122,7 +127,9 @@ function positionLabels() {
     k.button.querySelector('.keeper-hit').style.height = `${Math.round(64*scale)}px`;
   }
   const p = screen(hero);
-  $('#player-label').style.transform = `translate3d(${Math.round(p.x)}px,${Math.round(p.y+3)}px,0) translateX(-50%)`;
+  const crowded=keepers.some(k=>{const q=screen(k);return Math.abs(q.x-p.x)<100&&Math.abs(q.y-p.y)<50;});
+  $('#player-label').style.transform=crowded?`translate3d(${Math.round(p.x)}px,${Math.round(p.y-77*scale)}px,0) translate(-50%,-100%)`:`translate3d(${Math.round(p.x)}px,${Math.round(p.y+3)}px,0) translateX(-50%)`;
+  $('#player-label').dataset.placement=crowded?'above':'below';
   const destination = screen(spots[current]);
   $('#keeper-reply').style.transform = `translate3d(${Math.round(destination.x)}px,${Math.round(destination.y-64*scale-58)}px,0) translate(-50%,-100%)`;
 }
@@ -155,15 +162,15 @@ async function load() {
 }
 function buildGround() {
   const c=ground.getContext('2d'); c.imageSmoothingEnabled=false;
-  c.fillStyle=images.grass?c.createPattern(images.grass,'repeat'):'#33472a';
-  c.fillRect(0,0,W,H);
+  for(let y=0;y<H;y+=TOWN_TILE)for(let x=0;x<W;x+=TOWN_TILE)c.drawImage(images.grass,x,y,TOWN_TILE,TOWN_TILE);
   const road=(x,y,w,h) => {
+    x=Math.floor(x/TOWN_TILE)*TOWN_TILE;y=Math.floor(y/TOWN_TILE)*TOWN_TILE;w=Math.ceil(w/TOWN_TILE)*TOWN_TILE;h=Math.ceil(h/TOWN_TILE)*TOWN_TILE;
     c.save(); c.beginPath(); c.rect(x,y,w,h); c.clip();
-    for(let yy=Math.floor(y/40)*40;yy<y+h;yy+=40) for(let xx=Math.floor(x/40)*40;xx<x+w;xx+=40) c.drawImage(images.path,xx,yy,40,40);
+    for(let yy=y;yy<y+h;yy+=TOWN_TILE) for(let xx=x;xx<x+w;xx+=TOWN_TILE) c.drawImage(images.path,xx,yy,TOWN_TILE,TOWN_TILE);
     c.restore();
   };
   road(735,455,88,340); road(785,447,473,76); road(853,475,86,290); road(855,665,400,82); road(1075,320,165,177); road(757,397,145,105);
-  for(let y=195;y<350;y+=40) for(let x=1055;x<1335;x+=40) c.drawImage(images.stone,x,y,40,40);
+  for(let y=192;y<352;y+=TOWN_TILE) for(let x=1056;x<1344;x+=TOWN_TILE) c.drawImage(images.stone,x,y,TOWN_TILE,TOWN_TILE);
   const shade=c.createRadialGradient(1000,500,200,980,500,780);
   shade.addColorStop(0,'#dbc58308'); shade.addColorStop(1,'#0a190dbb');
   c.fillStyle=shade; c.fillRect(0,0,W,H); groundReady=true;
@@ -595,4 +602,4 @@ document.addEventListener('visibilitychange',()=>{
 motionPreference.addEventListener('change',setMotionState);
 setMotionState();resize();load();
 
-window.addEventListener('pageshow',()=>{if(enteringPortal){document.querySelector('#portal-transition')?.remove();$('#world').classList.remove('entering-portal');enteringPortal=false;hero.x=870;hero.y=470;route=null;resize();requestDraw();}});
+window.addEventListener('pageshow',()=>{if(enteringPortal){document.querySelector('#portal-transition')?.remove();$('#world').classList.remove('entering-portal');enteringPortal=false;hero.x=spots.home.land.x;hero.y=spots.home.land.y;route=null;resize();requestDraw();}});

@@ -34,3 +34,10 @@ No AO Web code or artwork was copied; its root licence was not verified. Approve
 
 ## Validation
 node --test tests/*.test.cjs: 63 passing tests covering navigation, cardinal movement, collision/pathfinding, camera positioning, input modes, spell targeting, mana, bot spell/dodge behavior, essence pickup/drop/recovery, shared tile centers, sprite draw anchoring, proximity banking conservation/interruption, stream rendering, pause/help and restart. Controller tests use mocked DOM/canvas. Real-browser visual/mobile QA remains unverified because local preview access and hosted authentication were unavailable.
+
+## Home anchors and auto-potions
+Home now uses the same 32-unit tile centers for its characters, keeper destinations, scenery and light pickups, with terrain drawn on that grid. The player name stays horizontally anchored but moves above the head near overlapping keeper labels, addressing the supplied screenshot's YOU/Home overlap.
+
+The demo camera shows a closer view (about 30% larger at typical desktop sizes), and actor feet are aligned to their logical anchors. Separate auto-life (at 50%) and auto-mana (at 30%) toggles start enabled, with ten potions of each per run. Potions restore 40 life / 50 mana with an 0.8-second per-type cooldown, never exceed the cap, and cannot revive a dead character. Inventory buttons allow manual use. Stock and toggles are visible; restarts replenish the tutorial supply. These are demo balancing choices.
+
+Original RAO HUD potion artwork reused from rao-client 44913d6003f3bbae9792f3a74cf781bdb6680847, assets/interface/icons/potion_hp.png and potion_mana.png; source bytes verified against Git blob hashes. Final suite: 69 passing tests. Visual browser QA remains unverified.
