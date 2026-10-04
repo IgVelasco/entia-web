@@ -32,3 +32,12 @@ References inspected read-only:
 - Local pinned RAO InputController.gd / InputEventController.gd / CombatActionController.gd: macro arms cursor; bare click does not attack; Escape cancels and facing governs melee
 
 No AO Web code or artwork was copied. The supplied aoweb repository had no verified root licence; its runtime combat settings were not assumed to equal the older argentumonlineweb-cliente defaults. Tutorial cost, cooldown and bot balance remain illustrative rather than claimed server parity.
+
+## Right-hand HUD, banking and casting rivals
+Life/mana, carried/secured balances, a Spells/Inventory tabset and action buttons now live in the right-hand character panel. On narrow phones that panel is a right-hand drawer opened with Character; compact life/mana remains on the playfield. Full controls and instructions are in the pause/how-to-play dialog, automatically shown on entry. Gameplay pauses while those instructions are open.
+
+Banking now opens a modal only within the shrine's demo range. It shows both balances, an editable integer amount, All and Confirm deposit. Pending deposits block repeat submissions. Partial deposits preserve the remainder; invalid/excess amounts and remote submissions are rejected. Closing before completion cancels without transferring essence. This adapts RAO's selection/quantity/feedback pattern; it is not a production essence-bank port or real server confirmation.
+
+Bots launch telegraphed Apocalipsis casts at the player's marked location, for gentle 12-health hits with a 2.4-second recovery. The safe refuge remains protected. Player targets still take 2–3 successful hits. New low stone coffer and independent crystal assets replace the tall shrine and cropped crystal. The wide green sanctuary overlay is removed. The coffer is rendered from its tight source-object crop to avoid most of the generated outer halo; source alpha remains unchanged.
+
+Final automated suite: 62 passing tests. Real-browser visual/mobile QA remains unverified. No connected multiplayer backend has been built or implied.
