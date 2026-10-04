@@ -85,3 +85,5 @@ for(const kind of ['life','mana']){const button=$('#macro-'+kind),key='pointer-'
 
 document.addEventListener('click',e=>{const link=e.target.closest('a[href="../#home"]');if(link&&embedded&&!e.ctrlKey&&!e.metaKey&&!e.shiftKey){e.preventDefault();returnToNix();}});
 window.addEventListener('message',e=>{if(!embedded||e.source!==window.parent||e.origin!==window.location.origin)return;if(e.data?.type==='entia-demo-activate'){hostSuspended=false;previous=performance.now();schedule();}else if(e.data?.type==='entia-demo-pause'){hostSuspended=true;clear();showHelp();if(raf)cancelAnimationFrame(raf);raf=0;}else if(e.data?.type==='entia-demo-resume'){hostSuspended=false;if(returning||M.nearGate(state)){state.player.x=M.gateway.x+128;state.player.y=M.gateway.y;state.player.step=null;}returning=false;hideHelp();}});
+
+for(const surface of [canvas,$('#macro-life'),$('#macro-mana'),$('#macro-spell')])surface.addEventListener('contextmenu',event=>event.preventDefault());
