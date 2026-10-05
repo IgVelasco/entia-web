@@ -306,7 +306,7 @@ function tick(now) {
   const dt=Math.min((now-last)/1000||0,.04);last=now;
   if(!motionOff()){
     time+=dt;
-    if(!enteringPortal)advanceMovement(dt);
+    if(!enteringPortal&&!$('#character-dialog').open)advanceMovement(dt);
     advanceSpell(dt);
     rings=rings.filter(r=>(r.age+=dt)<r.duration);
     for(const n of [...npcs,...keepers]){
@@ -594,7 +594,7 @@ $('#close-notes').onclick=()=>$('#notes').close();
 $('#retry-load').onclick=load;
 document.addEventListener('keydown',event=>{
   if(enteringPortal||demoOpen)return;
-  if(event.altKey||event.ctrlKey||event.metaKey||event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')||$('#notes').open)return;
+  if(event.altKey||event.ctrlKey||event.metaKey||event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')||$('#notes').open||$('#character-dialog').open)return;
   const movementKey=event.key.length===1?event.key.toLowerCase():event.key;
   if(Object.hasOwn(movementKeys,movementKey)){
     if(!ready)return;
@@ -635,3 +635,5 @@ motionPreference.addEventListener('change',setMotionState);
 setMotionState();resize();load();
 
 window.addEventListener('pageshow',()=>{if(enteringPortal){document.querySelector('#portal-transition')?.remove();$('#world').classList.remove('entering-portal');enteringPortal=false;hero.x=spots.home.land.x;hero.y=spots.home.land.y;route=null;resize();requestDraw();}});
+
+window.EntiaCharacter?.mount({assets:'assets/',onChange:value=>{hero.body=value.body;setGameText($('#player-label span'),value.name);requestDraw();},onOpen:()=>{clearMovementInput();route=null;setAim(false);},onClose:()=>requestDraw()});

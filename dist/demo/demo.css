@@ -9,3 +9,5 @@ main{grid-template-columns:minmax(0,1fr) clamp(276px,24vw,360px);gap:0}aside{bac
 
 @media(max-width:760px), (pointer:coarse) and (max-height:500px){.inventory-grid{grid-template-columns:repeat(6,minmax(40px,1fr));grid-template-rows:repeat(6,44px);overflow:auto;min-height:0;max-height:280px}.item-slot{min-height:44px}.inventory-footer button{min-height:44px}.hud-open .mobile-controls,.hud-open .macrobar{visibility:hidden}}@media(max-width:360px){.inventory-grid{grid-template-columns:repeat(5,minmax(40px,1fr));grid-template-rows:none;grid-auto-rows:44px}}
 .macrobar,.macrobar *,.dpad,.dpad *,#cast,#game{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}.macrobar button{touch-action:none}
+
+#interact.pickup-ready{background:#d8ec9c;color:#15250e;border:2px solid #eeffbf;box-shadow:0 0 20px #bbea6266;font-weight:700;min-height:48px}.interact-area:has(.pickup-ready){z-index:8}
