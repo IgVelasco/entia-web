@@ -99,3 +99,9 @@ Confirmed layout cause: armed target help used display:none while unarmed inside
 - Preserve the held direction outside arrow bounds until pointer release/cancel/lost capture or existing lifecycle cleanup. Entering a different arrow still switches direction. Secondary casting release cannot clear the movement pointer.
 - Mobile notices now sit at the lower playfield edge; long objective prose is hidden to reduce obstruction. Notice geometry remains absolute and bounded, so it does not resize the camera.
 - 113 automated tests pass, including drift and secondary-finger release. Physical iPhone acceptance is still pending; this does not prove every possible movement interruption is resolved.
+
+## Mobile joystick and underfoot life bars — October 5
+- Added a captured thumb joystick with a 9px centre dead zone, four-direction steering, diagonal-boundary hysteresis, bounded thumb travel and independent pointer ownership. Release, cancellation, lost capture and lifecycle cleanup recenter it; a second casting finger cannot take it over.
+- Existing directional controls are visually hidden behind the joystick for the compact presentation. Desktop WASD/arrows remain unchanged.
+- Red life bars with a dark outline and muted gold frame now render below the feet for player and living rivals. Names remain above actors. This matches the demo HUD palette; it is not a claim of exact production-client bar geometry.
+- 116 automated tests pass, including joystick centre/drag/cancel and health-bar fill geometry. Physical Safari acceptance remains pending.
