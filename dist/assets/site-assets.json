@@ -9,17 +9,17 @@
     "tree": "tree.png",
     "pine": "pine.png",
     "tree2": "tree2.png",
-    "house": "house-ochre.png",
-    "house2": "house-slate.png",
+    "house": "house-ochre.png?v=grounded1",
+    "house2": "house-slate.png?v=grounded1",
     "apocalipsis": "apocalipsis_60.png",
     "portal": "portal.png",
-    "houseFloor": "house-floor.png",
-    "houseFacade": "house-ochre-facade.png",
-    "house2Facade": "house-slate-facade.png",
-    "houseRoof": "house-ochre-roof.png",
-    "house2Roof": "house-slate-roof.png",
-    "houseSteps": "house-steps.png",
-    "houseInterior": "house-interior-walls-v1.png"
+    "houseFloor": "house-floor.png?v=grounded1",
+    "houseFacade": "house-ochre-facade.png?v=grounded1",
+    "house2Facade": "house-slate-facade.png?v=grounded1",
+    "houseRoof": "house-ochre-roof.png?v=grounded1",
+    "house2Roof": "house-slate-roof.png?v=grounded1",
+    "houseSteps": "house-steps.png?v=grounded1",
+    "houseInterior": "house-interior-walls-v1.png?v=grounded1"
   },
   "source_sha": "410676cc2e11170c494ad90eb160944ce8d635cf",
   "spell_source": {
@@ -55,6 +55,7 @@
     ],
     "note": "Generated redesigned art; website entrance collisions, not imported RAO map collision data.",
     "lintel_source_y": 495,
-    "roof_fade_seconds": 0.22
+    "roof_fade_seconds": 0.22,
+    "style": "Grounded weathered umber and muted slate, reduced saturation and flatter material shading"
   }
 }

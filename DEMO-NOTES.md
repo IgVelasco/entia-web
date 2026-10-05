@@ -128,3 +128,8 @@ Confirmed layout cause: armed target help used display:none while unarmed inside
 - Ground floor/interior/stairs paint before actors; structural facade remains sorted; independent roof overlays fade. Fixes stair pixels occluding character.
 - Moved decorative second house from east to x432,y640 so Game character/route stay clear; it remains closed/background while primary house is accessible.
 - 122 automated tests pass including route through entrance, wall blocking, roof timing/reversal and reduced motion. Offline layered composition visually inspected. No live browser/iPhone acceptance claimed.
+
+## Grounded house style — October 5
+- Replaced the approved house surface art with muted weathered umber and slate variants, flatter shingles and more restrained wood/stone. Interior/floor palette adjusted to match, geometry/alpha preserved there.
+- Door clearance reconciled to x270–389,y495–638; steps remain ground-layer y639 onward. Roof/facade/stair recomposition exact. Canvas480×683 remains; source-style candidate silhouette retains minor roof-peak differences from the previous artwork.
+- Existing movement, collision, roof fade and accessibility behavior retained; 122 tests pass. Asset split and visual style inspected; no physical device acceptance claimed.
