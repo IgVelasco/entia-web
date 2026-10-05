@@ -120,3 +120,11 @@ Confirmed layout cause: armed target help used display:none while unarmed inside
 - Independent 60×60 wood tile fills the floor and two-tile entrance on the town grid. Building baselines use tile edges, while actor anchors stay on tile centres.
 - Website obstacles now leave a two-tile entrance/steps recess between solid front walls, stopping before the roofed building body. This is a website collision model, not imported RAO game map collision or a new explorable interior.
 - 119 automated tests pass, including house scale and blocked-wall/open-door checks; all referenced assets verified present, both house alpha masks identical. No physical iPhone/browser visual acceptance claimed.
+
+## Walkable house and roof reveal — October 5
+- Lowered entrance hood/lintel by 40 source pixels to roughly 9 world units over actual visible character height at the threshold. Main roof unchanged in proportion; exact separate roof, facade and stairs overlays recompose the full sprite.
+- The accessible house has perimeter walls and a walkable 7×4 room, joined by its two-tile doorway. Generated warm-log interior includes a back-left stone fireplace based on RAO source references, with no invented furniture.
+- Roof opacity follows player tile entry/exit, linearly to 0/1 in 0.22s, matching RAO RoofPresentationState duration and full fade. Local website region approximates the corresponding room/upper-door trigger zone, not a general RAO trigger importer. Reduced motion snaps.
+- Ground floor/interior/stairs paint before actors; structural facade remains sorted; independent roof overlays fade. Fixes stair pixels occluding character.
+- Moved decorative second house from east to x432,y640 so Game character/route stay clear; it remains closed/background while primary house is accessible.
+- 122 automated tests pass including route through entrance, wall blocking, roof timing/reversal and reduced motion. Offline layered composition visually inspected. No live browser/iPhone acceptance claimed.

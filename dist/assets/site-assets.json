@@ -13,7 +13,13 @@
     "house2": "house-slate.png",
     "apocalipsis": "apocalipsis_60.png",
     "portal": "portal.png",
-    "houseFloor": "house-floor.png"
+    "houseFloor": "house-floor.png",
+    "houseFacade": "house-ochre-facade.png",
+    "house2Facade": "house-slate-facade.png",
+    "houseRoof": "house-ochre-roof.png",
+    "house2Roof": "house-slate-roof.png",
+    "houseSteps": "house-steps.png",
+    "houseInterior": "house-interior-walls-v1.png"
   },
   "source_sha": "410676cc2e11170c494ad90eb160944ce8d635cf",
   "spell_source": {
@@ -47,6 +53,8 @@
       120,
       44
     ],
-    "note": "Generated redesigned art; website entrance collisions, not imported RAO map collision data."
+    "note": "Generated redesigned art; website entrance collisions, not imported RAO map collision data.",
+    "lintel_source_y": 495,
+    "roof_fade_seconds": 0.22
   }
 }

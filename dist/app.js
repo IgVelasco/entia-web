@@ -29,7 +29,7 @@ const npcs = [
   {x: 742, y: 565, body: 'rogue', dir: 0, way: [[742,565],[742,625],[815,625],[815,565]], idx: 1, gait: 0, reaction: 0}
 ];
 const scenery = [
-  {id:'house',x:775,y:390,w:256,h:683*32/60}, {id:'house2',x:1250,y:630,w:256,h:683*32/60},
+  {id:'house',x:775,y:390,w:256,h:683*32/60}, {id:'house2',x:432,y:640,w:256,h:683*32/60,decorative:true},
   {id:'tree',x:595,y:265,w:235,h:294}, {id:'pine',x:437,y:325,w:240,h:240}, {id:'tree2',x:1360,y:282,w:255,h:320},
   {id:'pine',x:1385,y:640,w:280,h:280}, {id:'tree',x:652,y:865,w:260,h:325}, {id:'tree2',x:325,y:750,w:310,h:387},
   {id:'tree',x:555,y:115,w:225,h:282}, {id:'pine',x:960,y:142,w:200,h:200}, {id:'tree2',x:1395,y:890,w:250,h:312}
@@ -39,9 +39,13 @@ for(const p of scenery){p.x=townTileCenter(p.x);p.y=p.id.startsWith('house')?Mat
 const homePortal=onTownGrid({x:1010,y:420});
 // Both variants use 60 source pixels per 32-unit tile. The entrance is two tiles wide.
 function houseBounds(s){const left=s.x-s.w/2;return {left,doorX:left+144,front:s.y-64};}
-const townObstacles=scenery.flatMap(s=>{if(!s.id.startsWith('house'))return [{x:s.x-22,y:s.y-28,w:44,h:38}];const b=houseBounds(s);return [{x:b.left,y:s.y-192,w:256,h:128},{x:b.left,y:b.front,w:144,h:64},{x:b.doorX+64,y:b.front,w:48,h:64}];});
+const townObstacles=scenery.flatMap(s=>{if(!s.id.startsWith('house'))return [{x:s.x-22,y:s.y-28,w:44,h:38}];const b=houseBounds(s);if(s.decorative)return [{x:b.left,y:s.y-192,w:256,h:192}];return [{x:b.left,y:s.y-208,w:256,h:16},{x:b.left,y:s.y-192,w:16,h:128},{x:b.left+240,y:s.y-192,w:16,h:128},{x:b.left,y:b.front,w:144,h:64},{x:b.doorX+64,y:b.front,w:48,h:64}];});
 townObstacles.push({x:homePortal.x-74,y:homePortal.y-35,w:30,h:45},{x:homePortal.x+44,y:homePortal.y-35,w:30,h:45});
 const townPhysics=WorldPhysics.create({width:W,height:H,radius:10,obstacles:townObstacles});
+const houses=scenery.filter(s=>s.id.startsWith('house'));
+for(const house of houses)house.roofAlpha=1;
+function insideHouse(house,actor=hero){if(house.decorative)return false;const b=houseBounds(house),x=townTileCenter(actor.x),y=townTileCenter(actor.y);return x>=b.left+16&&x<b.left+240&&y>=house.y-192&&y<house.y-32;}
+function updateHouseRoofs(dt){for(const house of houses){const target=insideHouse(house)?0:1,change=Math.max(0,dt)/.22;house.roofAlpha=motionOff()?target:target<house.roofAlpha?Math.max(target,house.roofAlpha-change):Math.min(target,house.roofAlpha+change);}}
 let enteringPortal=false,demoOpen=false,demoFrameStarted=false,demoCloseEpoch=0,demoEverOpened=false,demoLoaded=false,demoFailed=false,demoExitPending=false,demoHistoryOwned=false,portalReentryBlocked=false;
 let demoReturnHash="#home",demoLoadTimer=0;
 function enterPortal(){
@@ -185,7 +189,7 @@ async function load() {
   $('#retry-load').hidden=true;
   $('#loading p').textContent='Opening the gates of Nix…';
   try {
-    const response = await fetch('assets/site-assets.json?v=houses2');
+    const response = await fetch('assets/site-assets.json?v=interiors1');
     if(!response.ok) throw new Error('Asset manifest unavailable');
     const assets = await response.json();
     await Promise.all(Object.entries(assets.images).map(async ([key,file]) => images[key] = await loadImage('assets/'+file)));
@@ -212,6 +216,7 @@ function buildGround() {
   road(735,455,88,340); road(785,447,473,76); road(853,475,86,290); road(855,665,400,82); road(1075,320,165,177); road(757,397,145,105);
   for(let y=192;y<352;y+=TOWN_TILE) for(let x=1056;x<1344;x+=TOWN_TILE) c.drawImage(images.stone,x,y,TOWN_TILE,TOWN_TILE);
   for(const house of scenery.filter(s=>s.id.startsWith('house'))){const b=houseBounds(house);for(let y=house.y-192;y<house.y-64;y+=TOWN_TILE)for(let x=b.left+16;x<b.left+240;x+=TOWN_TILE)c.drawImage(images.houseFloor,x,y,TOWN_TILE,TOWN_TILE);for(let y=b.front;y<house.y;y+=TOWN_TILE)for(let x=b.doorX;x<b.doorX+64;x+=TOWN_TILE)c.drawImage(images.houseFloor,x,y,TOWN_TILE,TOWN_TILE);}
+  for(const h of houses){c.drawImage(images.houseInterior,h.x-h.w/2,h.y-h.h,h.w,h.h);c.drawImage(images.houseSteps,h.x-h.w/2,h.y-h.h,h.w,h.h);}
   const shade=c.createRadialGradient(1000,500,200,980,500,780);
   shade.addColorStop(0,'#dbc58308'); shade.addColorStop(1,'#0a190dbb');
   c.fillStyle=shade; c.fillRect(0,0,W,H); groundReady=true;
@@ -283,6 +288,7 @@ function advanceSpell(dt) {
 }
 function draw() {
   if(!ready)return;
+  if(motionOff())updateHouseRoofs(0);
   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#102017';ctx.fillRect(0,0,width,height);
   ctx.translate(ox,oy);ctx.scale(scale,scale);ctx.imageSmoothingEnabled=false;
   if(!groundReady)buildGround();ctx.drawImage(ground,0,0);
@@ -291,9 +297,10 @@ function draw() {
   for(const a of layers){
     if(a.type==='portal'){drawHomePortal();}else if(a.type==='scenery'){
       ellipse(a.x+15,a.y+7,a.w*.38,a.w*.1,'#07130c40');
-      ctx.drawImage(images[a.id],a.x-a.w/2,a.y-a.h,a.w,a.h);
+      ctx.drawImage(images[a.id.startsWith('house')?a.id+'Facade':a.id],a.x-a.w/2,a.y-a.h,a.w,a.h);
     }else drawActor(a);
   }
+  for(const h of houses){if(h.roofAlpha<=0)continue;ctx.globalAlpha=h.roofAlpha;ctx.drawImage(images[h.id+'Roof'],h.x-h.w/2,h.y-h.h,h.w,h.h);ctx.globalAlpha=1;}
   drawSpell();
   if(!motionOff())for(let i=0;i<12;i++){
     const x=690+(i*83)%650+Math.sin(time*.2+i)*12,y=255+(i*61)%480+Math.cos(time*.3+i)*8;
@@ -328,7 +335,7 @@ function tick(now) {
     const blend=1-Math.exp(-dt*7);
     camera.x+=(camera.targetX-camera.x)*blend;camera.y+=(camera.targetY-camera.y)*blend;
   }
-  viewport();positionLabels();draw();
+  updateHouseRoofs(dt);viewport();positionLabels();draw();
   if(!motionOff())requestDraw();
 }
 function reactToArrival(place) {

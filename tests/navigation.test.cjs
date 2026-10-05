@@ -38,7 +38,7 @@ async function village({reduced=false, hash='',width=1440,height=820}={}) {
   context.WorldPhysics=context.window.WorldPhysics;
   vm.runInContext(readFileSync(join(__dirname,'../dist/app.js'),'utf8'),context);
   await new Promise(resolve=>setImmediate(resolve));
-  const api=vm.runInContext(`({go,advanceRoute,advanceSpell,drawSpell,drawActor,restoreHash,advanceMovement,isWalkable,houseBounds,townPhysics,
+  const api=vm.runInContext(`({go,advanceRoute,advanceSpell,drawSpell,drawActor,restoreHash,advanceMovement,isWalkable,houseBounds,townPhysics,houses,insideHouse,updateHouseRoofs,
     pause(){paused=true;setMotionState();},
     reduced(value){motionPreference.matches=value;setMotionState();},
     finish(){for(let i=0;i<500&&route;i++)advanceRoute(.1);},
@@ -209,7 +209,7 @@ test('keyboard walking stops at buildings and map boundaries',async()=>{
   const {api,key}=await village();
   key('keydown','ArrowRight');for(let i=0;i<30;i++)api.advanceMovement(.2);
   key('keyup','ArrowRight');
-  assert.ok(api.state().x<=1410);assert.equal(api.isWalkable(1250,580),false);assert.equal(api.state().route,false);
+  assert.ok(api.state().x<=1410);assert.equal(api.isWalkable(432,580),false);assert.equal(api.state().route,false);
   key('keydown','ArrowDown');for(let i=0;i<30;i++)api.advanceMovement(.2);
   key('keyup','ArrowDown');
   assert.ok(api.state().y<=870);assert.equal(api.state().route,false);
@@ -378,4 +378,8 @@ test('phone overview retains all four actor areas while navigating each zone',as
 
 test('home popup has a slower translucent reveal and preserves reduced motion',()=>{const css=readFileSync(join(__dirname,'../dist/style.css'),'utf8');assert(css.includes('zone-reveal 1.1s ease-out'));assert(css.includes('background:rgba(14,33,26,.84)'));assert(css.includes('#zone-dialog[open],#zone-dialog[open]::backdrop{animation:none}'));});
 
-test('both house variants have equal native tile scale and open two-tile entrances',async()=>{const v=await village();for(const h of v.api.townEntities().filter(p=>p.id?.startsWith('house'))){assert.equal(h.w,256);assert.equal(h.h,683*32/60);const b=v.api.houseBounds(h);assert.equal(b.doorX%32,0);for(const x of [b.doorX+16,b.doorX+48]){assert(v.api.townPhysics.free(x,h.y-16));assert(v.api.townPhysics.free(x,h.y-48));}assert(!v.api.townPhysics.free(b.doorX-16,h.y-16));assert(!v.api.townPhysics.free(b.doorX+80,h.y-16));assert(!v.api.townPhysics.free(b.doorX+16,h.y-80));}});
+test('both house variants have equal native tile scale and open two-tile entrances',async()=>{const v=await village();for(const h of v.api.townEntities().filter(p=>p.id?.startsWith('house')&&!p.decorative)){assert.equal(h.w,256);assert.equal(h.h,683*32/60);const b=v.api.houseBounds(h);assert.equal(b.doorX%32,0);for(const x of [b.doorX+16,b.doorX+48]){assert(v.api.townPhysics.free(x,h.y-16));assert(v.api.townPhysics.free(x,h.y-48));}assert(!v.api.townPhysics.free(b.doorX-16,h.y-16));assert(!v.api.townPhysics.free(b.doorX+80,h.y-16));assert(v.api.townPhysics.free(b.doorX+16,h.y-80));}});
+
+test('house interior is reachable through the doorway, walls remain solid and roof fades in 220ms',async()=>{const v=await village();const h=v.api.houses.find(h=>!h.decorative),b=v.api.houseBounds(h);const outside={x:b.doorX+16,y:h.y+16},inside={x:b.doorX+16,y:h.y-112};const path=v.api.townPhysics.path(outside,inside);assert(path.length);assert(!v.api.townPhysics.free(b.left+8,h.y-100));assert(!v.api.townPhysics.free(b.left+248,h.y-100));assert(!v.api.townPhysics.free(b.left+100,h.y-200));v.api.placeHero(inside.x,inside.y);assert(v.api.insideHouse(h));v.api.updateHouseRoofs(.11);assert(Math.abs(h.roofAlpha-.5)<1e-9);v.api.updateHouseRoofs(.11);assert.equal(h.roofAlpha,0);v.api.placeHero(outside.x,outside.y);v.api.updateHouseRoofs(.22);assert.equal(h.roofAlpha,1);});
+test('decorative left house stays closed and does not cover the Game character',async()=>{const v=await village();const h=v.api.houses.find(h=>h.decorative),b=v.api.houseBounds(h),game=v.api.townEntities().find(p=>p.place==='arena');assert(h.x<600);assert(game.x>h.x+h.w/2);assert(!v.api.townPhysics.free(b.doorX+16,h.y-16));v.api.placeHero(b.doorX+16,h.y-100);v.api.updateHouseRoofs(1);assert.equal(h.roofAlpha,1);});
+test('reduced-motion house roof changes immediately',async()=>{const v=await village({reduced:true});const h=v.api.houses.find(h=>!h.decorative),b=v.api.houseBounds(h);v.api.placeHero(b.doorX+16,h.y-112);v.api.updateHouseRoofs(0);assert.equal(h.roofAlpha,0);});
