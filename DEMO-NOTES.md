@@ -109,3 +109,8 @@ Confirmed layout cause: armed target help used display:none while unarmed inside
 ## Underfoot mana bar — October 5
 - Added blue mana immediately beneath player life bar, reading the live mana value. Reuses the same bounded resource-bar drawing as life; bots do not fabricate a mana resource they do not simulate.
 - 117 automated tests pass including position, fill fraction and blue colour. User explicitly requested publication.
+
+## Softer home popup — October 5
+- Zone dialog/backdrop reveal 650ms to 1100ms; panel-content transition 220ms to 650ms.
+- Mobile popup background opacity 94% to 84%; lighter backdrop. Text remains opaque and reduced-motion overrides remain intact.
+- 118 tests pass. User requested publication alongside the change.

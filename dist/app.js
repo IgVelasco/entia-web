@@ -455,7 +455,7 @@ function setContent(place,{popup=false}={}) {
   if(!home){
     $('#panel-content').innerHTML=content(place).replace('<h2>','<h2 id="section-heading" tabindex="-1">');
     $('#panel').scrollTop=0;
-    if(!motionOff())$('#panel-content').animate([{opacity:.35,transform:'translateY(8px)'},{opacity:1,transform:'translateY(0)'}],{duration:220,easing:'cubic-bezier(.22,1,.36,1)'});
+    if(!motionOff())$('#panel-content').animate([{opacity:.35,transform:'translateY(8px)'},{opacity:1,transform:'translateY(0)'}],{duration:650,easing:'cubic-bezier(.22,1,.36,1)'});
   }
   if(popup)openZoneInfo(place);
   $('#location-name').textContent=spots[place].section;
