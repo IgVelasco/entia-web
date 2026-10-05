@@ -38,19 +38,19 @@ async function village({reduced=false, hash='',width=1440,height=820}={}) {
   context.WorldPhysics=context.window.WorldPhysics;
   vm.runInContext(readFileSync(join(__dirname,'../dist/app.js'),'utf8'),context);
   await new Promise(resolve=>setImmediate(resolve));
-  const api=vm.runInContext(`({go,advanceRoute,advanceSpell,drawSpell,drawActor,startGame,collectLight,restoreHash,advanceMovement,isWalkable,
+  const api=vm.runInContext(`({go,advanceRoute,advanceSpell,drawSpell,drawActor,restoreHash,advanceMovement,isWalkable,
     pause(){paused=true;setMotionState();},
     reduced(value){motionPreference.matches=value;setMotionState();},
     finish(){for(let i=0;i<500&&route;i++)advanceRoute(.1);},
     tick,viewport,walkToPortal,castPointer,showDemo,closeDemo,draw,ground,groundReady:()=>groundReady,
     demoState:()=>({open:demoOpen,loaded:demoLoaded,blocked:portalReentryBlocked}),
-    townEntities:()=>[hero,...keepers,...npcs,...scenery,homePortal,...treasures],
+    townEntities:()=>[hero,...keepers,...npcs,...scenery,homePortal],
     placeHero(x,y){hero.x=x;hero.y=y;viewport();positionLabels();},
     heroScreen:()=>screen(hero),viewportSize:()=>({width,height}),npcPositions:()=>npcs.map(n=>({x:n.x,y:n.y})),
     drawHero(){drawActor(hero);},
     drawKeeper(){drawActor(keepers[0]);},
     path:()=>route?.points,
-    state:()=>({ready,current,route:!!route,spell:!!spell,spellPlace:spell?.place,spellHit:spell?.hit,manual:route?.manual,explore:route?.explore,held:heldDirections.size,rings:rings.length,gait:hero.gait,dir:hero.dir,x:hero.x,y:hero.y,atPlace,game,collected,cameraX:camera.x,cameraTargetX:camera.targetX}),
+    state:()=>({ready,current,route:!!route,spell:!!spell,spellPlace:spell?.place,spellHit:spell?.hit,manual:route?.manual,explore:route?.explore,held:heldDirections.size,rings:rings.length,gait:hero.gait,dir:hero.dir,x:hero.x,y:hero.y,atPlace,cameraX:camera.x,cameraTargetX:camera.targetX}),
     groundPoint:(x,y)=>{const p=screen({x,y});return {clientX:p.x,clientY:p.y+80};},
     target:place=>spots[place].land,
     reaction:place=>keepers.find(k=>k.place===place).reaction,
@@ -150,12 +150,6 @@ test('history restores section state and content skip links do not navigate',asy
   assert.equal(api.state().current,'home');assert.equal(get('#panel').hidden,true);assert.equal(get('#intro').hidden,false);
 });
 
-test('leaving an essence collection cancels its pending reward',async()=>{
-  const {api}=await village();
-  api.startGame();api.collectLight(0);api.advanceRoute(.1);
-  api.go('gate');api.finish();
-  assert.equal(api.state().game,false);assert.equal(api.state().collected,0);assert.equal(api.state().atPlace,'gate');
-});
 
 
 test('Apocalipsis strikes the chosen keeper once and its burst expires',async()=>{
@@ -255,13 +249,6 @@ test('reduced motion supports deliberate single keyboard steps without starting 
   key('keydown','d',{repeat:true});assert.equal(api.state().x,start.x+32);
 });
 
-test('keyboard movement collects nearby lights without leaving the minigame',async()=>{
-  const {api,key,get}=await village();api.startGame();
-  key('keydown','d');key('keyup','d');api.advanceMovement(.2);
-  key('keydown','s');key('keyup','s');api.advanceMovement(.2);
-  assert.equal(api.state().game,true);assert.equal(api.state().collected,1);
-  assert.equal(get('#essence-count').textContent,'1 / 3 lights');
-});
 
 test('character clan tags use Now for the open section and concise destination context',async()=>{
   const {api}=await village();
@@ -271,11 +258,10 @@ test('character clan tags use Now for the open section and concise destination c
 });
 
 test('clicks inside the world no longer fall through to the world data-place attribute',async()=>{
-  const {api,get,listeners}=await village();api.startGame();
+  const {api,get,listeners}=await village();api.go('arena');
   const world=get('#world');world.dataset.place='home';
   listeners.click({target:{closest:selector=>selector==='[data-place]'?world:null},preventDefault(){}});
-  assert.equal(api.state().game,true);
-  assert.equal(get('#essence-game').hidden,false);
+  assert.equal(api.state().current,'arena');
 });
 
 test('ranking category clicks reach their own handler without restarting navigation',async()=>{
@@ -343,13 +329,6 @@ test('reduced motion and pausing a ground walk both resolve proximity at the end
   }
 });
 
-test('walking near characters does not interrupt collecting lights',async()=>{
-  const v=await village();v.api.startGame();westSide(v);
-  for(let i=0;i<6;i++)tap(v,'s');
-  assert.equal(v.api.state().game,true);assert.equal(v.api.state().current,'home');
-  assert.equal(v.get('#essence-game').hidden,false);assert.equal(v.get('#panel').hidden,true);
-  assert.deepEqual(v.historyCalls,[]);
-});
 
 
 test('world controls suppress native text gestures without suppressing navigation',async()=>{
@@ -392,3 +371,7 @@ test('app resume rebuilds lost terrain cache without resetting section or charac
 test('cached and visible canvas restore trigger rebuilding even with paused animation',async()=>{const v=await village();v.api.pause();v.api.draw();v.api.ground.events.contextlost({preventDefault(){}});assert.equal(v.api.groundReady(),false);v.api.ground.events.contextrestored();v.api.draw();assert(v.api.groundReady());v.get('#scene').events.contextlost({preventDefault(){}});v.get('#scene').events.contextrestored();assert.equal(v.api.groundReady(),false);v.api.draw();v.windowListeners.pageshow();assert.equal(v.api.groundReady(),false);});
 test('mobile zone popup opens and closes without moving the character home',async()=>{const v=await village({width:390,height:480});v.api.go('hall',{cast:true});assert(v.get('#zone-dialog').open);assert(v.api.state().spell);v.get('#close-zone').onclick();assert(!v.get('#zone-dialog').open);assert.equal(v.api.state().current,'hall');assert(v.api.state().route);});
 test('tapping a world character casts and starts its zone journey',async()=>{const v=await village();const target=v.api.townEntities().find(a=>a.place==='hall');v.clickGround(target.x,target.y-25);assert.equal(v.api.state().spellPlace,'hall');assert.equal(v.api.state().current,'hall');assert(v.api.state().route);});
+
+test('the old collect-lights minigame has no markup, entry points or runtime',()=>{const html=readFileSync(join(__dirname,'../dist/index.html'),'utf8'),js=readFileSync(join(__dirname,'../dist/app.js'),'utf8');assert(!html.includes('id="essence-game"'));assert(!html.includes('id="wander"'));assert(!js.includes('function startGame'));assert(!js.includes('Try collecting lights'));});
+
+test('phone overview retains all four actor areas while navigating each zone',async()=>{for(const width of [320,390,430]){const v=await village({width,height:480});for(const place of ['home','arena','hall','gate']){v.api.go(place,{instant:true});v.api.viewport();for(const k of v.api.townEntities().filter(a=>a.isKeeper)){const screen=v.api.groundPoint(k.x,k.y);assert(screen.clientX>=32&&screen.clientX<=width-32);assert(screen.clientY-80>=40&&screen.clientY-80<=420);}}}});

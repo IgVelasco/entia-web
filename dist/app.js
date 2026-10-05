@@ -10,7 +10,7 @@ const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
 let width = 0, height = 0, dpr = 1, scale = 1, ox = 0, oy = 0, zoom = 1;
 let time = 0, last = 0, frameRequest = 0, paused = false, ready = false;
 let images = {}, current = 'home', route = null, spell = null, rings = [], aiming = false;
-let atPlace = 'home', hovered = null, game = false, collected = 0, toastTimer, replyTimer;
+let atPlace = 'home', hovered = null, toastTimer, replyTimer;
 let nearbyPlace = null,zoneContent=null;
 const NEAR_ENTER = 72, NEAR_EXIT = 104;
 const camera = {x: 870, y: 470, targetX: 870, targetY: 470};
@@ -70,7 +70,7 @@ function closeDemo(changeHistory=true){
  // Closing the view never depends on joint iframe/browser history advancing.
  const epoch=++demoCloseEpoch;$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-pause'},location.origin);
  demoOpen=false;demoExitPending=false;enteringPortal=false;portalReentryBlocked=true;$('#app').inert=false;document.body.classList.remove('demo-open');
- if(changeHistory){current='home';game=false;atPlace=null;setContent('home');updateKeeperStates();$('#location-state').textContent='Back in Nix';if(location.hash==='#demo')window.history.replaceState(null,'','#home');}
+ if(changeHistory){current='home';atPlace=null;setContent('home');updateKeeperStates();$('#location-state').textContent='Back in Nix';if(location.hash==='#demo')window.history.replaceState(null,'','#home');}
  const host=$('#demo-host');host.classList.add('closing');
  if(motionOff())host.hidden=true;else setTimeout(()=>{if(epoch===demoCloseEpoch&&!demoOpen){host.hidden=true;host.classList.remove('closing');}},420);
  last=performance.now();resize();requestDraw();canvas.focus({preventScroll:true});
@@ -85,7 +85,6 @@ window.addEventListener('message',event=>{
 $('#demo-loading-back').onclick=()=>closeDemo(true);
 function drawHomePortal(){if(!images.portal)return;const f=motionOff()?0:Math.floor(time*10)%8;ctx.drawImage(images.portal,f%4*240,Math.floor(f/4)*320,240,320,homePortal.x-90,homePortal.y-238,180,240);ctx.font='13px Inter';ctx.textAlign='center';ctx.fillStyle='#e7d390';ctx.fillText('ENTER THE VEIL',homePortal.x,homePortal.y+24);}
 function castPointer(x,y){heldDirections.clear();route=null;spell={x,y,age:0,delay:0,duration:apocalipsis.duration,hit:false};hero.dir=heading(x-hero.x,y-hero.y);setAim(false);requestDraw();}
-const treasures = [{x:914,y:505},{x:1255,y:745},{x:990,y:755}].map(p => ({...onTownGrid(p),collected:false}));
 const ground = document.createElement('canvas');
 ground.width = W; ground.height = H;
 let groundReady = false;
@@ -138,11 +137,18 @@ for (const surface of [canvas, $('#locations'), $('#player-label'), $('#keeper-r
 function viewport() {
   const compact=width<=900, left=compact?0:clamp(width*.33,320,450);
   const sceneHeight=compact?Math.min(height,width<=600?480:570):height;
-  scale=WorldPhysics.presentationScale(width,zoom);
-  // The player stays centered in the playable surface, outside the content column.
-  camera.x=camera.targetX=hero.x;camera.y=camera.targetY=hero.y;
-  ox=left+(width-left)/2-hero.x*scale;
-  oy=sceneHeight/2-hero.y*scale;
+  if(compact){
+    // Fit all four destination actors and their labels; walking cannot pan one out of view.
+    const leftEdge=Math.min(...keepers.map(k=>k.x))-100,rightEdge=Math.max(...keepers.map(k=>k.x))+100;
+    const topEdge=Math.min(...keepers.map(k=>k.y))-115,bottomEdge=Math.max(...keepers.map(k=>k.y))+95;
+    scale=Math.min((width-32)/(rightEdge-leftEdge),(sceneHeight-76)/(bottomEdge-topEdge))*Math.min(1,zoom);
+    camera.x=camera.targetX=(leftEdge+rightEdge)/2;camera.y=camera.targetY=(topEdge+bottomEdge)/2;
+    ox=width/2-camera.x*scale;oy=(sceneHeight-44)/2-camera.y*scale;
+  }else{
+    scale=WorldPhysics.presentationScale(width,zoom);
+    camera.x=camera.targetX=hero.x;camera.y=camera.targetY=hero.y;
+    ox=left+(width-left)/2-hero.x*scale;oy=sceneHeight/2-hero.y*scale;
+  }
 }
 function resize() {
   const rect = canvas.getBoundingClientRect();
@@ -285,12 +291,6 @@ function draw() {
       ctx.drawImage(images[a.id],a.x-a.w/2,a.y-a.h,a.w,a.h);
     }else drawActor(a);
   }
-  if(game)for(let i=0;i<treasures.length;i++){
-    const p=treasures[i];if(p.collected)continue;
-    const bob=motionOff()?0:Math.sin(time*2.5+i)*4;
-    glow(p.x,p.y-12+bob,32,.9);
-    ctx.fillStyle='#d4edc7';ctx.beginPath();ctx.moveTo(p.x,p.y-22+bob);ctx.lineTo(p.x+5,p.y-12+bob);ctx.lineTo(p.x,p.y-2+bob);ctx.lineTo(p.x-5,p.y-12+bob);ctx.closePath();ctx.fill();
-  }
   drawSpell();
   if(!motionOff())for(let i=0;i<12;i++){
     const x=690+(i*83)%650+Math.sin(time*.2+i)*12,y=255+(i*61)%480+Math.cos(time*.3+i)*8;
@@ -387,7 +387,7 @@ function beginManualMovement() {
   }
   atPlace=null;spell=null;setAim(false);clearTimeout(replyTimer);$('#keeper-reply').hidden=true;
   $('#world').classList.remove('traveling');
-  $('#location-state').textContent=game?'Collect the three lights':'Exploring Nix';
+  $('#location-state').textContent='Exploring Nix';
   updateKeeperStates();
 }
 function startKeyboardStep(direction=[...heldDirections.values()].at(-1)) {
@@ -405,14 +405,11 @@ function advanceMovement(dt) {
 }
 function checkWalkingProgress() {
   portalCrossing();
-  if(!game)return;
-  treasures.forEach((light,index)=>{if(Math.hypot(light.x-hero.x,light.y-hero.y)<27)takeLight(index);});
-  if(collected===3&&Math.hypot(hero.x-spots.home.land.x,hero.y-spots.home.land.y)<27)go('home');
+
 }
 function checkNearbySection() {
   // Exploration opens content in place. Never redirect the walk, release held
-  // keys, cast a spell, or interrupt collecting lights to select a section.
-  if(game)return;
+  // keys or cast a spell to select a section.
   const distance=place=>Math.hypot(hero.x-spots[place].x,hero.y-spots[place].y);
   if(nearbyPlace&&distance(nearbyPlace)<=NEAR_EXIT){
     atPlace=nearbyPlace;$('#location-state').textContent='You are here';return;
@@ -453,7 +450,7 @@ function setContent(place,{popup=false}={}) {
   closeZoneInfo();
   const home=place==='home';
   $('#main-content').scrollTop=0;
-  $('#intro').hidden=!home;$('#panel').hidden=home;$('#essence-game').hidden=true;
+  $('#intro').hidden=!home;$('#panel').hidden=home;
   $('#world').classList.toggle('panel-open',!home);
   if(!home){
     $('#panel-content').innerHTML=content(place).replace('<h2>','<h2 id="section-heading" tabindex="-1">');
@@ -474,8 +471,7 @@ function go(place,{history:writeHistory=true,instant=false,announce=true,cast=fa
   nearbyPlace=null;
   heldDirections.clear();
   clearTimeout(toastTimer);$('#travel-toast').classList.remove('show');$('#travel-toast').textContent='';
-  const secured=game&&place==='home'&&collected===3;
-  game=false;$('#world').classList.remove('walking');
+  $('#world').classList.remove('walking');
   atPlace=null;current=place;setAim(false);clearTimeout(replyTimer);$('#keeper-reply').hidden=true;
   setContent(place,{popup:!instant&&ready});
   if(writeHistory && location.hash!=='#'+place)window.history.pushState(null,'','#'+place);
@@ -490,7 +486,7 @@ function go(place,{history:writeHistory=true,instant=false,announce=true,cast=fa
   }
   $('#location-state').textContent=`Walking to ${spots[place].section}…`;
   $('#world').classList.add('traveling');
-  moveHero(points,{instant:instant||!ready,complete:()=>{arrive(place,announce);if(secured)toast('All three lights carried home. Journey complete.');}});
+  moveHero(points,{instant:instant||!ready,complete:()=>{arrive(place,announce);}});
   updateKeeperStates();requestDraw();
 }
 function toast(message) {
@@ -519,37 +515,13 @@ function setMotionState() {
 
 const names=[['Aren','Ranger','4,820'],['Sombra','Mage','4,610'],['Elara','Warrior','4,380'],['Nox','Cleric','4,170'],['Kael','Paladin','3,960'],['Lyra','Bard','3,820'],['Corvus','Assassin','3,710'],['Mara','Druid','3,590'],['Rook','Warrior','3,460'],['Ash','Mage','3,310']];
 function content(place){
-  if(place==='arena')return `<span class="eyebrow">GAME · IN DEVELOPMENT</span><h2>PvP with something<br>at stake.</h2><p>Manual aiming. Distinct classes. Essence worth fighting for.</p><div class="steps"><div class="step"><div><h3>Find a fight.</h3><p>Meet in Nix, join the shared queue and vote for a match type.</p></div></div><div class="step"><div><h3>Carry essence.</h3><p>Earn essence from eligible kills. What you carry stays at risk.</p></div></div><div class="step"><div><h3>Bring it home.</h3><p>Deposit essence to secure it. Progress comes from active play.</p></div></div></div><div class="mode-list"><span>Free-for-all</span><span>Squads of three</span><span>Factions</span></div><p class="small-note">This is the planned game loop. Rules and availability are still in development.</p><button class="quiet" id="try-journey">Try collecting lights in Nix</button>`;
+  if(place==='arena')return `<span class="eyebrow">GAME · IN DEVELOPMENT</span><h2>PvP with something<br>at stake.</h2><p>Manual aiming. Distinct classes. Essence worth fighting for.</p><div class="steps"><div class="step"><div><h3>Find a fight.</h3><p>Meet in Nix, join the shared queue and vote for a match type.</p></div></div><div class="step"><div><h3>Carry essence.</h3><p>Earn essence from eligible kills. What you carry stays at risk.</p></div></div><div class="step"><div><h3>Bring it home.</h3><p>Deposit essence to secure it. Progress comes from active play.</p></div></div></div><div class="mode-list"><span>Free-for-all</span><span>Squads of three</span><span>Factions</span></div><p class="small-note">This is the planned game loop. Rules and availability are still in development.</p>`;
   if(place==='hall')return `<span class="eyebrow">RANKINGS</span><h2>Rankings preview</h2><p>Sample players and scores. Live rankings are not connected yet.</p><div class="tabs" role="group" aria-label="Ranking category"><button class="active" data-rank="essence" aria-pressed="true">Essence</button><button data-rank="support" aria-pressed="false">Support</button></div><div id="ranks">${rankRows('essence')}</div><p class="small-note">Categories, seasons and public profiles are still being designed.</p>`;
   if(place==='gate')return `<span class="eyebrow">DOWNLOAD</span><h2>Download Entia</h2><p>No game download is available in this preview.</p><div class="download-card"><span class="status">NOT AVAILABLE YET</span><h3>Entia for desktop</h3><p class="platform">The release build and supported platforms will be listed here.</p><button class="primary" disabled>Download unavailable</button></div><button class="quiet" data-place="arena">About the game</button>`;
   return '';
 }
 function rankRows(mode){const rows=mode==='support'?[names[3],names[5],names[7],names[1],names[8],names[4],names[0],names[2],names[9],names[6]]:names;return rows.map((n,i)=>`<div class="rank-row"><span class="rank-number">${String(i+1).padStart(2,'0')}</span><img class="rank-avatar" src="assets/portraits/${i%3}.png" alt=""><span class="rank-info"><b>${n[0]}</b><small>${n[1]}</small></span><span class="rank-score">${mode==='essence'?n[2]:Math.round(930-i*67).toLocaleString()}</span></div>`).join('');}
 
-function startGame() {
-  heldDirections.clear();
-  nearbyPlace=null;
-  route=null;spell=null;rings=[];atPlace=null;game=true;collected=0;
-  treasures.forEach(p=>p.collected=false);
-  setAim(false);$('#world').classList.remove('traveling','panel-open');$('#world').classList.add('walking');
-  $('#intro').hidden=true;$('#panel').hidden=true;$('#essence-game').hidden=false;
-  $('#location-state').textContent='Collect the three lights';updateKeeperStates();
-  $('#essence-count').textContent='0 / 3 lights';
-  for(const button of $$('[data-essence]')){button.disabled=false;button.textContent=`Light ${Number(button.dataset.essence)+1}`;}
-  toast('Walk to a light, click it, or use a Light button.');requestDraw();
-}
-function takeLight(index) {
-  const p=treasures[index];if(!game||!p||p.collected)return;
-  p.collected=true;collected++;
-  $('#essence-count').textContent=`${collected} / 3 lights`;
-  const button=$(`[data-essence="${index}"]`);button.textContent=`Light ${index+1} collected`;button.disabled=true;
-  if(collected===3)toast('All three collected. Return to Home.');requestDraw();
-}
-function collectLight(index) {
-  const p=treasures[index];if(!game||!p||p.collected)return;
-  heldDirections.clear();
-  moveHero(walkingPath(p),{complete:()=>takeLight(index)});
-}
 function focusContentIfNeeded(trigger) {
   // Keep navigation focus in place. Content links that disappear hand focus to the new section.
   if(trigger && $('#main-content').contains(trigger)){
@@ -565,8 +537,8 @@ document.addEventListener('click',event=>{
     $$('[data-rank]').forEach(b=>{b.classList.toggle('active',b===rank);b.setAttribute('aria-pressed',String(b===rank));});
     $('#ranks').innerHTML=rankRows(rank.dataset.rank);return;
   }
-  const light=event.target.closest('[data-essence]');if(light){collectLight(Number(light.dataset.essence));return;}
-  if(event.target.closest('#try-journey')){startGame();$('#main-content').focus({preventScroll:true});}
+
+
 });
 canvas.addEventListener('pointermove',event=>{canvas.style.cursor=aiming?'crosshair':'pointer';});
 canvas.addEventListener('click',event=>{
@@ -576,15 +548,15 @@ canvas.addEventListener('click',event=>{
   if(Math.abs(x-homePortal.x)<85&&y>homePortal.y-238&&y<homePortal.y+25){walkToPortal();return;}
   const keeper=keepers.find(k=>Math.hypot(k.x-x,(k.y-25)-y)<46);
   if(keeper){go(keeper.place,{cast:true});return;}
-  if(game){const index=treasures.findIndex(p=>!p.collected&&Math.hypot(p.x-x,p.y-y)<55);if(index>=0){collectLight(index);return;}}
+
   if(aiming){toast('Click Home, Game, Rankings or Download.');return;}
   if(isWalkable(x,y)){
     heldDirections.clear();beginManualMovement();
     moveHero(walkingPath({x,y}),{explore:true,complete:checkWalkingProgress});
   }
 });
-$('#wander').onclick=()=>{startGame();$('#main-content').focus({preventScroll:true});};
-$('#leave-game').onclick=()=>{go('home');$('#wander').focus({preventScroll:true});};
+
+
 $('#close-panel').onclick=()=>{if($('#zone-dialog').open){closeZoneInfo();return;}go('home');$('.nav[data-place="home"]').focus({preventScroll:true});};
 $('#spell').onclick=()=>setAim(!aiming);
 $('#motion').onclick=()=>{paused=!paused;setMotionState();};
@@ -612,7 +584,7 @@ document.addEventListener('keydown',event=>{
   }
   if(event.key==='Escape'){
     if(aiming){setAim(false);$('#spell').focus({preventScroll:true});}
-    else if(current!=='home'||game){go('home');$('.nav[data-place="home"]').focus({preventScroll:true});}
+    else if(current!=='home'){go('home');$('.nav[data-place="home"]').focus({preventScroll:true});}
     return;
   }
   if(event.key.toLowerCase()==='c'){event.preventDefault();setAim(!aiming,{focus:true});return;}
