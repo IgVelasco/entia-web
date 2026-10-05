@@ -105,3 +105,7 @@ Confirmed layout cause: armed target help used display:none while unarmed inside
 - Existing directional controls are visually hidden behind the joystick for the compact presentation. Desktop WASD/arrows remain unchanged.
 - Red life bars with a dark outline and muted gold frame now render below the feet for player and living rivals. Names remain above actors. This matches the demo HUD palette; it is not a claim of exact production-client bar geometry.
 - 116 automated tests pass, including joystick centre/drag/cancel and health-bar fill geometry. Physical Safari acceptance remains pending.
+
+## Underfoot mana bar — October 5
+- Added blue mana immediately beneath player life bar, reading the live mana value. Reuses the same bounded resource-bar drawing as life; bots do not fabricate a mana resource they do not simulate.
+- 117 automated tests pass including position, fill fraction and blue colour. User explicitly requested publication.
