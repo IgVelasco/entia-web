@@ -11,7 +11,7 @@ const gateway={x:176,y:464},banker={x:176,y:688};
 const obstacles=[{x:gateway.x-85,y:gateway.y-75,w:38,h:92},{x:gateway.x+47,y:gateway.y-75,w:38,h:92}];
 const bankObstacle={x:banker.x-47,y:banker.y-10,w:94,h:24};
 const physics=Physics.create({width:WIDTH,height:HEIGHT,minY:160,radius:RADIUS,obstacles});
-function create(){return {phase:'arena',selectedSpell:'apocalipsis',player:{x:304,y:432,dir:1,gait:0,hp:100,mana:100,immobilized:0},carried:0,secured:0,autopotEnabled:true,heldPotions:[],lifePotions:100,manaPotions:100,potionCooldown:0,potionAttackLockout:0,lifePulse:0,manaPulse:0,dropped:0,kills:0,bank:0,bankAmount:0,bankFraction:0,streamParticles:[],bankUnlocked:false,armed:false,meditating:false,meleeCooldown:0,cooldown:0,time:0,fx:[],drops:[],nextDrop:1,notice:'Prepare Apocalipsis with C, then click a rival. Stand on its dropped essence and press Q.',noticeId:1,flash:1,won:false,enemies:[
+function create(){return {phase:'arena',selectedSpell:'apocalipsis',damageTexts:[],player:{x:304,y:432,dir:1,gait:0,hp:100,mana:100,immobilized:0},carried:0,secured:0,autopotEnabled:true,heldPotions:[],lifePotions:100,manaPotions:100,potionCooldown:0,potionAttackLockout:0,lifePulse:0,manaPulse:0,dropped:0,kills:0,bank:0,bankAmount:0,bankFraction:0,streamParticles:[],bankUnlocked:false,armed:false,meditating:false,meleeCooldown:0,cooldown:0,time:0,fx:[],drops:[],nextDrop:1,notice:'Prepare Apocalipsis with C, then click a rival. Stand on its dropped essence and press Q.',noticeId:1,flash:1,won:false,enemies:[
  {name:'Wanderer',body:'rogue',x:496,y:368,homeX:496,homeY:368,hp:2,maxHp:2,reward:15,essence:15,immobilized:0,cleanseCooldown:0,dir:2,gait:0,wind:0,cooldown:1,respawn:0,kind:'ranged',speed:105},
  {name:'Keeper',body:'mage',x:912,y:560,homeX:912,homeY:560,hp:2,maxHp:2,reward:25,essence:25,immobilized:0,cleanseCooldown:0,dir:3,gait:0,wind:0,cooldown:1,respawn:0,kind:'ranged',speed:110},
  {name:'Sentinel',body:'hero',x:656,y:752,homeX:656,homeY:752,hp:3,maxHp:3,reward:30,essence:30,immobilized:0,cleanseCooldown:0,dir:0,gait:0,wind:0,cooldown:1,respawn:0,kind:'ranged',speed:110}
@@ -28,6 +28,7 @@ function drop(s,x,y,amount,owner){
  const part=Math.min(10,remaining);s.drops.push({id:s.nextDrop++,x:point.x,y:point.y,amount:part,owner,readyAt:s.time+.5});remaining-=part;occupied.add(point.x+','+point.y);}
  return amount-remaining;
 }
+function damage(s,actor,amount){actor.hp-=amount;s.damageTexts.push({x:actor.x,y:actor.y,amount,age:0});}
 function defeatEnemy(s,e){s.kills++;e.respawn=14;e.wind=0;e.step=null;e.immobilized=0;const amount=drop(s,e.x,e.y,e.essence,'rival');e.essence-=amount;tell(s,`${e.name} dropped ${amount} essence in stacks of up to 10. Pick it up before another rival does.`);}
 function respawnPlayer(s){const p=s.player,amount=drop(s,p.x,p.y,s.carried,'player');s.dropped+=amount;s.carried-=amount;cancelDeposit(s);clearPotionKeys(s);p.step=null;p.hp=100;p.mana=100;p.immobilized=0;s.armed=false;s.meditating=false;p.x=176;p.y=560;s.flash=1;for(const e of s.enemies){e.wind=0;e.cooldown=Math.max(e.cooldown,1);}tell(s,`You fell and dropped ${amount} essence. Rivals can steal it; defeat them to recover it. ${s.secured} secured stays safe.`);}
 function canPickup(s,d,radius=22){return s.time>=d.readyAt&&Math.hypot(d.x-s.player.x,d.y-s.player.y)<=radius;}
@@ -55,7 +56,7 @@ function cast(s,target){
  p.dir=heading(target.x-p.x,target.y-p.y);s.cooldown=.75;s.potionAttackLockout=.31;s.meditating=false;p.mana-=spell.mana;
  if(s.selectedSpell==='inmovilizar'){enemy.immobilized=3;enemy.cleanseReaction=.9;enemy.step=null;s.fx.push({x:enemy.x,y:enemy.y,age:0,hit:true,owner:'bind'});tell(s,`${enemy.name} is immobilized. It can still cast and may remove the effect.`);}
  else if(s.selectedSpell==='remover'){const who=self?p:enemy;who.immobilized=0;s.fx.push({x:who.x,y:who.y,age:0,hit:true,owner:'cleanse'});tell(s,self?'Movement restored.':'Paralysis removed.');}
- else{s.fx.push({x:target.x,y:target.y,age:0,hit:true,owner:'player'});if(enemy){enemy.hp--;if(enemy.hp===0)defeatEnemy(s,enemy);}else tell(s,'No rival under the pointer. Aim at a character and click.');}
+ else{s.fx.push({x:target.x,y:target.y,age:0,hit:true,owner:'player'});if(enemy){damage(s,enemy,1);if(enemy.hp===0)defeatEnemy(s,enemy);}else tell(s,'No rival under the pointer. Aim at a character and click.');}
  return true;
 }
 function melee(s){
@@ -63,7 +64,7 @@ function melee(s){
  const p=s.player,v=[{x:0,y:-1},{x:1,y:0},{x:0,y:1},{x:-1,y:0}][p.dir];
  const target=s.enemies.filter(e=>e.hp>0).find(e=>{const dx=e.x-p.x,dy=e.y-p.y,forward=dx*v.x+dy*v.y,side=Math.abs(dx*v.y-dy*v.x);return forward>0&&forward<=58&&side<=20&&lineClear(p,e);});
  s.fx.push({x:p.x+v.x*32,y:p.y+v.y*32,age:0,hit:true,owner:'melee'});
- if(target){target.hp--;if(!target.hp){defeatEnemy(s,target);}}
+ if(target){damage(s,target,1);if(!target.hp){defeatEnemy(s,target);}}
  else tell(s,'Strike the rival directly in front of you.');return true;
 }
 function meditate(s){s.meditating=!s.meditating;s.armed=false;s.player.step=null;tell(s,s.meditating?'Meditating. Stay still to recover mana.':'Meditation stopped.');}
@@ -83,7 +84,7 @@ function botStep(s,e,target,dt){
  if(!e.step){if(Math.hypot(target.x-e.x,target.y-e.y)<4)return;let v=cardinal(target.x-e.x,target.y-e.y),end={x:e.x+v.x*32,y:e.y+v.y*32};if(!physics.clear(e,end,others,e)){v={x:v.x?0:Math.sign(target.x-e.x),y:v.y?0:Math.sign(target.y-e.y)};end={x:e.x+v.x*32,y:e.y+v.y*32};if(!physics.clear(e,end,others,e))return;}e.step={...v,end,remaining:32};e.dir=heading(v.x,v.y);}
  const step=e.step,distance=Math.min(step.remaining,e.speed*dt),moved=move(e,step.x*distance,step.y*distance,others);e.moving=moved>.01;step.remaining-=moved;if(moved<distance-.001)e.step=null;else if(step.remaining<.001){e.x=step.end.x;e.y=step.end.y;e.step=null;}
 }
-function update(s,dt,input={x:0,y:0}){dt=Math.max(0,Math.min(dt,.05));s.time+=dt;s.flash=Math.max(0,s.flash-dt*1.5);s.cooldown=Math.max(0,s.cooldown-dt);s.meleeCooldown=Math.max(0,s.meleeCooldown-dt);for(const key of ['potionCooldown','potionAttackLockout','lifePulse','manaPulse'])s[key]=Math.max(0,s[key]-dt);const p=s.player;if(p.hp<=0){respawnPlayer(s);return;}p.immobilized=Math.max(0,p.immobilized-dt);const vector=cardinal(input.x||0,input.y||0);p.moving=false;
+function update(s,dt,input={x:0,y:0}){dt=Math.max(0,Math.min(dt,.05));s.time+=dt;s.damageTexts=s.damageTexts.filter(d=>(d.age+=dt)<1);s.flash=Math.max(0,s.flash-dt*1.5);s.cooldown=Math.max(0,s.cooldown-dt);s.meleeCooldown=Math.max(0,s.meleeCooldown-dt);for(const key of ['potionCooldown','potionAttackLockout','lifePulse','manaPulse'])s[key]=Math.max(0,s[key]-dt);const p=s.player;if(p.hp<=0){respawnPlayer(s);return;}p.immobilized=Math.max(0,p.immobilized-dt);const vector=cardinal(input.x||0,input.y||0);p.moving=false;
  // Banking uses the same solid footprint as other props once it appears.
  const activeObstacles=s.bankUnlocked?[bankObstacle]:[];
  const insideBank=(x,y)=>activeObstacles.some(o=>x+RADIUS>o.x&&x-RADIUS<o.x+o.w&&y+RADIUS>o.y&&y-RADIUS<o.y+o.h);
@@ -94,7 +95,7 @@ function update(s,dt,input={x:0,y:0}){dt=Math.max(0,Math.min(dt,.05));s.time+=dt
  if(s.meditating)p.mana=Math.min(100,p.mana+18*dt);
  const safe=p.x<270;
  if(safe){p.hp=Math.min(100,p.hp+12*dt);p.mana=Math.min(100,p.mana+24*dt);}
- for(const f of s.fx){f.age+=dt;if(f.owner==='enemy'&&!f.hit&&f.age>=.3){f.hit=true;if(!safe&&Math.hypot(p.x-f.x,p.y-f.y)<35){if(f.spell==='inmovilizar'){p.immobilized=2.5;p.step=null;tell(s,'Immobilized! Prepare Remover parálisis and click yourself.');}else p.hp-=12;s.flash=.2;cancelDeposit(s);}}}s.fx=s.fx.filter(f=>f.age<2);
+ for(const f of s.fx){f.age+=dt;if(f.owner==='enemy'&&!f.hit&&f.age>=.3){f.hit=true;if(!safe&&Math.hypot(p.x-f.x,p.y-f.y)<35){if(f.spell==='inmovilizar'){p.immobilized=2.5;p.step=null;tell(s,'Immobilized! Prepare Remover parálisis and click yourself.');}else damage(s,p,12);s.flash=.2;cancelDeposit(s);}}}s.fx=s.fx.filter(f=>f.age<2);
  if(p.hp<=0){respawnPlayer(s);return;}
  s.streamParticles=s.streamParticles.filter(f=>(f.age+=dt)<.55);
  if(nearBank(s)&&s.carried>0){

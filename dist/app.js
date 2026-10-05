@@ -11,7 +11,7 @@ let width = 0, height = 0, dpr = 1, scale = 1, ox = 0, oy = 0, zoom = 1;
 let time = 0, last = 0, frameRequest = 0, paused = false, ready = false;
 let images = {}, current = 'home', route = null, spell = null, rings = [], aiming = false;
 let atPlace = 'home', hovered = null, game = false, collected = 0, toastTimer, replyTimer;
-let nearbyPlace = null;
+let nearbyPlace = null,zoneContent=null;
 const NEAR_ENTER = 72, NEAR_EXIT = 104;
 const camera = {x: 870, y: 470, targetX: 870, targetY: 470};
 const spots = {
@@ -193,7 +193,7 @@ async function load() {
   }
 }
 function buildGround() {
-  const c=ground.getContext('2d'); c.imageSmoothingEnabled=false;
+  const c=ground.getContext('2d');if(c.isContextLost?.())return; c.imageSmoothingEnabled=false;
   for(let y=0;y<H;y+=TOWN_TILE)for(let x=0;x<W;x+=TOWN_TILE)c.drawImage(images.grass,x,y,TOWN_TILE,TOWN_TILE);
   const road=(x,y,w,h) => {
     x=Math.floor(x/TOWN_TILE)*TOWN_TILE;y=Math.floor(y/TOWN_TILE)*TOWN_TILE;w=Math.ceil(w/TOWN_TILE)*TOWN_TILE;h=Math.ceil(h/TOWN_TILE)*TOWN_TILE;
@@ -424,7 +424,7 @@ function checkNearbySection() {
   if(!nearest)return;
   nearbyPlace=nearest.place;atPlace=nearest.place;
   if(current!==nearest.place){
-    current=nearest.place;setContent(current);
+    current=nearest.place;setContent(current,{popup:true});
     window.history.replaceState(null,'','#'+current);
     clearTimeout(replyTimer);$('#keeper-reply').hidden=true;
     clearTimeout(toastTimer);$('#travel-toast').classList.remove('show');
@@ -449,7 +449,8 @@ function setAim(value,{focus=false}={}) {
   if(focus&&value)canvas.focus({preventScroll:true});
   requestDraw();
 }
-function setContent(place) {
+function setContent(place,{popup=false}={}) {
+  closeZoneInfo();
   const home=place==='home';
   $('#main-content').scrollTop=0;
   $('#intro').hidden=!home;$('#panel').hidden=home;$('#essence-game').hidden=true;
@@ -459,6 +460,7 @@ function setContent(place) {
     $('#panel').scrollTop=0;
     if(!motionOff())$('#panel-content').animate([{opacity:.35,transform:'translateY(8px)'},{opacity:1,transform:'translateY(0)'}],{duration:220,easing:'cubic-bezier(.22,1,.36,1)'});
   }
+  if(popup)openZoneInfo(place);
   $('#location-name').textContent=spots[place].section;
   $('#footer-place').textContent=spots[place].section.toUpperCase();
   $('#world').dataset.place=place;
@@ -475,7 +477,7 @@ function go(place,{history:writeHistory=true,instant=false,announce=true,cast=fa
   const secured=game&&place==='home'&&collected===3;
   game=false;$('#world').classList.remove('walking');
   atPlace=null;current=place;setAim(false);clearTimeout(replyTimer);$('#keeper-reply').hidden=true;
-  setContent(place);
+  setContent(place,{popup:!instant&&ready});
   if(writeHistory && location.hash!=='#'+place)window.history.pushState(null,'','#'+place);
   spell=null;rings=[];
   camera.targetX=990+(spots[place].x-990)*.07;camera.targetY=530+(spots[place].y-530)*.05;
@@ -557,7 +559,7 @@ function focusContentIfNeeded(trigger) {
 document.addEventListener('click',event=>{
   if(event.target.closest('#portal-journey')){walkToPortal();canvas.focus({preventScroll:true});return;}
   const destination=event.target.closest('button[data-place], a[data-place]');
-  if(destination){event.preventDefault();if(aiming&&destination.dataset.cast){const p=spots[destination.dataset.place];castPointer(p.x,p.y-32);}else go(destination.dataset.place);focusContentIfNeeded(destination);return;}
+  if(destination){event.preventDefault();go(destination.dataset.place,{cast:!!destination.dataset.cast});focusContentIfNeeded(destination);return;}
   const rank=event.target.closest('[data-rank]');
   if(rank){
     $$('[data-rank]').forEach(b=>{b.classList.toggle('active',b===rank);b.setAttribute('aria-pressed',String(b===rank));});
@@ -573,7 +575,7 @@ canvas.addEventListener('click',event=>{
   if(aiming){castPointer(x,y);return;}
   if(Math.abs(x-homePortal.x)<85&&y>homePortal.y-238&&y<homePortal.y+25){walkToPortal();return;}
   const keeper=keepers.find(k=>Math.hypot(k.x-x,(k.y-25)-y)<46);
-  if(keeper){go(keeper.place);return;}
+  if(keeper){go(keeper.place,{cast:true});return;}
   if(game){const index=treasures.findIndex(p=>!p.collected&&Math.hypot(p.x-x,p.y-y)<55);if(index>=0){collectLight(index);return;}}
   if(aiming){toast('Click Home, Game, Rankings or Download.');return;}
   if(isWalkable(x,y)){
@@ -583,7 +585,7 @@ canvas.addEventListener('click',event=>{
 });
 $('#wander').onclick=()=>{startGame();$('#main-content').focus({preventScroll:true});};
 $('#leave-game').onclick=()=>{go('home');$('#wander').focus({preventScroll:true});};
-$('#close-panel').onclick=()=>{go('home');$('.nav[data-place="home"]').focus({preventScroll:true});};
+$('#close-panel').onclick=()=>{if($('#zone-dialog').open){closeZoneInfo();return;}go('home');$('.nav[data-place="home"]').focus({preventScroll:true});};
 $('#spell').onclick=()=>setAim(!aiming);
 $('#motion').onclick=()=>{paused=!paused;setMotionState();};
 $('#zoom-in').onclick=()=>{zoom=Math.min(1.18,zoom+.06);resize();};
@@ -594,7 +596,7 @@ $('#close-notes').onclick=()=>$('#notes').close();
 $('#retry-load').onclick=load;
 document.addEventListener('keydown',event=>{
   if(enteringPortal||demoOpen)return;
-  if(event.altKey||event.ctrlKey||event.metaKey||event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')||$('#notes').open||$('#character-dialog').open)return;
+  if(event.altKey||event.ctrlKey||event.metaKey||event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')||$('#notes').open||$('#character-dialog').open||$('#zone-dialog').open)return;
   const movementKey=event.key.length===1?event.key.toLowerCase():event.key;
   if(Object.hasOwn(movementKeys,movementKey)){
     if(!ready)return;
@@ -629,11 +631,22 @@ window.addEventListener('hashchange',()=>{const place=location.hash.slice(1);if(
 window.addEventListener('resize',resize);
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden){clearMovementInput();if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;}
-  else{last=performance.now();requestDraw();}
+  else recoverScene();
 });
 motionPreference.addEventListener('change',setMotionState);
 setMotionState();resize();load();
 
-window.addEventListener('pageshow',()=>{if(enteringPortal){document.querySelector('#portal-transition')?.remove();$('#world').classList.remove('entering-portal');enteringPortal=false;hero.x=spots.home.land.x;hero.y=spots.home.land.y;route=null;resize();requestDraw();}});
+window.addEventListener('pageshow',()=>{recoverScene();if(enteringPortal){document.querySelector('#portal-transition')?.remove();$('#world').classList.remove('entering-portal');enteringPortal=false;hero.x=spots.home.land.x;hero.y=spots.home.land.y;route=null;resize();requestDraw();}});
 
 window.EntiaCharacter?.mount({assets:'assets/',onChange:value=>{hero.body=value.body;setGameText($('#player-label span'),value.name);requestDraw();},onOpen:()=>{clearMovementInput();route=null;setAim(false);},onClose:()=>requestDraw()});
+
+// Mobile browsers can discard cached canvas pixels while the page is hidden.
+function recoverScene(){groundReady=false;ground.width=W;ground.height=H;last=performance.now();if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;resize();requestDraw();}
+for(const surface of [canvas,ground]){surface.addEventListener('contextlost',event=>{event.preventDefault();groundReady=false;if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;});surface.addEventListener('contextrestored',recoverScene);}
+for(const surface of document.querySelectorAll('header,.world-meta,.world-toolbar,#locations,#player-label,#keeper-reply,button'))for(const type of ['selectstart','dragstart','contextmenu'])surface.addEventListener(type,event=>event.preventDefault());
+
+function openZoneInfo(place){if(width>900)return;const dialog=$('#zone-dialog');zoneContent=$(place==='home'?'#intro':'#panel');$('#zone-body').append(zoneContent);if(!dialog.open)dialog.showModal();$('#close-zone').focus({preventScroll:true});}
+function closeZoneInfo(){const dialog=$('#zone-dialog');if(dialog.open)dialog.close();if(zoneContent){$('#main-content').append(zoneContent);zoneContent=null;}}
+$('#close-zone').onclick=closeZoneInfo;
+$('#zone-dialog').addEventListener('close',()=>{if(!$('#zone-dialog').open&&zoneContent){$('#main-content').append(zoneContent);zoneContent=null;}});
+$('#zone-dialog').addEventListener('click',event=>{if(event.target===$('#zone-dialog'))closeZoneInfo();});

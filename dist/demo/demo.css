@@ -14,3 +14,5 @@ main{grid-template-columns:minmax(0,1fr) clamp(276px,24vw,360px);gap:0}aside{bac
 .touch-combat select{pointer-events:auto;touch-action:manipulation}
 @media(max-width:360px){.touch-combat{width:calc(100vw - 190px)}.touch-combat select{width:100%;min-width:0;font-size:11px}.touch-combat button{padding:6px;font-size:12px}}
 @media(max-height:500px) and (pointer:coarse){.macrobar{right:200px}}
+
+header,header *,.world-meta,.world-meta *,button,button *,aside,aside *,#player-label,#keeper-reply{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none}input,textarea,[contenteditable=true]{-webkit-user-select:text!important;user-select:text!important;-webkit-touch-callout:default}header img,button img{-webkit-user-drag:none}

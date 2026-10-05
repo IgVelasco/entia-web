@@ -6,16 +6,16 @@ const vm = require('node:vm');
 
 // Exercise the actual navigation state machine with a deterministic clock.
 // Rendering and browser layout are checked separately in the live preview.
-async function village({reduced=false, hash=''}={}) {
+async function village({reduced=false, hash='',width=1440,height=820}={}) {
   const nodes=new Map(), frames=new Map(), draws=[];let nextFrame=0;
   const makeNode=()=>{
     const attributes=new Map(),classes=new Set(),children=new Map(),events={};
-    return {hidden:false,disabled:false,textContent:'',innerHTML:'',style:{setProperty(){}},dataset:{},scrollTop:0,
+    return {open:false,showModal(){this.open=true;},close(){this.open=false;events.close?.();},hidden:false,disabled:false,textContent:'',innerHTML:'',style:{setProperty(){}},dataset:{},scrollTop:0,
       classList:{add:(...items)=>items.forEach(x=>classes.add(x)),remove:(...items)=>items.forEach(x=>classes.delete(x)),toggle:(x,on)=>on?classes.add(x):classes.delete(x),contains:x=>classes.has(x)},
       setAttribute:(key,value)=>attributes.set(key,value),getAttribute:key=>attributes.get(key),removeAttribute:key=>attributes.delete(key),
       remove(){},events,addEventListener:(key,callback)=>{events[key]=callback;},append(){},focus(){},animate(){},getAnimations:()=>[],matches:()=>false,closest:()=>null,contains:()=>false,
       querySelector(key){if(!children.has(key))children.set(key,makeNode());return children.get(key);},
-      getBoundingClientRect:()=>({width:1440,height:820,left:0,top:80}),
+      getBoundingClientRect:()=>({width,height,left:0,top:80}),
       getContext:()=>new Proxy({drawImage:(...args)=>draws.push(args),createRadialGradient:()=>({addColorStop(){}}),createPattern:()=>({})},{get:(obj,key)=>obj[key]||(()=>{})})
     };
   };
@@ -42,7 +42,7 @@ async function village({reduced=false, hash=''}={}) {
     pause(){paused=true;setMotionState();},
     reduced(value){motionPreference.matches=value;setMotionState();},
     finish(){for(let i=0;i<500&&route;i++)advanceRoute(.1);},
-    tick,viewport,walkToPortal,castPointer,showDemo,closeDemo,
+    tick,viewport,walkToPortal,castPointer,showDemo,closeDemo,draw,ground,groundReady:()=>groundReady,
     demoState:()=>({open:demoOpen,loaded:demoLoaded,blocked:portalReentryBlocked}),
     townEntities:()=>[hero,...keepers,...npcs,...scenery,homePortal,...treasures],
     placeHero(x,y){hero.x=x;hero.y=y;viewport();positionLabels();},
@@ -387,3 +387,8 @@ test('return closes immediately without depending on joint iframe history.back',
 test('iframe uses replacement navigation and remains mounted on re-entry',async()=>{const v=await village();let loads=0;const frame=v.get('#demo-frame');frame.contentWindow={location:{replace:url=>{assert.match(url,/demo/);loads++;}},postMessage(){}};v.api.showDemo(true);v.api.closeDemo(true);v.api.showDemo(true);assert.equal(loads,1);});
 
 test('explicit return opens Home even if the portal was entered from another section',async()=>{const v=await village();v.api.go('arena',{instant:true});const before=v.api.state();v.api.showDemo(true);v.api.closeDemo(true);assert.equal(v.api.state().current,'home');assert.equal(v.location.hash,'#home');assert.equal(v.api.state().x,before.x);assert.equal(v.api.state().y,before.y);});
+
+test('app resume rebuilds lost terrain cache without resetting section or character',async()=>{for(const reduced of [false,true]){const v=await village({reduced});v.api.go('hall',{instant:true});v.api.draw();const before=v.draws.filter(a=>a[0]?.path==='assets/grass.png').length,position=v.api.state();v.document.hidden=true;v.listeners.visibilitychange();v.document.hidden=false;v.listeners.visibilitychange();assert.equal(v.api.groundReady(),false);v.api.draw();assert(v.draws.filter(a=>a[0]?.path==='assets/grass.png').length>before);assert.equal(v.api.state().current,'hall');assert.equal(v.api.state().x,position.x);assert.equal(v.api.state().y,position.y);}});
+test('cached and visible canvas restore trigger rebuilding even with paused animation',async()=>{const v=await village();v.api.pause();v.api.draw();v.api.ground.events.contextlost({preventDefault(){}});assert.equal(v.api.groundReady(),false);v.api.ground.events.contextrestored();v.api.draw();assert(v.api.groundReady());v.get('#scene').events.contextlost({preventDefault(){}});v.get('#scene').events.contextrestored();assert.equal(v.api.groundReady(),false);v.api.draw();v.windowListeners.pageshow();assert.equal(v.api.groundReady(),false);});
+test('mobile zone popup opens and closes without moving the character home',async()=>{const v=await village({width:390,height:480});v.api.go('hall',{cast:true});assert(v.get('#zone-dialog').open);assert(v.api.state().spell);v.get('#close-zone').onclick();assert(!v.get('#zone-dialog').open);assert.equal(v.api.state().current,'hall');assert(v.api.state().route);});
+test('tapping a world character casts and starts its zone journey',async()=>{const v=await village();const target=v.api.townEntities().find(a=>a.place==='hall');v.clickGround(target.x,target.y-25);assert.equal(v.api.state().spellPlace,'hall');assert.equal(v.api.state().current,'hall');assert(v.api.state().route);});
