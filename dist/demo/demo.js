@@ -78,7 +78,9 @@ function releaseDirection(event){if(touches.delete(event.pointerId))syncDpad();}
 function directionAt(x,y){for(const button of document.querySelectorAll('[data-dir]')){const r=button.getBoundingClientRect();if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom)return mapping[button.dataset.dir];}return null;}
 for(const button of document.querySelectorAll('[data-dir]')){
  button.addEventListener('pointerdown',e=>{e.preventDefault();if(e.button!==undefined&&e.button!==0)return;if(paused||!ready||hudDrawerOpen||$('#character-dialog').open)return;document.getSelection?.()?.removeAllRanges();touches.delete(e.pointerId);setDirection(e.pointerId,mapping[button.dataset.dir],e.pointerType);try{button.setPointerCapture(e.pointerId);}catch{}});
- button.addEventListener('pointermove',e=>{if(!touches.has(e.pointerId))return;if(e.pointerType==='mouse'&&e.buttons===0){releaseDirection(e);return;}e.preventDefault();setDirection(e.pointerId,directionAt(e.clientX,e.clientY),e.pointerType);});
+ button.addEventListener('pointermove',e=>{if(!touches.has(e.pointerId))return;if(e.pointerType==='mouse'&&e.buttons===0){releaseDirection(e);return;}e.preventDefault();const direction=directionAt(e.clientX,e.clientY);
+  // A captured hold survives thumb drift and the gaps between arrows until release.
+  if(direction)setDirection(e.pointerId,direction,e.pointerType);});
  for(const type of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(type,releaseDirection);
 }
 for(const type of ['pointerup','pointercancel'])window.addEventListener(type,releaseDirection,true);

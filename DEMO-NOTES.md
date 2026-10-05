@@ -93,3 +93,9 @@ Moved every mobile movement, potion, cast and contextual interaction control int
 
 ## Prevent Prepare/cast camera shifts (2026-10-05)
 Confirmed layout cause: armed target help used display:none while unarmed inside the auto-height controls panel. Preparing/casting changed panel height and therefore the centered playfield camera. The hint now reserves a fixed32px slot using visibility:hidden; deposit status/top controls also reserve stable rows. Landscape retains identical rows in either state. Coarse-pointer actions no longer focus the canvas, and unchanged ResizeObserver notifications do not reset bitmap dimensions.111 tests pass and independent source review found no remaining armed/disarmed height toggle. Actual iPhone acceptance remains unverified.
+
+## Mobile held-direction correction — October 5
+- User clarified that movement suddenly stops while the arrow is still held. The captured pointer previously set its direction to null whenever coordinates left an arrow, including gaps and small thumb drift.
+- Preserve the held direction outside arrow bounds until pointer release/cancel/lost capture or existing lifecycle cleanup. Entering a different arrow still switches direction. Secondary casting release cannot clear the movement pointer.
+- Mobile notices now sit at the lower playfield edge; long objective prose is hidden to reduce obstruction. Notice geometry remains absolute and bounded, so it does not resize the camera.
+- 113 automated tests pass, including drift and secondary-finger release. Physical iPhone acceptance is still pending; this does not prove every possible movement interruption is resolved.
