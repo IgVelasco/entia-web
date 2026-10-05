@@ -63,7 +63,7 @@ function showDemo(push=true){
  demoCloseEpoch++;$('#demo-host').classList.remove('closing');demoOpen=true;enteringPortal=false;clearMovementInput();route=null;if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;
  $('#portal-transition')?.remove();$('#world').classList.remove('entering-portal');$('#app').inert=true;document.body.classList.add('demo-open');$('#demo-host').hidden=false;
  if(push&&location.hash!=='#demo'){window.history.pushState({entiaDemo:true},'','#demo');demoHistoryOwned=true;}
- if(demoLoaded)$('#demo-frame').contentWindow?.postMessage({type:resumed?'entia-demo-resume':'entia-demo-activate'},location.origin);
+ if(demoLoaded)$('#demo-frame').contentWindow?.postMessage({type:resumed?'entia-demo-resume':'entia-demo-activate',presentationScale:scale},location.origin);
 }
 function closeDemo(changeHistory=true){
  if(!demoOpen)return;
@@ -78,7 +78,7 @@ function closeDemo(changeHistory=true){
 
 window.addEventListener('message',event=>{
  if(event.origin!==location.origin||event.source!==$('#demo-frame').contentWindow)return;
- if(event.data?.type==='entia-demo-ready'){demoLoaded=true;clearTimeout(demoLoadTimer);$('#demo-loading').hidden=true;if(demoOpen)$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-activate'},location.origin);if(!demoOpen&&!enteringPortal)$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-pause'},location.origin);}
+ if(event.data?.type==='entia-demo-ready'){demoLoaded=true;clearTimeout(demoLoadTimer);$('#demo-loading').hidden=true;if(demoOpen)$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-activate',presentationScale:scale},location.origin);if(!demoOpen&&!enteringPortal)$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-pause'},location.origin);}
  else if(event.data?.type==='entia-demo-exit')closeDemo(true);
  else if(event.data?.type==='entia-demo-error'){demoFailed=true;$('#demo-load-message').textContent='The demo artwork could not load. Return to Nix and try again.';}
 });
@@ -138,7 +138,7 @@ for (const surface of [canvas, $('#locations'), $('#player-label'), $('#keeper-r
 function viewport() {
   const compact=width<=900, left=compact?0:clamp(width*.33,320,450);
   const sceneHeight=compact?Math.min(height,width<=600?480:570):height;
-  scale=Math.max(.5,Math.min((width-left)/650,(sceneHeight-80)/560,1.32))*zoom;
+  scale=WorldPhysics.presentationScale(width,zoom);
   // The player stays centered in the playable surface, outside the content column.
   camera.x=camera.targetX=hero.x;camera.y=camera.targetY=hero.y;
   ox=left+(width-left)/2-hero.x*scale;
@@ -149,7 +149,7 @@ function resize() {
   width = rect.width; height = rect.height;
   dpr = Math.max(1, Math.min(devicePixelRatio || 1, 2));
   canvas.width = Math.round(width*dpr); canvas.height = Math.round(height*dpr);
-  viewport(); positionLabels(); requestDraw();
+  viewport(); positionLabels(); requestDraw();if(demoOpen)$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-scale',presentationScale:scale},location.origin);
 }
 function positionLabels() {
   for (const k of keepers) {

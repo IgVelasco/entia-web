@@ -13,5 +13,6 @@ function create({width,height,minY=0,radius=10,obstacles=[]}){
  }
  return {free,clear,move,path};
 }
-const api={create};if(typeof module!=='undefined')module.exports=api;root.WorldPhysics=api;
+function presentationScale(width,zoom=1){return Math.max(.95,Math.min(width/700,1.32))*zoom;}
+const api={create,presentationScale};if(typeof module!=='undefined')module.exports=api;root.WorldPhysics=api;
 })(typeof window!=='undefined'?window:globalThis);
