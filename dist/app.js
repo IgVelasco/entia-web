@@ -29,15 +29,17 @@ const npcs = [
   {x: 742, y: 565, body: 'rogue', dir: 0, way: [[742,565],[742,625],[815,625],[815,565]], idx: 1, gait: 0, reaction: 0}
 ];
 const scenery = [
-  {id:'house',x:775,y:390,w:240,h:320}, {id:'house2',x:1250,y:630,w:180,h:240},
+  {id:'house',x:775,y:390,w:256,h:683*32/60}, {id:'house2',x:1250,y:630,w:256,h:683*32/60},
   {id:'tree',x:595,y:265,w:235,h:294}, {id:'pine',x:437,y:325,w:240,h:240}, {id:'tree2',x:1360,y:282,w:255,h:320},
   {id:'pine',x:1385,y:640,w:280,h:280}, {id:'tree',x:652,y:865,w:260,h:325}, {id:'tree2',x:325,y:750,w:310,h:387},
   {id:'tree',x:555,y:115,w:225,h:282}, {id:'pine',x:960,y:142,w:200,h:200}, {id:'tree2',x:1395,y:890,w:250,h:312}
 ];
 for(const n of npcs){n.x=townTileCenter(n.x);n.y=townTileCenter(n.y);n.way=n.way.map(([x,y])=>[townTileCenter(x),townTileCenter(y)]);}
-for(const p of scenery){p.x=townTileCenter(p.x);p.y=townTileCenter(p.y);}
+for(const p of scenery){p.x=townTileCenter(p.x);p.y=p.id.startsWith('house')?Math.floor(p.y/TOWN_TILE)*TOWN_TILE:townTileCenter(p.y);}
 const homePortal=onTownGrid({x:1010,y:420});
-const townObstacles=scenery.map(s=>s.id.startsWith('house')?{x:s.x-s.w*.43,y:s.y-s.h*.60,w:s.w*.86,h:s.h*.60}:{x:s.x-22,y:s.y-28,w:44,h:38});
+// Both variants use 60 source pixels per 32-unit tile. The entrance is two tiles wide.
+function houseBounds(s){const left=s.x-s.w/2;return {left,doorX:left+144,front:s.y-64};}
+const townObstacles=scenery.flatMap(s=>{if(!s.id.startsWith('house'))return [{x:s.x-22,y:s.y-28,w:44,h:38}];const b=houseBounds(s);return [{x:b.left,y:s.y-192,w:256,h:128},{x:b.left,y:b.front,w:144,h:64},{x:b.doorX+64,y:b.front,w:48,h:64}];});
 townObstacles.push({x:homePortal.x-74,y:homePortal.y-35,w:30,h:45},{x:homePortal.x+44,y:homePortal.y-35,w:30,h:45});
 const townPhysics=WorldPhysics.create({width:W,height:H,radius:10,obstacles:townObstacles});
 let enteringPortal=false,demoOpen=false,demoFrameStarted=false,demoCloseEpoch=0,demoEverOpened=false,demoLoaded=false,demoFailed=false,demoExitPending=false,demoHistoryOwned=false,portalReentryBlocked=false;
@@ -183,7 +185,7 @@ async function load() {
   $('#retry-load').hidden=true;
   $('#loading p').textContent='Opening the gates of Nix…';
   try {
-    const response = await fetch('assets/site-assets.json');
+    const response = await fetch('assets/site-assets.json?v=houses2');
     if(!response.ok) throw new Error('Asset manifest unavailable');
     const assets = await response.json();
     await Promise.all(Object.entries(assets.images).map(async ([key,file]) => images[key] = await loadImage('assets/'+file)));
@@ -209,6 +211,7 @@ function buildGround() {
   };
   road(735,455,88,340); road(785,447,473,76); road(853,475,86,290); road(855,665,400,82); road(1075,320,165,177); road(757,397,145,105);
   for(let y=192;y<352;y+=TOWN_TILE) for(let x=1056;x<1344;x+=TOWN_TILE) c.drawImage(images.stone,x,y,TOWN_TILE,TOWN_TILE);
+  for(const house of scenery.filter(s=>s.id.startsWith('house'))){const b=houseBounds(house);for(let y=house.y-192;y<house.y-64;y+=TOWN_TILE)for(let x=b.left+16;x<b.left+240;x+=TOWN_TILE)c.drawImage(images.houseFloor,x,y,TOWN_TILE,TOWN_TILE);for(let y=b.front;y<house.y;y+=TOWN_TILE)for(let x=b.doorX;x<b.doorX+64;x+=TOWN_TILE)c.drawImage(images.houseFloor,x,y,TOWN_TILE,TOWN_TILE);}
   const shade=c.createRadialGradient(1000,500,200,980,500,780);
   shade.addColorStop(0,'#dbc58308'); shade.addColorStop(1,'#0a190dbb');
   c.fillStyle=shade; c.fillRect(0,0,W,H); groundReady=true;

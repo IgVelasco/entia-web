@@ -9,10 +9,11 @@
     "tree": "tree.png",
     "pine": "pine.png",
     "tree2": "tree2.png",
-    "house": "house.png",
-    "house2": "house2.png",
+    "house": "house-ochre.png",
+    "house2": "house-slate.png",
     "apocalipsis": "apocalipsis_60.png",
-    "portal": "portal.png"
+    "portal": "portal.png",
+    "houseFloor": "house-floor.png"
   },
   "source_sha": "410676cc2e11170c494ad90eb160944ce8d635cf",
   "spell_source": {
@@ -28,5 +29,24 @@
     "frame_height": 243,
     "duration_seconds": 2,
     "source_ppt": 60
+  },
+  "house_art": {
+    "source_ppt": 60,
+    "world_tile": 32,
+    "canvas": [
+      480,
+      683
+    ],
+    "door_source_x": [
+      270,
+      390
+    ],
+    "steps_source_rect": [
+      270,
+      639,
+      120,
+      44
+    ],
+    "note": "Generated redesigned art; website entrance collisions, not imported RAO map collision data."
   }
 }

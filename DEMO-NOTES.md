@@ -114,3 +114,9 @@ Confirmed layout cause: armed target help used display:none while unarmed inside
 - Zone dialog/backdrop reveal 650ms to 1100ms; panel-content transition 220ms to 650ms.
 - Mobile popup background opacity 94% to 84%; lighter backdrop. Text remains opaque and reduced-motion overrides remain intact.
 - 118 tests pass. User requested publication alongside the change.
+
+## Redesigned houses and floors — October 5
+- Replaced the two Home buildings with the approved stone-step house and a muted slate-blue roof variant. Both use 480×683 art at the same 60-source-pixels/32-world-unit density (256×364.267 world footprint); no disproportionate stretching or smaller second house.
+- Independent 60×60 wood tile fills the floor and two-tile entrance on the town grid. Building baselines use tile edges, while actor anchors stay on tile centres.
+- Website obstacles now leave a two-tile entrance/steps recess between solid front walls, stopping before the roofed building body. This is a website collision model, not imported RAO game map collision or a new explorable interior.
+- 119 automated tests pass, including house scale and blocked-wall/open-door checks; all referenced assets verified present, both house alpha masks identical. No physical iPhone/browser visual acceptance claimed.

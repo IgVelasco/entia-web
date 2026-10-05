@@ -38,7 +38,7 @@ async function village({reduced=false, hash='',width=1440,height=820}={}) {
   context.WorldPhysics=context.window.WorldPhysics;
   vm.runInContext(readFileSync(join(__dirname,'../dist/app.js'),'utf8'),context);
   await new Promise(resolve=>setImmediate(resolve));
-  const api=vm.runInContext(`({go,advanceRoute,advanceSpell,drawSpell,drawActor,restoreHash,advanceMovement,isWalkable,
+  const api=vm.runInContext(`({go,advanceRoute,advanceSpell,drawSpell,drawActor,restoreHash,advanceMovement,isWalkable,houseBounds,townPhysics,
     pause(){paused=true;setMotionState();},
     reduced(value){motionPreference.matches=value;setMotionState();},
     finish(){for(let i=0;i<500&&route;i++)advanceRoute(.1);},
@@ -353,7 +353,7 @@ test('town pointer spell preserves requested ground coordinates',async()=>{const
 
 test('returning with browser Back clears the portal transition lock',async()=>{const v=await village();v.api.walkToPortal();v.api.finish();v.windowListeners.pageshow();assert.equal(v.api.state().x,880);assert.equal(v.api.state().y,464);assert.equal(v.api.state().route,false);});
 
-test('Home entities, props and pickups start on tile centers',async()=>{const v=await village();for(const p of v.api.townEntities()){assert.equal(p.x%32,16);assert.equal(p.y%32,16);}});
+test('Home actors center on tiles and house bases align to floor tile edges',async()=>{const v=await village();for(const p of v.api.townEntities()){assert.equal(p.x%32,16);assert.equal(p.y%32,p.id?.startsWith('house')?0:16);}});
 test('Home name labels keep their horizontal anchor and separate when near',async()=>{const v=await village();v.api.placeHero(784,432);assert.equal(v.get('#player-label').dataset.placement,'above');const p=v.api.heroScreen();assert.match(v.get('#player-label').style.transform,new RegExp('translate3d\\('+Math.round(p.x)+'px,'));v.api.placeHero(900,600);assert.equal(v.get('#player-label').dataset.placement,'below');});
 
 test('inline demo opens in Home and exit preserves character position',async()=>{const v=await village();v.api.placeHero(912,496);const before=v.api.state();v.api.showDemo(true);assert(v.api.demoState().open);assert.equal(v.location.hash,'#demo');assert.equal(v.get('#app').inert,true);assert.match(v.get('#demo-frame').src,/demo/);v.api.closeDemo(true);assert.equal(v.api.demoState().open,false);assert.equal(v.location.hash,'#home');assert.equal(v.api.state().x,before.x);assert.equal(v.api.state().y,before.y);assert.equal(v.get('#app').inert,false);assert(v.api.demoState().blocked);});
@@ -377,3 +377,5 @@ test('the old collect-lights minigame has no markup, entry points or runtime',()
 test('phone overview retains all four actor areas while navigating each zone',async()=>{for(const width of [320,390,430]){const v=await village({width,height:480});for(const place of ['home','arena','hall','gate']){v.api.go(place,{instant:true});v.api.viewport();for(const k of v.api.townEntities().filter(a=>a.isKeeper)){const screen=v.api.groundPoint(k.x,k.y);assert(screen.clientX>=32&&screen.clientX<=width-32);assert(screen.clientY-80>=40&&screen.clientY-80<=420);}}}});
 
 test('home popup has a slower translucent reveal and preserves reduced motion',()=>{const css=readFileSync(join(__dirname,'../dist/style.css'),'utf8');assert(css.includes('zone-reveal 1.1s ease-out'));assert(css.includes('background:rgba(14,33,26,.84)'));assert(css.includes('#zone-dialog[open],#zone-dialog[open]::backdrop{animation:none}'));});
+
+test('both house variants have equal native tile scale and open two-tile entrances',async()=>{const v=await village();for(const h of v.api.townEntities().filter(p=>p.id?.startsWith('house'))){assert.equal(h.w,256);assert.equal(h.h,683*32/60);const b=v.api.houseBounds(h);assert.equal(b.doorX%32,0);for(const x of [b.doorX+16,b.doorX+48]){assert(v.api.townPhysics.free(x,h.y-16));assert(v.api.townPhysics.free(x,h.y-48));}assert(!v.api.townPhysics.free(b.doorX-16,h.y-16));assert(!v.api.townPhysics.free(b.doorX+80,h.y-16));assert(!v.api.townPhysics.free(b.doorX+16,h.y-80));}});
