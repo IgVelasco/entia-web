@@ -50,14 +50,13 @@ let enteringPortal=false,demoOpen=false,demoFrameStarted=false,demoCloseEpoch=0,
 let demoReturnHash="#home",demoLoadTimer=0;
 function enterPortal(){
  if(enteringPortal)return;enteringPortal=true;clearMovementInput();route=null;
- ensureDemoFrame();
  if(motionOff()){showDemo(true);return;}
  const p=screen(homePortal),veil=document.createElement('div');veil.id='portal-transition';veil.setAttribute('aria-hidden','true');
  veil.style.setProperty('--portal-x',p.x+'px');veil.style.setProperty('--portal-y',(p.y+canvas.getBoundingClientRect().top)+'px');
  document.body.append(veil);$('#world').classList.add('entering-portal');
  setTimeout(()=>{if(enteringPortal)showDemo(true);},460);
 }
-function walkToPortal(){ensureDemoFrame();portalReentryBlocked=false;heldDirections.clear();beginManualMovement();moveHero(walkingPath(homePortal),{explore:true,complete:enterPortal});}
+function walkToPortal(){portalReentryBlocked=false;heldDirections.clear();beginManualMovement();moveHero(walkingPath(homePortal),{explore:true,complete:enterPortal});}
 function portalCrossing(){if(portalReentryBlocked){if(Math.hypot(hero.x-homePortal.x,hero.y-homePortal.y)>48)portalReentryBlocked=false;return;}if(!enteringPortal&&Math.abs(hero.x-homePortal.x)<24&&Math.abs(hero.y-homePortal.y)<20)enterPortal();}
 function ensureDemoFrame(){
  const frame=$('#demo-frame');if(demoFrameStarted&&!demoFailed)return;demoFrameStarted=true;demoFailed=false;demoLoaded=false;
@@ -65,8 +64,8 @@ function ensureDemoFrame(){
  demoLoadTimer=setTimeout(()=>{if(!demoLoaded)$('#demo-load-message').textContent='The demo is taking longer to load. You can return to Nix while it finishes.';},20000);
 }
 function showDemo(push=true){
- if(demoOpen)return;const resumed=demoEverOpened;demoEverOpened=true;ensureDemoFrame();demoReturnHash=location.hash==='#demo'?'#home':location.hash||'#home';
- demoCloseEpoch++;$('#demo-host').classList.remove('closing');demoOpen=true;enteringPortal=false;clearMovementInput();route=null;if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;
+ if(demoOpen)return;const resumed=demoEverOpened;demoEverOpened=true;demoReturnHash=location.hash==='#demo'?'#home':location.hash||'#home';
+ demoCloseEpoch++;$('#demo-host').classList.remove('closing');demoOpen=true;enteringPortal=false;canvas.width=1;canvas.height=1;ground.width=1;ground.height=1;groundReady=false;ensureDemoFrame();clearMovementInput();route=null;if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;
  $('#portal-transition')?.remove();$('#world').classList.remove('entering-portal');$('#app').inert=true;document.body.classList.add('demo-open');$('#demo-host').hidden=false;
  if(push&&location.hash!=='#demo'){window.history.pushState({entiaDemo:true},'','#demo');demoHistoryOwned=true;}
  if(demoLoaded)$('#demo-frame').contentWindow?.postMessage({type:resumed?'entia-demo-resume':'entia-demo-activate',presentationScale:scale},location.origin);
@@ -159,8 +158,8 @@ function viewport() {
 function resize() {
   const rect = canvas.getBoundingClientRect();
   width = rect.width; height = rect.height;
-  dpr = Math.max(1, Math.min(devicePixelRatio || 1, 2));
-  canvas.width = Math.round(width*dpr); canvas.height = Math.round(height*dpr);
+  dpr = Math.min(devicePixelRatio || 1, 1.5, Math.sqrt(2000000/Math.max(1,width*height)));
+  if(!demoOpen){if(canvas.width!==Math.round(width*dpr))canvas.width=Math.round(width*dpr);if(canvas.height!==Math.round(height*dpr))canvas.height=Math.round(height*dpr);}
   viewport(); positionLabels(); requestDraw();if(demoOpen)$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-scale',presentationScale:scale},location.origin);
 }
 function positionLabels() {
@@ -193,6 +192,7 @@ async function load() {
     if(!response.ok) throw new Error('Asset manifest unavailable');
     const assets = await response.json();
     await Promise.all(Object.entries(assets.images).map(async ([key,file]) => images[key] = await loadImage('assets/'+file)));
+    window.EntiaArtwork=images;
     ready = true;
     $('#loading').hidden = true;
     const initial = spots[location.hash.slice(1)] ? location.hash.slice(1) : 'home';
@@ -205,6 +205,7 @@ async function load() {
   }
 }
 function buildGround() {
+  if(ground.width!==W)ground.width=W;if(ground.height!==H)ground.height=H;
   const c=ground.getContext('2d');if(c.isContextLost?.())return; c.imageSmoothingEnabled=false;
   for(let y=0;y<H;y+=TOWN_TILE)for(let x=0;x<W;x+=TOWN_TILE)c.drawImage(images.grass,x,y,TOWN_TILE,TOWN_TILE);
   const road=(x,y,w,h) => {
@@ -312,7 +313,7 @@ function requestDraw() {
   frameRequest=requestAnimationFrame(tick);
 }
 function tick(now) {
-  frameRequest=0;
+  frameRequest=0;if(demoOpen)return;
   const dt=Math.min((now-last)/1000||0,.04);last=now;
   if(!motionOff()){
     time+=dt;
@@ -623,7 +624,7 @@ window.addEventListener('pageshow',()=>{recoverScene();if(enteringPortal){docume
 window.EntiaCharacter?.mount({assets:'assets/',onChange:value=>{hero.body=value.body;setGameText($('#player-label span'),value.name);requestDraw();},onOpen:()=>{clearMovementInput();route=null;setAim(false);},onClose:()=>requestDraw()});
 
 // Mobile browsers can discard cached canvas pixels while the page is hidden.
-function recoverScene(){groundReady=false;ground.width=W;ground.height=H;last=performance.now();if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;resize();requestDraw();}
+function recoverScene(){groundReady=false;if(demoOpen)return;ground.width=W;ground.height=H;last=performance.now();if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;resize();requestDraw();}
 for(const surface of [canvas,ground]){surface.addEventListener('contextlost',event=>{event.preventDefault();groundReady=false;if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;});surface.addEventListener('contextrestored',recoverScene);}
 for(const surface of document.querySelectorAll('header,.world-meta,.world-toolbar,#locations,#player-label,#keeper-reply,button'))for(const type of ['selectstart','dragstart','contextmenu'])surface.addEventListener(type,event=>event.preventDefault());
 

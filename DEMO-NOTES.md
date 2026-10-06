@@ -1,3 +1,17 @@
+# Current update — guided tutorial and transition memory (6 October 2026)
+
+The published demo now starts in a safe stone hallway, with three NPC conversations for movement, combat and essence. Walking through the far entrance after all three conversations enters the arena. After two defeats a bank appears at the closest reviewed, unoccupied candidate. A 90-second arena-time fallback prevents quiet-round banking from staying locked. Complete a positive transfer of all carried essence to finish; dying after a partial deposit does not count. The Keeper then explains the provisional match rules. Replay and Home remain available.
+
+Source re-read: user-supplied rao-diseno-pvp.pdf, especially pages 9–10, 14 and 21. Generation, pickup/transfer, carried and deposited value remain distinct. The generation budget, deposited target and match timeout are described as proposed/TBD, not fixed production rules. This update does not implement a multiplayer economy or permanently credit any account.
+
+Memory hardening: one reused iframe; Home canvas/ground released while demo is active; demo surfaces released on host suspension; embedded startup suspended until activation; Home unchanged-size resize guards; each visible world canvas limited to roughly 2 million backing pixels and DPR 1.5; sequential demo asset loads; shared Home sprite objects reused; bank/crystal cropped and reduced to small ImageBitmaps when supported; opaque scene-filter transitions replaced with opacity-only effects; no animation loop while paused/in NPC dialogue or idle at completion; character editor duplicate-open guard. Fallback browsers retain original images. These are verified code/allocation changes, not measured iOS peak-memory savings or a reproduced fix of the reported browser crash.
+
+Validation: 138 automated model, mocked-DOM and lifecycle checks passing, including tutorial traversal, bank reveal/time fallback, interrupted transfer/death, positive completion, phone controls and repeated Home/demo navigation. JavaScript syntax and whitespace checks pass. Real browser/iPhone visual and memory-pressure testing remains unverified: this environment has no supported cloud browser preview capability for this static Site. No assertion of zero crashes.
+
+Earlier notes below are historical and may describe superseded onboarding.
+
+---
+
 # Entia web demo — current behavior
 
 ## Entry and UI

@@ -18,8 +18,11 @@ function create(){return {phase:'arena',selectedSpell:'apocalipsis',damageTexts:
 ]};}
 function tell(s,message){s.notice=message;s.noticeId++;}
 function nearGate(s){return Math.hypot(s.player.x-gateway.x,s.player.y-gateway.y)<65;}
-function nearBank(s){return s.bankUnlocked&&Math.hypot(s.player.x-banker.x,s.player.y-banker.y)<87;}
+function bankAt(s){return s.bankPosition||banker;}
+function bankBounds(s){const b=bankAt(s);return {x:b.x-47,y:b.y-10,w:94,h:24};}
+function nearBank(s){const b=bankAt(s);return s.bankUnlocked&&Math.hypot(s.player.x-b.x,s.player.y-b.y)<87;}
 function drop(s,x,y,amount,owner){
+ const bankObstacle=bankBounds(s);
  if(!Number.isFinite(amount)||amount<=0)return 0;amount=Math.floor(amount);
  const candidates=[];for(let cy=tileCenter(180);cy<HEIGHT-30;cy+=TILE)for(let cx=tileCenter(30);cx<WIDTH-30;cx+=TILE)candidates.push({x:cx,y:cy});
  candidates.sort((a,b)=>Math.hypot(a.x-x,a.y-y)-Math.hypot(b.x-x,b.y-y));
@@ -80,13 +83,14 @@ function clearPotionKeys(s){s.heldPotions=[];}
 
 function botStep(s,e,target,dt){
  if(e.immobilized>0)return;
+ const b=bankBounds(s),bankBlocked=(x,y)=>s.bankUnlocked&&x+RADIUS>b.x&&x-RADIUS<b.x+b.w&&y+RADIUS>b.y&&y-RADIUS<b.y+b.h;
  const others=[s.player,...s.enemies.filter(a=>a.hp>0)];
- if(!e.step){if(Math.hypot(target.x-e.x,target.y-e.y)<4)return;let v=cardinal(target.x-e.x,target.y-e.y),end={x:e.x+v.x*32,y:e.y+v.y*32};if(!physics.clear(e,end,others,e)){v={x:v.x?0:Math.sign(target.x-e.x),y:v.y?0:Math.sign(target.y-e.y)};end={x:e.x+v.x*32,y:e.y+v.y*32};if(!physics.clear(e,end,others,e))return;}e.step={...v,end,remaining:32};e.dir=heading(v.x,v.y);}
- const step=e.step,distance=Math.min(step.remaining,e.speed*dt),moved=move(e,step.x*distance,step.y*distance,others);e.moving=moved>.01;step.remaining-=moved;if(moved<distance-.001)e.step=null;else if(step.remaining<.001){e.x=step.end.x;e.y=step.end.y;e.step=null;}
+ if(!e.step){if(Math.hypot(target.x-e.x,target.y-e.y)<4)return;let v=cardinal(target.x-e.x,target.y-e.y),end={x:e.x+v.x*32,y:e.y+v.y*32};if(bankBlocked(end.x,end.y)||!physics.clear(e,end,others,e)){v={x:v.x?0:Math.sign(target.x-e.x),y:v.y?0:Math.sign(target.y-e.y)};end={x:e.x+v.x*32,y:e.y+v.y*32};if(bankBlocked(end.x,end.y)||!physics.clear(e,end,others,e))return;}e.step={...v,end,remaining:32};e.dir=heading(v.x,v.y);}
+ const step=e.step,distance=Math.min(step.remaining,e.speed*dt),moved=bankBlocked(e.x+step.x*distance,e.y+step.y*distance)?0:move(e,step.x*distance,step.y*distance,others);e.moving=moved>.01;step.remaining-=moved;if(moved<distance-.001)e.step=null;else if(step.remaining<.001){e.x=step.end.x;e.y=step.end.y;e.step=null;}
 }
 function update(s,dt,input={x:0,y:0}){dt=Math.max(0,Math.min(dt,.05));s.time+=dt;s.damageTexts=s.damageTexts.filter(d=>(d.age+=dt)<1);s.flash=Math.max(0,s.flash-dt*1.5);s.cooldown=Math.max(0,s.cooldown-dt);s.meleeCooldown=Math.max(0,s.meleeCooldown-dt);for(const key of ['potionCooldown','potionAttackLockout','lifePulse','manaPulse'])s[key]=Math.max(0,s[key]-dt);const p=s.player;if(p.hp<=0){respawnPlayer(s);return;}p.immobilized=Math.max(0,p.immobilized-dt);const vector=cardinal(input.x||0,input.y||0);p.moving=false;
  // Banking uses the same solid footprint as other props once it appears.
- const activeObstacles=s.bankUnlocked?[bankObstacle]:[];
+ const activeObstacles=s.bankUnlocked?[bankBounds(s)]:[];
  const insideBank=(x,y)=>activeObstacles.some(o=>x+RADIUS>o.x&&x-RADIUS<o.x+o.w&&y+RADIUS>o.y&&y-RADIUS<o.y+o.h);
  if(!p.immobilized&&!p.step&&(vector.x||vector.y)){const end={x:p.x+vector.x*32,y:p.y+vector.y*32};p.dir=heading(vector.x,vector.y);if(!insideBank(end.x,end.y)&&physics.clear(p,end,s.enemies.filter(e=>e.hp>0),p))p.step={...vector,end,remaining:32};}
  if(p.step&&!p.immobilized){const step=p.step,distance=Math.min(step.remaining,160*dt),dx=step.x*distance,dy=step.y*distance;const moved=insideBank(p.x+dx,p.y+dy)?0:move(p,dx,dy,s.enemies.filter(e=>e.hp>0));p.moving=moved>.01;step.remaining-=moved;if(moved<distance-.001)p.step=null;else if(step.remaining<.001){p.x=step.end.x;p.y=step.end.y;p.step=null;}}
@@ -118,5 +122,5 @@ function update(s,dt,input={x:0,y:0}){dt=Math.max(0,Math.min(dt,.05));s.time+=dt
  if(s.autopotEnabled&&s.heldPotions.length){const primary=s.heldPotions.at(-1);if(usePotion(s,primary.kind))primary.claimed=true;}
 
 }
-const api={spells,WIDTH,HEIGHT,RADIUS,TILE,tileCenter,scenery,obstacles,bankObstacle,gateway,banker,walkable,move,lineClear,create,nearGate,nearBank,interact,cast,update,drop,pickup,canPickup,cardinal,tell,melee,meditate,cancelDeposit,usePotion,pressPotion,releasePotion,clearPotionKeys};if(typeof module!=='undefined')module.exports=api;root.EssenceDemo=api;
+const api={bankAt,bankBounds,spells,WIDTH,HEIGHT,RADIUS,TILE,tileCenter,scenery,obstacles,bankObstacle,gateway,banker,walkable,move,lineClear,create,nearGate,nearBank,interact,cast,update,drop,pickup,canPickup,cardinal,tell,melee,meditate,cancelDeposit,usePotion,pressPotion,releasePotion,clearPotionKeys};if(typeof module!=='undefined')module.exports=api;root.EssenceDemo=api;
 })(typeof window!=='undefined'?window:globalThis);

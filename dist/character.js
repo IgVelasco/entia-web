@@ -13,7 +13,7 @@ function mount({assets,onChange,onOpen,onClose}){
  const apply=value=>{onChange(value);q('#character-button').setAttribute('aria-label','Change character: '+value.name);};subscribers.push(apply);apply(current);
  function draw(now){if(!dialog.open){raf=0;return;}c.clearRect(0,0,288,320);c.fillStyle='#11251d';c.fillRect(0,0,288,320);c.strokeStyle='#ba9a5266';c.beginPath();c.ellipse(144,278,91,23,0,0,Math.PI*2);c.stroke();c.imageSmoothingEnabled=false;const im=images[draft.body];frame=walking&&!matchMedia('(prefers-reduced-motion: reduce)').matches?1+Math.floor(now/100)%7:0;if(im)c.drawImage(im,frame*96,direction*160,96,160,48,-39,192,320);raf=requestAnimationFrame(draw);}
  function refresh(){const look=looks.find(l=>l.id===draft.body);q('#character-look-name').textContent=look.name;q('#character-look-detail').textContent=look.detail;for(const button of document.querySelectorAll('[data-character-look]'))button.setAttribute('aria-pressed',String(button.dataset.characterLook===draft.body));q('#character-preview-name').textContent=name.value.trim()||'Avharot';}
- q('#character-button').onclick=()=>{draft={...current};name.value=draft.name;refresh();onOpen();dialog.showModal();raf=requestAnimationFrame(draw);};
+ q('#character-button').onclick=()=>{if(dialog.open)return;draft={...current};name.value=draft.name;refresh();onOpen();dialog.showModal();raf=requestAnimationFrame(draw);};
  name.addEventListener('input',refresh);
  for(const button of document.querySelectorAll('[data-character-look]'))button.onclick=()=>{draft.body=button.dataset.characterLook;refresh();};
  q('#character-turn-left').onclick=()=>{direction=(direction+3)%4;};q('#character-turn-right').onclick=()=>{direction=(direction+1)%4;};

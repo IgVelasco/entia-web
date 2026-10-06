@@ -63,7 +63,7 @@ async function village({reduced=false, hash='',width=1440,height=820}={}) {
     return prevented;
   };
   const clickGround=(x,y)=>get('#scene').events.click(api.groundPoint(x,y));
-  return {api,get,location,preference,nav,frames,draws,listeners,windowListeners,document,key,clickGround,historyCalls,history};
+  return {context,api,get,location,preference,nav,frames,draws,listeners,windowListeners,document,key,clickGround,historyCalls,history};
 }
 
 test('a spell opens content and marks the section before its journey completes',async()=>{
@@ -383,3 +383,5 @@ test('both house variants have equal native tile scale and open two-tile entranc
 test('house interior is reachable through the doorway, walls remain solid and roof fades in 220ms',async()=>{const v=await village();const h=v.api.houses.find(h=>!h.decorative),b=v.api.houseBounds(h);const outside={x:b.doorX+16,y:h.y+16},inside={x:b.doorX+16,y:h.y-112};const path=v.api.townPhysics.path(outside,inside);assert(path.length);assert(!v.api.townPhysics.free(b.left+8,h.y-100));assert(!v.api.townPhysics.free(b.left+248,h.y-100));assert(!v.api.townPhysics.free(b.left+100,h.y-200));v.api.placeHero(inside.x,inside.y);assert(v.api.insideHouse(h));v.api.updateHouseRoofs(.11);assert(Math.abs(h.roofAlpha-.5)<1e-9);v.api.updateHouseRoofs(.11);assert.equal(h.roofAlpha,0);v.api.placeHero(outside.x,outside.y);v.api.updateHouseRoofs(.22);assert.equal(h.roofAlpha,1);});
 test('decorative left house stays closed and does not cover the Game character',async()=>{const v=await village();const h=v.api.houses.find(h=>h.decorative),b=v.api.houseBounds(h),game=v.api.townEntities().find(p=>p.place==='arena');assert(h.x<600);assert(game.x>h.x+h.w/2);assert(!v.api.townPhysics.free(b.doorX+16,h.y-16));v.api.placeHero(b.doorX+16,h.y-100);v.api.updateHouseRoofs(1);assert.equal(h.roofAlpha,1);});
 test('reduced-motion house roof changes immediately',async()=>{const v=await village({reduced:true});const h=v.api.houses.find(h=>!h.decorative),b=v.api.houseBounds(h);v.api.placeHero(b.doorX+16,h.y-112);v.api.updateHouseRoofs(0);assert.equal(h.roofAlpha,0);});
+
+test('inactive Home releases scene surfaces and repeated transitions reuse one frame',async()=>{const a=await village();const run=s=>vm.runInContext(s,a.context);run('showDemo(true)');assert.equal(run('canvas.width'),1);assert.equal(run('ground.width'),1);run('recoverScene()');assert.equal(run('ground.width'),1);run('closeDemo(true);draw()');assert(run('canvas.width')>1);assert.equal(run('ground.width'),1440);for(let i=0;i<20;i++)run('showDemo(true);closeDemo(true)');assert(run('demoFrameStarted'));assert(!run('demoOpen'));});
