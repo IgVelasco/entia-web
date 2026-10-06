@@ -7,11 +7,14 @@ const W = 1440, H = 900, TOWN_TILE=32;
 const townTileCenter=value=>Math.floor(value/TOWN_TILE)*TOWN_TILE+TOWN_TILE/2;
 const onTownGrid=p=>({...p,x:townTileCenter(p.x),y:townTileCenter(p.y)});
 const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
+const touchPreference = matchMedia('(pointer: coarse)');
+const compactMode=()=>width<=900||touchPreference.matches;
 let width = 0, height = 0, dpr = 1, scale = 1, ox = 0, oy = 0, zoom = 1;
 let time = 0, last = 0, frameRequest = 0, paused = false, ready = false;
 let images = {}, current = 'home', route = null, spell = null, rings = [], aiming = false;
 let atPlace = 'home', hovered = null, toastTimer, replyTimer;
 let nearbyPlace = null,zoneContent=null;
+let joystickPointer=null,joystickDirection=null,mobileExploring=false,mobilePanX=0,mobilePanY=0;
 let frontierState=WorldFrontier.initialState(),frontierWizard=null,frontierSequence=null,worldPatterns=null;
 const FRONTIER_INSET=30, FRONTIER_MARGIN=96;
 const NEAR_ENTER = 72, NEAR_EXIT = 104;
@@ -58,7 +61,7 @@ function enterPortal(){
  document.body.append(veil);$('#world').classList.add('entering-portal');
  setTimeout(()=>{if(enteringPortal)showDemo(true);},460);
 }
-function walkToPortal(){portalReentryBlocked=false;heldDirections.clear();beginManualMovement();moveHero(walkingPath(homePortal),{explore:true,complete:enterPortal});}
+function walkToPortal(){portalReentryBlocked=false;resetJoystick();heldDirections.clear();beginManualMovement();moveHero(walkingPath(homePortal),{explore:true,complete:enterPortal});}
 function portalCrossing(){if(portalReentryBlocked){if(Math.hypot(hero.x-homePortal.x,hero.y-homePortal.y)>48)portalReentryBlocked=false;return;}if(!enteringPortal&&Math.abs(hero.x-homePortal.x)<24&&Math.abs(hero.y-homePortal.y)<20)enterPortal();}
 function ensureDemoFrame(){
  const frame=$('#demo-frame');if(demoFrameStarted&&!demoFailed)return;demoFrameStarted=true;demoFailed=false;demoLoaded=false;
@@ -92,7 +95,7 @@ window.addEventListener('message',event=>{
 });
 $('#demo-loading-back').onclick=()=>closeDemo(true);
 function drawHomePortal(){if(!images.portal)return;const f=motionOff()?0:Math.floor(time*10)%8;ctx.drawImage(images.portal,f%4*240,Math.floor(f/4)*320,240,320,homePortal.x-90,homePortal.y-238,180,240);ctx.font='13px Inter';ctx.textAlign='center';ctx.fillStyle='#e7d390';ctx.fillText('ENTER THE VEIL',homePortal.x,homePortal.y+24);}
-function castPointer(x,y){heldDirections.clear();route=null;spell={x,y,age:0,delay:0,duration:apocalipsis.duration,hit:false};hero.dir=heading(x-hero.x,y-hero.y);setAim(false);requestDraw();}
+function castPointer(x,y){resetJoystick();heldDirections.clear();route=null;spell={x,y,age:0,delay:0,duration:apocalipsis.duration,hit:false};hero.dir=heading(x-hero.x,y-hero.y);setAim(false);requestDraw();}
 const ground = document.createElement('canvas');
 ground.width = W; ground.height = H;
 let groundReady = false;
@@ -143,8 +146,8 @@ for (const surface of [canvas, $('#locations'), $('#player-label'), $('#keeper-r
 
 
 function viewport() {
-  const compact=width<=900, left=compact?0:clamp(width*.33,320,450);
-  const sceneHeight=compact?Math.min(height,width<=600?480:570):height;
+  const compact=compactMode(), left=compact?0:clamp(width*.33,320,450);
+  const sceneHeight=height;
   if(compact&&frontierState.open&&frontierWizard){
     scale=Math.max(.3,Math.min(1.2,(width-48)/220,(sceneHeight-96)/280));camera.x=camera.targetX=(hero.x+frontierWizard.x)/2;camera.y=camera.targetY=(hero.y+frontierWizard.y)/2-30;ox=width/2-camera.x*scale;oy=sceneHeight*.6-camera.y*scale;
   }else if(compact){
@@ -154,6 +157,13 @@ function viewport() {
     scale=Math.min((width-32)/(rightEdge-leftEdge),(sceneHeight-76)/(bottomEdge-topEdge))*Math.min(1,zoom);
     camera.x=camera.targetX=(leftEdge+rightEdge)/2;camera.y=camera.targetY=(topEdge+bottomEdge)/2;
     ox=width/2-camera.x*scale;oy=(sceneHeight-44)/2-camera.y*scale;
+    if(mobileExploring){
+      // Keep a stable overview until walking nears its edge, then follow gently.
+      const px=hero.x*scale+ox+mobilePanX,py=hero.y*scale+oy+mobilePanY;
+      mobilePanX+=clamp(px,Math.min(90,width*.25),width-Math.min(90,width*.25))-px;
+      mobilePanY+=clamp(py,Math.min(160,sceneHeight*.38),Math.max(sceneHeight-150,sceneHeight*.5))-py;
+      ox+=mobilePanX;oy+=mobilePanY;
+    }
   }else{
     scale=WorldPhysics.presentationScale(width,zoom);
     camera.x=camera.targetX=hero.x;camera.y=camera.targetY=hero.y;
@@ -161,6 +171,7 @@ function viewport() {
   }
 }
 function resize() {
+  resetJoystick();
   const rect = canvas.getBoundingClientRect();
   width = rect.width; height = rect.height;
   dpr = Math.min(devicePixelRatio || 1, 1.5, Math.sqrt(2000000/Math.max(1,width*height)));
@@ -256,7 +267,7 @@ function tryFrontier(from,to,kind='move',explore=true){
  const next=WorldFrontier.boundaryEvent(frontierState,{from:{x:from.x+FRONTIER_MARGIN,y:from.y+FRONTIER_MARGIN},to:{x:to.x+FRONTIER_MARGIN,y:to.y+FRONTIER_MARGIN},kind,explore,blocked:frontierBlocked(),width:W+FRONTIER_MARGIN*2,height:H+FRONTIER_MARGIN*2,inset:FRONTIER_INSET});
  if(next===frontierState)return false;
  const plan=planFrontierEscort();if(!plan){toast('The way is blocked. Step back into town and try again.');return false;}
- frontierState=next;heldDirections.clear();route=null;spell=null;setAim(false);
+ frontierState=next;resetJoystick();heldDirections.clear();route=null;spell=null;setAim(false);
  const spawn=WorldFrontier.samplePath(plan.points,48);
  frontierWizard={...spawn,body:'wizard-walk',isKeeper:true,gait:0,reaction:0,dir:heading(hero.x-spawn.x,hero.y-spawn.y),type:'frontier'};
  frontierSequence={...plan,phase:'appear',elapsed:0};
@@ -269,7 +280,7 @@ function frontierPhase(phase,text){
 }
 function dismissFrontier({focus=true}={}){
  frontierSequence=null;frontierState=WorldFrontier.initialState();frontierWizard=null;
- $('#frontier-bubble').hidden=true;$('#frontier-download-reveal').hidden=true;$('#frontier-download-reveal').style.setProperty('--reveal','0');$('#world').classList.remove('frontier-active');heldDirections.clear();
+ $('#frontier-bubble').hidden=true;$('#frontier-download-reveal').hidden=true;$('#frontier-download-reveal').style.setProperty('--reveal','0');$('#world').classList.remove('frontier-active');resetJoystick();heldDirections.clear();
  if(focus&&!demoOpen&&!document.hidden)canvas.focus({preventScroll:true});requestDraw();
 }
 function skipFrontierWalk(){
@@ -281,7 +292,7 @@ function skipFrontierWalk(){
 }
 function viewFrontierDownloads(){
  if(!frontierState.open||frontierSequence?.phase!=='vanish')return;dismissFrontier({focus:false});go('gate',{instant:true,animateContent:false});
- if(width<=900)openZoneInfo('gate',{animate:false});else $('#section-heading')?.focus({preventScroll:true});
+ if(compactMode())openZoneInfo('gate',{animate:false});else $('#section-heading')?.focus({preventScroll:true});
 }
 function updateFrontierPauseUI(){
  if(!frontierSequence)return;
@@ -356,7 +367,7 @@ function drawActor(a) {
   const idle=a.body.startsWith('npc-');
   // Essential escort travel retains grounded gait under reduced motion; only
   // decorative particles/fades are suppressed. Explicit Pause freezes the walk.
-  const escorted=(a.hero||a.type==='frontier')&&frontierSequence?.phase==='escort';
+  const escorted=(a.hero||a.type==='frontier')&&frontierSequence?.phase==='escort'||a.hero&&route?.joystick;
   const walking=!idle&&!paused&&(escorted||!motionOff()&&(a.hero?!!route:!frontierState.open&&!a.isKeeper&&a.reaction<=0));
   // Body 156 walks through seven drawings over two tiles; body 502 over one.
   const stride=(a.gait||0)/(WALK_TILE*walkCycleTiles[a.body]);
@@ -450,6 +461,7 @@ function tick(now) {
   frameRequest=0;if(demoOpen||document.hidden)return;
   const visibleDt=Math.max(0,(now-last)/1000||0),dt=Math.min(visibleDt,.04);last=now;
   advanceFrontier(visibleDt);
+  if(motionOff()&&!paused&&joystickDirection!==null&&!frontierState.open&&!frontierBlocked())advanceMovement(dt);
   if(!motionOff()){
     time+=dt;
     if(!enteringPortal&&!$('#character-dialog').open&&!frontierState.open)advanceMovement(dt);
@@ -473,7 +485,7 @@ function tick(now) {
     camera.x+=(camera.targetX-camera.x)*blend;camera.y+=(camera.targetY-camera.y)*blend;
   }
   updateHouseRoofs(dt);viewport();positionLabels();positionFrontierBubble();updateDownloadReveal();draw();
-  if(!motionOff()||frontierSequence&&!paused)requestDraw();
+  if(!motionOff()||(frontierSequence||joystickDirection!==null)&&!paused)requestDraw();
 }
 function reactToArrival(place) {
   for(const n of [...npcs,...keepers])if(n.place===place||Math.hypot(n.x-hero.x,n.y-hero.y)<200){n.reaction=1.1;n.dir=heading(hero.x-n.x,hero.y-n.y);}
@@ -503,14 +515,14 @@ function advanceRoute(dt) {
   }
   if(route===r&&r.segment>=r.points.length){route=null;r.complete?.();}
 }
-function moveHero(points,{complete,instant=false,manual=false,explore=manual}={}) {
+function moveHero(points,{complete,instant=false,manual=false,explore=manual,joystick=false}={}) {
   if(!points.length){route=null;toast('That route is blocked. Try another spot.');return;}
   const target=points.at(-1);let from=hero,length=0;
   for(const p of points){length+=Math.hypot(p.x-from.x,p.y-from.y);from=p;}
   // Every new action replaces the previous route and its completion callback.
   route=null;
-  if(motionOff()||instant||length<2){const before={x:hero.x,y:hero.y};hero.x=target.x;hero.y=target.y;if(explore&&tryFrontier(before,hero))return;if(explore)checkNearbySection();complete?.();requestDraw();return;}
-  route={sx:hero.x,sy:hero.y,target,points,segment:0,length,distance:0,elapsed:0,duration:length/WALK_SPEED,complete,manual,explore};
+  if(motionOff()&&!joystick||instant||length<2){const before={x:hero.x,y:hero.y};hero.x=target.x;hero.y=target.y;if(explore&&tryFrontier(before,hero))return;if(explore)checkNearbySection();complete?.();requestDraw();return;}
+  route={sx:hero.x,sy:hero.y,target,points,segment:0,length,distance:0,elapsed:0,duration:length/WALK_SPEED,complete,manual,explore,joystick};
   requestDraw();
 }
 function walkingPath(target) {
@@ -519,14 +531,40 @@ function walkingPath(target) {
 function isWalkable(x,y) {
   return townPhysics.free(x,y,[...keepers,...npcs],hero);
 }
+function resetJoystick(){
+ const pointer=joystickPointer;joystickPointer=null;joystickDirection=null;heldDirections.delete('joystick');
+ if(route?.joystick)route=null;
+ const pad=$('#joystick-pad');pad.style.setProperty('--stick-x','0px');pad.style.setProperty('--stick-y','0px');pad.classList.remove('active');
+ if(pointer!==null&&pad.hasPointerCapture?.(pointer))pad.releasePointerCapture(pointer);
+}
+function joystickBlocked(){return !compactMode()||!ready||document.hidden||paused||frontierState.open||frontierBlocked();}
+function updateJoystick(event){
+ if(event.pointerId!==joystickPointer)return;
+ if(joystickBlocked()){resetJoystick();requestDraw();return;}
+ event.preventDefault();
+ const pad=$('#joystick-pad'),rect=pad.getBoundingClientRect(),dx=event.clientX-rect.left-rect.width/2,dy=event.clientY-rect.top-rect.height/2,length=Math.hypot(dx,dy),radius=36;
+ const ratio=length>radius?radius/length:1;
+ pad.style.setProperty('--stick-x',dx*ratio+'px');pad.style.setProperty('--stick-y',dy*ratio+'px');
+ const direction=length<12?null:Math.abs(dx)>Math.abs(dy)?dx>0?1:3:dy>0?2:0;
+ joystickDirection=direction;
+ if(direction===null){heldDirections.delete('joystick');if(route?.joystick)route=null;}
+ else{heldDirections.set('joystick',direction);startKeyboardStep(direction);}
+ requestDraw();
+}
+function startJoystick(event){
+ if(joystickPointer!==null||joystickBlocked()||event.button>0)return;
+ event.preventDefault();event.stopPropagation?.();beginManualMovement({focus:false});joystickPointer=event.pointerId;mobileExploring=true;
+ const pad=$('#joystick-pad');pad.setPointerCapture?.(event.pointerId);pad.classList.add('active');updateJoystick(event);
+}
+function stopJoystick(event){if(event.pointerId!==joystickPointer)return;event.preventDefault?.();resetJoystick();requestDraw();}
 function clearMovementInput() {
-  heldDirections.clear();
+  resetJoystick();heldDirections.clear();
   if(route?.manual)route=null;
   requestDraw();
 }
-function beginManualMovement() {
+function beginManualMovement({focus=true}={}) {
   // Playing returns focus to the world instead of leaving a keeper label focused.
-  canvas.focus({preventScroll:true});hovered=null;
+  if(focus)canvas.focus({preventScroll:true});hovered=null;
   // Keep the in-progress footstep, but discard the old destination/reward callback.
   if(route&&!route.manual){
     const next=route.points[route.segment],distance=Math.hypot(next.x-hero.x,next.y-hero.y);
@@ -545,7 +583,7 @@ function startKeyboardStep(direction=[...heldDirections.values()].at(-1)) {
   hero.dir=direction;
   // Four-direction steps cannot cut through the house or leave the square.
   if(!isWalkable(target.x,target.y)){if(tryFrontier(hero,target,'attempt'))return;requestDraw();return;}
-  moveHero([target],{manual:true,complete:checkWalkingProgress});
+  moveHero([target],{manual:true,joystick:heldDirections.has('joystick'),complete:checkWalkingProgress});
 }
 function advanceMovement(dt) {
   if(!route)startKeyboardStep();
@@ -616,9 +654,9 @@ function setContent(place,{popup=false,animate=true}={}) {
   }
 }
 function go(place,{history:writeHistory=true,instant=false,announce=true,cast=false,animateContent=true}={}) {
-  if(!spots[place])return;if(frontierState.open)dismissFrontier({focus:false});
+  if(!spots[place])return;mobileExploring=false;mobilePanX=mobilePanY=0;if(frontierState.open)dismissFrontier({focus:false});
   nearbyPlace=null;
-  heldDirections.clear();
+  resetJoystick();heldDirections.clear();
   clearTimeout(toastTimer);$('#travel-toast').classList.remove('show');$('#travel-toast').textContent='';
   $('#world').classList.remove('walking');
   atPlace=null;current=place;setAim(false);clearTimeout(replyTimer);$('#keeper-reply').hidden=true;
@@ -652,7 +690,7 @@ function setMotionState() {
   $('#motion').disabled=motionPreference.matches;
   $('#motion').title=motionPreference.matches?'Following your reduced-motion preference':paused?'Resume animation':'Pause animation';
   if(off){
-    heldDirections.clear();
+    resetJoystick();heldDirections.clear();
     if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;
     const pending=route;route=null;spell=null;rings=[];
     if(pending){const before={x:hero.x,y:hero.y};hero.x=pending.target.x;hero.y=pending.target.y;const intercepted=pending.explore&&tryFrontier(before,hero);if(!intercepted){if(pending.explore)checkNearbySection();pending.complete?.();}}
@@ -679,6 +717,7 @@ function focusContentIfNeeded(trigger) {
   }
 }
 document.addEventListener('click',event=>{
+  if(compactMode()&&event.target.closest('.skip-link')){event.preventDefault();openZoneInfo(current);return;}
   if(event.target.closest('#portal-journey')){walkToPortal();canvas.focus({preventScroll:true});return;}
   const destination=event.target.closest('button[data-place], a[data-place]');
   if(destination){event.preventDefault();go(destination.dataset.place,{cast:!!destination.dataset.cast});focusContentIfNeeded(destination);return;}
@@ -702,12 +741,17 @@ canvas.addEventListener('click',event=>{
   if(aiming){toast('Click Home, Game, Rankings or Download.');return;}
   if(!isWalkable(x,y)&&tryFrontier(hero,{x,y},'attempt'))return;
   if(isWalkable(x,y)){
-    heldDirections.clear();beginManualMovement();
+    resetJoystick();heldDirections.clear();beginManualMovement();
     moveHero(walkingPath({x,y}),{explore:true,complete:checkWalkingProgress});
   }
 });
 
 
+$('#joystick-pad').addEventListener('pointerdown',startJoystick);
+$('#joystick-pad').addEventListener('pointermove',updateJoystick);
+for(const type of ['pointerup','pointercancel','lostpointercapture'])$('#joystick-pad').addEventListener(type,stopJoystick);
+$('#joystick-pad').addEventListener('click',event=>{event.preventDefault();event.stopPropagation();});
+$('#mobile-about').onclick=()=>$('#about').onclick();
 $('#frontier-resume').onclick=()=>{paused=false;setMotionState();};
 $('#frontier-download').onclick=skipFrontierWalk;$('#frontier-stay').onclick=()=>dismissFrontier();
 $('#close-panel').onclick=()=>{if($('#zone-dialog').open){closeZoneInfo();return;}go('home');$('.nav[data-place="home"]').focus({preventScroll:true});};
@@ -715,7 +759,7 @@ $('#spell').onclick=()=>setAim(!aiming);
 $('#motion').onclick=()=>{paused=!paused;setMotionState();};
 $('#zoom-in').onclick=()=>{zoom=Math.min(1.18,zoom+.06);resize();};
 $('#zoom-out').onclick=()=>{zoom=Math.max(.88,zoom-.06);resize();};
-$('#reset-view').onclick=()=>{zoom=1;camera.x=camera.targetX;camera.y=camera.targetY;resize();};
+$('#reset-view').onclick=()=>{mobileExploring=false;mobilePanX=mobilePanY=0;zoom=1;camera.x=camera.targetX;camera.y=camera.targetY;resize();};
 $('#about').onclick=()=>{if(frontierState.open)dismissFrontier({focus:false});clearMovementInput();$('#notes').showModal();};
 $('#close-notes').onclick=()=>$('#notes').close();
 $('#retry-load').onclick=load;
@@ -751,15 +795,19 @@ document.addEventListener('focusin',event=>{
   if(event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),dialog'))clearMovementInput();
 });
 window.addEventListener('blur',clearMovementInput);
+window.addEventListener('pointerup',stopJoystick);window.addEventListener('pointercancel',stopJoystick);
+window.addEventListener('pagehide',()=>{clearMovementInput();if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;});
 function restoreHash(){if(frontierState.open)dismissFrontier({focus:false});const hash=location.hash.slice(1);if(enteringPortal&&hash!=='demo'){enteringPortal=false;$('#portal-transition')?.remove();$('#world').classList.remove('entering-portal');}if(hash==='main-content')return;if(hash==='demo'){showDemo(false);return;}if(demoOpen){closeDemo(false);if(current===(spots[hash]?hash:'home'))return;}go(spots[hash]?hash:'home',{history:false,announce:false});}
 window.addEventListener('popstate',restoreHash);
 window.addEventListener('hashchange',()=>{const place=location.hash.slice(1);if(place!==current)restoreHash();});
-window.addEventListener('resize',resize);
+window.addEventListener('resize',resize);window.addEventListener('orientationchange',resetJoystick);
+window.visualViewport?.addEventListener('resize',resize);
+if(typeof ResizeObserver!=='undefined')new ResizeObserver(resize).observe(canvas);
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden){clearMovementInput();if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;}
   else recoverScene();
 });
-motionPreference.addEventListener('change',setMotionState);
+motionPreference.addEventListener('change',setMotionState);touchPreference.addEventListener('change',resize);
 setMotionState();resize();load();
 
 window.addEventListener('pageshow',()=>{recoverScene();if(enteringPortal){document.querySelector('#portal-transition')?.remove();$('#world').classList.remove('entering-portal');enteringPortal=false;hero.x=spots.home.land.x;hero.y=spots.home.land.y;route=null;resize();requestDraw();}});
@@ -771,7 +819,7 @@ function recoverScene(){groundReady=false;worldPatterns=null;if(demoOpen)return;
 for(const surface of [canvas,ground]){surface.addEventListener('contextlost',event=>{event.preventDefault();groundReady=false;if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;});surface.addEventListener('contextrestored',recoverScene);}
 for(const surface of document.querySelectorAll('header,.world-meta,.world-toolbar,#locations,#player-label,#keeper-reply,button'))for(const type of ['selectstart','dragstart','contextmenu'])surface.addEventListener(type,event=>event.preventDefault());
 
-function openZoneInfo(place,{animate=true}={}){if(width>900)return;const dialog=$('#zone-dialog');dialog.classList.toggle('pre-revealed',!animate);zoneContent=$(place==='home'?'#intro':'#panel');$('#zone-body').append(zoneContent);if(!dialog.open)dialog.showModal();$('#close-zone').focus({preventScroll:true});}
+function openZoneInfo(place,{animate=true}={}){if(!compactMode())return;clearMovementInput();const dialog=$('#zone-dialog');dialog.classList.toggle('pre-revealed',!animate);zoneContent=$(place==='home'?'#intro':'#panel');$('#zone-body').append(zoneContent);if(!dialog.open)dialog.showModal();$('#close-zone').focus({preventScroll:true});}
 function closeZoneInfo(){const dialog=$('#zone-dialog');dialog.classList.remove('pre-revealed');if(dialog.open)dialog.close();if(zoneContent){$('#main-content').append(zoneContent);zoneContent=null;}}
 $('#close-zone').onclick=closeZoneInfo;
 $('#zone-dialog').addEventListener('close',()=>{if(!$('#zone-dialog').open&&zoneContent){$('#main-content').append(zoneContent);zoneContent=null;}});
