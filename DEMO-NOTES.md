@@ -1,3 +1,9 @@
+# Enclosed hallway and guided prompts — 6 October 2026
+
+- Follow-up correction: unseen guides now prompt automatically only when movement reaches their position. Floor clicks still issue walking orders and never directly open the nearest unrelated guide. Learned guides do not interrupt again; explicit clicks/E can replay them.
+- The surrounding extension is solid masonry with a bounded recessed floor and raised wall edges. Removed the flat green strips. Column sprites sit exactly one 32-unit tile higher.
+- Corridor-spanning side-facing portal revision uses a newly generated sprite rather than stretching the old narrow door.
+
 # Hallway sprites and click navigation — 6 October 2026
 
 - Replaced flat carpet, column and gate primitives with generated, transparent dark-fantasy pixel-art sprites. The portal faces the left-to-right approach, rather than facing the viewer. The runtime crops occupy under 250 KiB RGBA; the full source atlas is not deployed.

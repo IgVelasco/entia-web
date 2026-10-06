@@ -10,7 +10,7 @@ const motionHandles=new Map();
 let movementOrder=0;const keyboardOrder=new Map();
 const keys=new Set(),touches=new Map(),worldTouches=new Set(),reduced=matchMedia('(prefers-reduced-motion: reduce)');
 const camera={x:510,y:490};
-const assets={hallCarpet:'hall-carpet.png',hallColumn:'hall-column.png',hallPortal:'hall-portal-side.png',hero:'hero.png',rogue:'rogue.png',mage:'mage.png',grass:'grass.png',path:'path.png',stone:'stone.png',portal:'portal.png',bank:'banking-coffer.png',essence:'essence-pickup.png',spell:'apocalipsis_60.png'};
+const assets={hallCarpet:'hall-carpet.png',hallColumn:'hall-column.png',hallPortal:'hall-portal-wide.png',hero:'hero.png',rogue:'rogue.png',mage:'mage.png',grass:'grass.png',path:'path.png',stone:'stone.png',portal:'portal.png',bank:'banking-coffer.png',essence:'essence-pickup.png',spell:'apocalipsis_60.png'};
 const floor=document.createElement('canvas');floor.width=1;floor.height=1;
 function loadImage(name,file){return new Promise((resolve,reject)=>{let shared;try{shared=embedded&&window.parent.EntiaArtwork?.[name==='spell'?'apocalipsis':name];}catch{}if(shared){images[name]=shared;resolve();return;}const im=new Image();im.onload=async()=>{try{if(typeof createImageBitmap==='function'&&(name==='bank'||name==='essence')){const crop=name==='bank'?[230,255,1075,555]:[300,230,480,1010];const size=name==='bank'?[216,112]:[32,64];images[name]=await createImageBitmap(im,...crop,{resizeWidth:size[0],resizeHeight:size[1],resizeQuality:'pixelated'});im.onload=null;im.src='';}else images[name]=im;resolve();}catch{images[name]=im;resolve();}};im.onerror=()=>reject(Error(file));im.src='../assets/'+file;});}
 async function load(){ready=false;$('#retry').hidden=true;$('#curtain').hidden=false;$('#curtain-title').textContent='Opening the portal…';try{for(const [n,f] of Object.entries(assets))await loadImage(n,f);if(!hostSuspended&&state.phase!=='hallway')buildFloor();ready=true;$('#curtain').hidden=true;drawInventoryIcon();resize();if(!state.tutorial)showHelp(true);notifyParent('entia-demo-ready');schedule();}catch(e){$('#curtain-title').textContent='The portal could not open';$('#curtain-text').textContent='An artwork file did not load. Please try again.';$('#retry').hidden=false;notifyParent('entia-demo-error');}}
@@ -154,27 +154,32 @@ function focusGame(){if(!matchMedia('(pointer: coarse)').matches)canvas.focus({p
 // The hallway, bank reveal and completion share this canvas and asset set.
 function drawHallway(){
  const t=state.tutorial;
- // Fill the visible world, including wide/tall displays, rather than a small room on black.
- const left=Math.floor((-ox/scale)/32)*32,right=(width-ox)/scale;
- const top=Math.floor((-oy/scale)/32)*32,bottom=(height-oy)/scale;
- for(let y=top;y<bottom;y+=32)for(let x=left;x<right;x+=32){ctx.drawImage(images.stone,x,y,32,32);ctx.fillStyle=y<380?'#10202288':'#10252040';ctx.fillRect(x,y,32,32);}
- ctx.fillStyle='#30443b';ctx.fillRect(left,380,right-left,10);ctx.fillStyle='#837556';ctx.fillRect(left,390,right-left,2);
- ctx.drawImage(images.hallCarpet,40,437,504,68);
- for(const x of [32,208,336,560])ctx.drawImage(images.hallColumn,x-28,300,56,132);
- text('THE HALL OF FIRST STEPS',284,281,'#aa986a',12);
+ // The extension is solid masonry, not extra walkable floor.
+ const left=Math.floor((-ox/scale)/96)*96,right=(width-ox)/scale;
+ const top=Math.floor((-oy/scale)/48)*48,bottom=(height-oy)/scale;
+ hallWall(left,top,right-left,bottom-top);
+ // Only the inset passage reads as ground. Its limits match the walking corridor.
+ for(let y=392;y<512;y+=32)for(let x=48;x<544;x+=32){ctx.drawImage(images.stone,x,y,32,32);ctx.fillStyle='#20242a20';ctx.fillRect(x,y,32,32);}
+ // Raised wall caps and dark inner faces make the surrounding mass inaccessible.
+ ctx.fillStyle='#606263';ctx.fillRect(32,382,528,4);ctx.fillStyle='#383b3e';ctx.fillRect(32,386,528,7);ctx.fillStyle='#171a1e';ctx.fillRect(32,393,528,6);
+ ctx.fillStyle='#55585b';ctx.fillRect(32,514,528,4);ctx.fillStyle='#2c3035';ctx.fillRect(32,518,528,14);ctx.fillStyle='#14171c';ctx.fillRect(32,532,528,5);
+ ctx.fillStyle='#5c5e60';ctx.fillRect(32,382,5,150);ctx.fillRect(555,382,5,150);ctx.fillStyle='#34373c';ctx.fillRect(37,399,11,115);ctx.fillRect(544,399,11,115);ctx.fillStyle='#16191e';ctx.fillRect(48,399,4,115);ctx.fillRect(540,399,4,115);
+ ctx.drawImage(images.hallCarpet,48,437,496,68);
+ for(const x of [32,208,336,560])ctx.drawImage(images.hallColumn,x-28,268,56,132);
+ text('THE HALL OF FIRST STEPS',284,244,'#aa986a',12);
  for(let i=0;i<M.guides.length;i++){const g=M.guides[i],seen=t.seen.includes(g.id),active=t.dialog?.id===g.id;ellipse(g.x,g.y+2,25,9,active?'#ddbd8266':seen?'#83b29244':'#ba986522');actor(g,g.body);text(g.name,g.x,g.y-108,active?'#ffe9b0':'#d2c8a7',12);text(seen?'✓  LEARNED':['01 · MOVE','02 · FIGHT','03 · SECURE'][i],g.x,g.y+23,seen?'#9bcaaa':'#b3a27b',10);}
  const unlocked=t.seen.length===3;
- ctx.save();ctx.globalAlpha=1;ctx.drawImage(images.hallPortal,460,336,images.hallPortal.width,184);ctx.restore();
+ ctx.save();ctx.globalAlpha=1;ctx.drawImage(images.hallPortal,448,220,images.hallPortal.width,300);ctx.restore();
  if(unlocked&&!reduced.matches){for(let i=0;i<6;i++){const y=356+(i*23+state.time*20)%142;ctx.fillStyle='#a2dbbd88';ctx.fillRect(477+i%3*16,y,2,3);}}
  text(unlocked?'ENTER THE ARENA →':'THE VEIL',496,560,unlocked?'#c5e4b1':'#9d916e',11);
- ctx.fillStyle='#243d2e';ctx.fillRect(left,540,right-left,12);ctx.fillStyle='#756548';ctx.fillRect(left,540,right-left,2);
+
 }
 function syncGuide(){const t=state.tutorial,d=$('#guide-dialog');if(!t?.dialog){dialogKey='';if(d.open)d.close();return;}if(guideHoldUntil>presentationNow||paused||hostSuspended||document.hidden||$('#help-dialog').open||$('#character-dialog').open)return;$('#guide-name').textContent=t.dialog.name;$('#guide-title').textContent=t.dialog.title;$('#guide-text').textContent=t.dialog.lines[t.page];$('#guide-step').textContent=(t.page+1)+' / '+t.dialog.lines.length;$('#guide-meter').style.width=((t.page+1)/t.dialog.lines.length*100)+'%';$('#guide-next').textContent=t.page===t.dialog.lines.length-1?(t.dialog.id==='final'?'Finish':'Understood'):'Continue';if(!d.open){clear();d.showModal();}const key=t.dialog.id+':'+t.page;if(key!==dialogKey){dialogKey=key;paintPortrait(t.dialog.id);animateGuide(t.page===0);}}
 function tutorialUI(){const t=state.tutorial;if(!t)return;const hall=state.phase==='hallway',done=t.stage==='complete';
  $('#chapter').textContent=hall?'THE VEIL / FIRST STEPS':done?'THE VEIL / TUTORIAL FINISHED':'THE VEIL / ARENA';
  $('#objective-label').textContent=hall?'MEET YOUR GUIDES':done?'TUTORIAL FINISHED':t.bankRevealed?'BANK YOUR ESSENCE':'FIGHT TWO RIVALS';
  $('#objective').textContent=hall?t.seen.length+' / 3 guides met':done?'Your essence is secure':t.bankRevealed?'The bank is nearby':Math.min(2,state.kills)+' / 2 rivals defeated';
- $('#hint').textContent=hall?'Click the floor to walk. Click each guide or press E nearby to talk.':done?'The full-match rules are provisional. Replay, review them or return to Nix.':t.bankRevealed?'Pick up crystals with Q. Follow BANK and stay nearby until your carried essence is secured.':'Prepare, aim and cast. Pick up crystals with Q or Pick up.';
+ $('#hint').textContent=hall?'Click the carpet or use movement keys. Each guide speaks as you reach them.':done?'The full-match rules are provisional. Replay, review them or return to Nix.':t.bankRevealed?'Pick up crystals with Q. Follow BANK and stay nearby until your carried essence is secured.':'Prepare, aim and cast. Pick up crystals with Q or Pick up.';
  $('#deposit-status').textContent=hall?'Safe hallway · learn at your pace':done?'Tutorial complete · '+state.secured+' essence secured':!t.bankRevealed?'Bank sealed · opens after two defeats (or a short fallback timer)':state.carried?'Carrying '+state.carried+' · follow BANK':'Bank revealed · collect a crystal to deposit';
  const endPanel=$('#tutorial-end'),endHidden=!done||!!t.dialog,wasHidden=endPanel.hidden;endPanel.hidden=endHidden;if(wasHidden&&!endHidden)motion(endPanel,[{opacity:0,transform:'translate(-50%,10px)'},{opacity:1,transform:'translate(-50%,0)'}],{duration:500});updateJourney(t);
  if(hall){const g=M.nearGuide(state);$('.interact-area').hidden=!g;$('#interact').disabled=!g;$('#interact').textContent=g?'Talk to '+g.name+' · E':'Talk';}
@@ -208,3 +213,12 @@ function updateJourney(t){const index=t.stage==='hallway'?0:t.stage==='fight'?1:
 function renderBank(){const b=M.bankAt(state),age=revealStart<0?2:Math.max(0,state.time-revealStart),t=reduced.matches?1:Math.min(1,age/1.1),ease=1-Math.pow(1-t,3);ellipse(b.x,b.y+3,53*ease,16*ease,'#a6cda345');ctx.save();ctx.globalAlpha=ease;ctx.translate(b.x,b.y);ctx.scale(.8+.2*ease,.8+.2*ease);drawBank(ctx,-54,-46+(1-ease)*20,108,56);ctx.restore();if(t<1){for(let i=0;i<10;i++){const a=i*Math.PI/5,travel=18+52*t;ctx.fillStyle='#d6dfa7';ctx.globalAlpha=1-t;ctx.fillRect(b.x+Math.cos(a)*travel,b.y-15+Math.sin(a)*travel*.55-t*15,2,3);}ctx.globalAlpha=1;}text('ESSENCE BANK',b.x,b.y+28,'#cbd7b1',11);}
 
 function drawDestination(){const q=state.navigation?.points.at(-1);if(q){ellipse(q.x,q.y,12,5,'#cfbd85',true);ctx.fillStyle='#cfbd85';ctx.fillRect(q.x-1,q.y-1,3,3);}}
+
+function hallWall(x,y,w,h){
+ ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();
+ for(let row=Math.floor(y/48);row*48<y+h;row++)for(let col=Math.floor(x/96)-1;col*96<x+w;col++){
+  const bx=col*96+(row%2)*48,by=row*48;ctx.drawImage(images.stone,bx,by,96,48);ctx.fillStyle='#11151ab5';ctx.fillRect(bx,by,96,48);
+  ctx.fillStyle='#45494d';ctx.fillRect(bx+2,by+2,92,2);ctx.fillStyle='#30343a';ctx.fillRect(bx+2,by+4,2,40);ctx.fillStyle='#12151a';ctx.fillRect(bx+2,by+44,94,4);ctx.fillRect(bx+94,by+2,2,44);
+ }
+ ctx.restore();
+}

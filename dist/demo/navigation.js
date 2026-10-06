@@ -10,7 +10,7 @@ function walkTo(s,target,guide=null){
  if(!target||!Number.isFinite(target.x)||!Number.isFinite(target.y)||s.armed||s.tutorial?.dialog||s.tutorial?.stage==='complete')return false;
  const p=s.player,start=p.step?.end||p;let points=[];
  if(s.phase==='hallway'){
-  const end={x:Math.max(48,Math.min(s.tutorial.seen.length===3?496:432,target.x)),y:Math.max(448,Math.min(496,target.y))};
+  const end={x:Math.max(48,Math.min(s.tutorial.seen.length===3?544:432,target.x)),y:Math.max(448,Math.min(496,target.y))};
   points=[{x:end.x,y:start.y},end].filter(q=>Math.hypot(q.x-start.x,q.y-start.y)>.1);
  }else{
   const physics=Physics.create({width:M.WIDTH,height:M.HEIGHT,minY:160,radius:M.RADIUS,obstacles:[...M.obstacles,...(s.bankUnlocked?[M.bankBounds(s)]:[])]});
