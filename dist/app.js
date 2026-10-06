@@ -63,12 +63,13 @@ function ensureDemoFrame(){
  const url=location.origin+'/demo/?embedded=1';if(frame.contentWindow?.location?.replace)frame.contentWindow.location.replace(url);else frame.src=url;$('#demo-loading').hidden=false;
  demoLoadTimer=setTimeout(()=>{if(!demoLoaded)$('#demo-load-message').textContent='The demo is taking longer to load. You can return to Nix while it finishes.';},20000);
 }
+function activateDemoFrame(type){if(!demoOpen||!demoLoaded)return;const frame=$('#demo-frame');if(!matchMedia('(pointer: coarse)').matches)frame.focus({preventScroll:true});frame.contentWindow?.postMessage({type,presentationScale:scale},location.origin);}
 function showDemo(push=true){
  if(demoOpen)return;const resumed=demoEverOpened;demoEverOpened=true;demoReturnHash=location.hash==='#demo'?'#home':location.hash||'#home';
  demoCloseEpoch++;$('#demo-host').classList.remove('closing');demoOpen=true;enteringPortal=false;canvas.width=1;canvas.height=1;ground.width=1;ground.height=1;groundReady=false;ensureDemoFrame();clearMovementInput();route=null;if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;
  $('#portal-transition')?.remove();$('#world').classList.remove('entering-portal');$('#app').inert=true;document.body.classList.add('demo-open');$('#demo-host').hidden=false;
  if(push&&location.hash!=='#demo'){window.history.pushState({entiaDemo:true},'','#demo');demoHistoryOwned=true;}
- if(demoLoaded)$('#demo-frame').contentWindow?.postMessage({type:resumed?'entia-demo-resume':'entia-demo-activate',presentationScale:scale},location.origin);
+ if(demoLoaded)activateDemoFrame(resumed?'entia-demo-resume':'entia-demo-activate');
 }
 function closeDemo(changeHistory=true){
  if(!demoOpen)return;
@@ -83,7 +84,7 @@ function closeDemo(changeHistory=true){
 
 window.addEventListener('message',event=>{
  if(event.origin!==location.origin||event.source!==$('#demo-frame').contentWindow)return;
- if(event.data?.type==='entia-demo-ready'){demoLoaded=true;clearTimeout(demoLoadTimer);$('#demo-loading').hidden=true;if(demoOpen)$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-activate',presentationScale:scale},location.origin);if(!demoOpen&&!enteringPortal)$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-pause'},location.origin);}
+ if(event.data?.type==='entia-demo-ready'){demoLoaded=true;clearTimeout(demoLoadTimer);$('#demo-loading').hidden=true;if(demoOpen)activateDemoFrame('entia-demo-activate');if(!demoOpen&&!enteringPortal)$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-pause'},location.origin);}
  else if(event.data?.type==='entia-demo-exit')closeDemo(true);
  else if(event.data?.type==='entia-demo-error'){demoFailed=true;$('#demo-load-message').textContent='The demo artwork could not load. Return to Nix and try again.';}
 });

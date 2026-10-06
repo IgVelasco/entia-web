@@ -20,7 +20,7 @@ function mount({assets,onChange,onOpen,onClose}){
  q('#character-walk').onclick=()=>{walking=!walking;q('#character-walk').setAttribute('aria-pressed',String(walking));};
  q('#character-cancel').onclick=()=>dialog.close();q('#character-close').onclick=()=>dialog.close();
  q('#character-form').addEventListener('submit',e=>{e.preventDefault();draft.name=name.value;const stored=save(draft);q('#character-save-status').textContent=stored?'Character saved on this device':'Character applied for this visit; browser storage is unavailable';dialog.close();});
- dialog.addEventListener('close',()=>{if(raf)cancelAnimationFrame(raf);raf=0;onClose();q('#character-button').focus();});
+ dialog.addEventListener('close',()=>{if(raf)cancelAnimationFrame(raf);raf=0;q('#character-button').focus();onClose();});
 }
 root.addEventListener('storage',e=>{if(e.key===KEY)publish(read());});
 root.EntiaCharacter={get:()=>({...current}),normalize,save,mount,looks};

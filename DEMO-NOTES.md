@@ -1,3 +1,9 @@
+# Keyboard focus on entry — 6 October 2026
+
+- The parent hands desktop focus to the visible loaded demo iframe on cold entry and reentry. The demo focuses its canvas when ready/activated and after finishing an NPC conversation or closing the character editor.
+- Focus is guarded while hidden, suspended, paused, returning, inside a modal or using coarse-pointer controls. No keyboard forwarding or extra timers were added.
+- Regression coverage includes activation before/after artwork loads, movement without clicking, NPC continuation, reentry, hidden-frame readiness and modal/phone safeguards.
+
 # Hallway alignment correction — 6 October 2026
 
 - One shared hallway geometry now drives the floor, carpet, columns, portal and traversal bounds. The carpet is vertically centered on the floor and horizontally centered on the floor.
