@@ -1,3 +1,9 @@
+# Distinct fuller NPC outfits — 6 October2026
+
+- Redrew Game, Rankings and Download clothes from source art, preserving all existing registered heads. Game now uses broad full plate without a cape; Rankings uses wide parchment/rust scholar robes; Download uses a short olive jacket, roomy breeches and heavy boots.
+- Front clothing silhouettes are49/58/51pixels wide at88pixels tall. Outfit extraction follows transparent column gaps so wide sleeves and gloves are not clipped at equal-quarter boundaries.
+- Retained four-direction idle exports, independent heads/clothes, shared anchors and native game import metadata. Other three designs are unchanged. New versioned filenames and manifest/script keys prevent stale keeper artwork.
+
 # Reusable role character kit — 6 October 2026
 
 - Generated six separate four-direction face/outfit designs: movement assassin, fatherly Home mentor, battle-ready Game veteran, Rankings chronicler, Download courier and bank steward.
