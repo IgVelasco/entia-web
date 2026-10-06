@@ -476,15 +476,26 @@
       48,
       48
     ],
-    "origin": [
-      24,
-      32
+    "source_ppt": 60,
+    "origins_by_direction": [
+      [
+        24,
+        32
+      ],
+      [
+        26,
+        32
+      ],
+      [
+        25,
+        32
+      ],
+      [
+        20,
+        32
+      ]
     ],
-    "neck_anchor": [
-      48,
-      78
-    ],
-    "source_ppt": 60
+    "fit_note": "Preserve source head pixels and y; per-direction X placement follows the original body156 neck axis, especially west-facing profile."
   },
   "verification": {
     "sourceCommit": "410676cc2e11170c494ad90eb160944ce8d635cf",
@@ -501,18 +512,46 @@
       "south",
       "west"
     ],
-    "headOrigin": {
-      "x": 24,
-      "y": 32
-    },
-    "neckAnchor": {
-      "x": 48,
-      "y": 78
-    },
+    "headOrigins": [
+      {
+        "x": 24,
+        "y": 32
+      },
+      {
+        "x": 26,
+        "y": 32
+      },
+      {
+        "x": 25,
+        "y": 32
+      },
+      {
+        "x": 20,
+        "y": 32
+      }
+    ],
+    "neckAnchors": [
+      {
+        "x": 48,
+        "y": 78
+      },
+      {
+        "x": 50,
+        "y": 78
+      },
+      {
+        "x": 49,
+        "y": 78
+      },
+      {
+        "x": 44,
+        "y": 78
+      }
+    ],
     "reconstructionMismatches": 0,
     "opaqueMismatches": 0,
     "maxDelta": 0,
-    "minimumNeckOverlap": 35,
+    "minimumNeckOverlap": 34,
     "frames": [
       {
         "direction": 0,
@@ -577,7 +616,7 @@
       {
         "direction": 1,
         "frame": 4,
-        "neckOverlapPixels": 40
+        "neckOverlapPixels": 38
       },
       {
         "direction": 1,
@@ -602,12 +641,12 @@
       {
         "direction": 2,
         "frame": 1,
-        "neckOverlapPixels": 35
+        "neckOverlapPixels": 34
       },
       {
         "direction": 2,
         "frame": 2,
-        "neckOverlapPixels": 41
+        "neckOverlapPixels": 40
       },
       {
         "direction": 2,
@@ -627,7 +666,7 @@
       {
         "direction": 2,
         "frame": 6,
-        "neckOverlapPixels": 40
+        "neckOverlapPixels": 39
       },
       {
         "direction": 2,
@@ -637,12 +676,12 @@
       {
         "direction": 3,
         "frame": 0,
-        "neckOverlapPixels": 43
+        "neckOverlapPixels": 42
       },
       {
         "direction": 3,
         "frame": 1,
-        "neckOverlapPixels": 43
+        "neckOverlapPixels": 41
       },
       {
         "direction": 3,
@@ -652,27 +691,27 @@
       {
         "direction": 3,
         "frame": 3,
-        "neckOverlapPixels": 43
-      },
-      {
-        "direction": 3,
-        "frame": 4,
-        "neckOverlapPixels": 40
-      },
-      {
-        "direction": 3,
-        "frame": 5,
         "neckOverlapPixels": 42
       },
       {
         "direction": 3,
+        "frame": 4,
+        "neckOverlapPixels": 41
+      },
+      {
+        "direction": 3,
+        "frame": 5,
+        "neckOverlapPixels": 41
+      },
+      {
+        "direction": 3,
         "frame": 6,
-        "neckOverlapPixels": 39
+        "neckOverlapPixels": 42
       },
       {
         "direction": 3,
         "frame": 7,
-        "neckOverlapPixels": 40
+        "neckOverlapPixels": 43
       }
     ]
   },

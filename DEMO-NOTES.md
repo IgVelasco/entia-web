@@ -230,3 +230,14 @@ The mohawk sheet is93,298compressed bytes and1,966,080decodedRGBA bytes, loaded 
 
 # Mohawk fringe cleanup — 7 October 2026 Mallorca
 Removed the neutral pale exterior residue from the user head source without repainting retained pixels. All eye regions and head geometry are unchanged. Pale boundary count is48→0 across four direction heads. Rebuilt all32walking cells from the same originalbody/staff; non-head pixels are byte-identical. Collar overlap remains at least35opaque pixels. The new cached sheet is93,067bytes and retains the same decoded memory budget.
+
+# Outer world and the Wayfarer — 7 October 2026 Mallorca
+The visible terrain now continues beyond the playable town instead of stopping at a dark rectangle. Source60PPT grass/path retain32world-unit tile size. Two tiny32×32 pattern canvases and a bounded/cullable set of exterior trees are used; the main ground bitmap remains1440×900, and the scene retains its2Mpixel/DPR cap. The ambient shade applies across the full view, avoiding an edge-colour seam. Physics bounds remain unchanged.
+
+The Wayfarer appears once per page visit on deliberate outward exploration near the boundary, including blocked outward keys/clicks and reduced-motion/paused endpoints. Idle proximity, remote outside clicks, ordinary section navigation, portals, hidden pages and other dialogs do not summon it. The encounter cancels movement without old completion callbacks, can be dismissed with Escape or Stay, and offers one explicit View downloads action. The existing unavailable-download notice is truthful; no installer URL is invented. Mobile briefly frames the player and wizard, then restores the keeper overview.
+
+The approved bearded user head is preserved byte-for-byte in its registered layer. A new generated dark-teal/gold magical tunic is fitted beneath it. The wizard is stationary, using four genuine idle views; no walking frames are claimed.
+
+The mohawk’s body156 anatomical neck axes required X offsetsN/E/S/W=0,+2,+1,-4 rather than a universal centre. Its face pixels and vertical position are unchanged. All32walking views retain at least34opaque overlap pixels and their original body/staff composition.
+
+Manual movement returns focus to the canvas. Keeper keyboard focus keeps underline/reticle cues without drawing the unwanted square around its label. All209tests pass; native-canvas desktop/mobile renders were inspected. Full browser/device layout QA remains unavailable in this environment.

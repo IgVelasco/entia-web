@@ -1,0 +1,91 @@
+{
+  "name": "The Wayfarer, magical tunic",
+  "revision": 2,
+  "sourcePpt": 60,
+  "animation": "idle",
+  "framesPerDirection": 1,
+  "frame": {
+    "w": 96,
+    "h": 160
+  },
+  "directions": [
+    "north",
+    "east",
+    "south",
+    "west"
+  ],
+  "head": {
+    "file": "heads-original.png",
+    "frame": {
+      "w": 48,
+      "h": 64
+    },
+    "anchor": {
+      "x": 24,
+      "y": 46
+    },
+    "origin": {
+      "x": 24,
+      "y": 32
+    },
+    "pixelsUnchanged": true,
+    "sha256": "4af213376ac294dbd63d6d72419dee1669cab4c7b5dc5557bd738a5702f301fb"
+  },
+  "body": {
+    "file": "body-original.png",
+    "source": "body-source-magical-atlas.png",
+    "height": 88,
+    "neckSocket": {
+      "x": 48,
+      "y": 78
+    },
+    "generation": "Built-in image generation, headless outfit only"
+  },
+  "metrics": [
+    {
+      "direction": "north",
+      "bodyWidth": 55,
+      "bodyHeight": 88,
+      "bodyX": 21,
+      "headOrigin": {
+        "x": 24,
+        "y": 32
+      },
+      "headBodyOverlap": 274
+    },
+    {
+      "direction": "east",
+      "bodyWidth": 42,
+      "bodyHeight": 88,
+      "bodyX": 28,
+      "headOrigin": {
+        "x": 24,
+        "y": 32
+      },
+      "headBodyOverlap": 130
+    },
+    {
+      "direction": "south",
+      "bodyWidth": 60,
+      "bodyHeight": 88,
+      "bodyX": 18,
+      "headOrigin": {
+        "x": 24,
+        "y": 32
+      },
+      "headBodyOverlap": 270
+    },
+    {
+      "direction": "west",
+      "bodyWidth": 42,
+      "bodyHeight": 88,
+      "bodyX": 26,
+      "headOrigin": {
+        "x": 24,
+        "y": 32
+      },
+      "headBodyOverlap": 139
+    }
+  ],
+  "engineTested": false
+}

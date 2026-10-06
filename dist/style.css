@@ -65,7 +65,7 @@ p{font-size:16px;line-height:1.75;color:var(--muted)}
 /* Brighter faction shades stay legible against the village scenery. */
 .keeper-label strong{color:#ff777b}
 #player-label .game-text{color:#7dadff}
-.keeper:focus-visible{outline:none}.keeper:focus-visible .keeper-label{outline:2px solid #f3d69b;outline-offset:4px}
+.keeper:focus-visible{outline:none}.keeper:focus-visible .keeper-label{outline:none}.keeper:focus-visible .keeper-label strong{text-decoration:underline;text-underline-offset:4px}
 #player-label{position:absolute;top:0;left:0;z-index:4;pointer-events:none}
 #keeper-reply{position:absolute;top:0;left:0;z-index:4;max-width:190px;padding:9px 12px;background:#e5d5aa;color:#233022;text-align:center;font:400 14px/1.4 Georgia,serif;pointer-events:none;box-shadow:0 4px 20px #06150d44}
 #keeper-reply:after{content:'';position:absolute;bottom:-5px;left:50%;width:10px;height:10px;transform:rotate(45deg);background:#e5d5aa}
@@ -156,3 +156,5 @@ header,header *,.world-meta,.world-meta *,button,button *,aside,aside *,#player-
 
 /* Keep portal transitions to opacity: no full-screen blur or scaled GPU snapshots. */
 #portal-transition{clip-path:none;opacity:0;animation:portal-fade .46s ease-out forwards}.entering-portal #scene{animation:none;filter:none;transform:none}#demo-host{transform:none;filter:none;transition:opacity .22s ease}#demo-host.closing{transform:none;filter:none;opacity:0}@keyframes portal-fade{to{opacity:1}}
+
+#frontier-dialog{position:fixed;left:50%;right:auto;top:auto;bottom:24px;transform:translateX(-50%);margin:0;width:min(470px,calc(100vw - 32px));padding:28px;border-color:#bba66d88;box-shadow:0 15px 70px #0008}#frontier-dialog::backdrop{background:#05130c55}#frontier-dialog h2{font-size:32px;margin:12px 0}#frontier-dialog p{font-size:14px;margin:10px 0}#frontier-close{float:right;font-size:22px;background:none;border:0;color:var(--ink);cursor:pointer}.frontier-availability{font-size:11px!important;color:#b4bdad!important}.frontier-actions{display:flex;gap:12px;align-items:center;margin-top:19px}#frontier-dialog .eyebrow{font-size:9px}@media(max-width:500px){#frontier-dialog{bottom:14px;padding:22px}.frontier-actions{flex-direction:column;align-items:stretch}}
