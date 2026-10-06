@@ -261,14 +261,14 @@ function tryFrontier(from,to,kind='move',explore=true){
  const spawn=WorldFrontier.samplePath(plan.points,48);
  frontierWizard={...spawn,body:'wizard-walk',isKeeper:true,gait:0,reaction:0,dir:heading(hero.x-spawn.x,hero.y-spawn.y),type:'frontier'};
  frontierSequence={...plan,phase:'appear',elapsed:0};
- $('#frontier-bubble').hidden=true;$('#world').classList.add('frontier-active');last=performance.now();requestDraw();return true;
+ $('#frontier-description').textContent='';$('#frontier-bubble').hidden=true;$('#world').classList.add('frontier-active');updateFrontierPauseUI();last=performance.now();requestDraw();return true;
 }
 function frontierPhase(phase,text){
  if(!frontierSequence)return;frontierSequence.phase=phase;frontierSequence.elapsed=0;
  if(text){$('#frontier-description').textContent=text;$('#frontier-bubble').hidden=false;}
 }
 function dismissFrontier({focus=true}={}){
- frontierSequence=null;frontierState=WorldFrontier.closeBoundary(frontierState);frontierWizard=null;
+ frontierSequence=null;frontierState=WorldFrontier.initialState();frontierWizard=null;
  $('#frontier-bubble').hidden=true;$('#world').classList.remove('frontier-active');heldDirections.clear();
  if(focus&&!demoOpen&&!document.hidden)canvas.focus({preventScroll:true});requestDraw();
 }
@@ -276,17 +276,23 @@ function viewFrontierDownloads(){
  if(!frontierState.open)return;dismissFrontier({focus:false});go('gate',{instant:true});
  if(width<=900)openZoneInfo('gate');else $('#section-heading')?.focus({preventScroll:true});
 }
+function updateFrontierPauseUI(){
+ if(!frontierSequence)return;
+ $('#frontier-resume').hidden=!paused;$('#frontier-paused').hidden=!paused;
+ $('#frontier-bubble').hidden=!paused&&['appear','vanish'].includes(frontierSequence.phase);
+}
 function advanceFrontier(dt){
  const s=frontierSequence;if(!s)return;
  if(frontierBlocked()){dismissFrontier({focus:false});return;}
+ if(paused)return;
  s.elapsed+=dt;
  if(s.phase==='appear'&&s.elapsed>=(motionOff()?.05:.8))frontierPhase('speak','Wait, traveller! These lands lead beyond the preview. Come with me. I’ll show you where to download Entia.');
  else if(s.phase==='speak'&&s.elapsed>=3.8)frontierPhase('escort');
  else if(s.phase==='escort'){
-  let nextDistance=Math.min(s.length,s.distance+160*Math.min(dt,.04)),vertex=0;
+  let nextDistance=Math.min(s.length,s.distance+96*Math.min(dt,.04)),vertex=0;
   // Stop at the next turn of either actor; even a dropped frame stays cardinal.
   for(let i=1;i<s.points.length;i++){vertex+=Math.hypot(s.points[i].x-s.points[i-1].x,s.points[i].y-s.points[i-1].y);for(const stop of [vertex,vertex-48])if(stop>s.distance+.001)nextDistance=Math.min(nextDistance,stop);}
-  s.distance=motionOff()?s.length:nextDistance;
+  s.distance=nextDistance;
   for(const [actor,distance] of [[hero,s.distance],[frontierWizard,s.distance+48]]){
    const p=WorldFrontier.samplePath(s.points,distance),dx=p.x-actor.x,dy=p.y-actor.y;
    if(Math.hypot(dx,dy)>.001){actor.dir=heading(dx,dy);actor.gait+=Math.hypot(dx,dy);actor.x=p.x;actor.y=p.y;}
@@ -323,7 +329,10 @@ function glow(x,y,r,alpha=1) {
 function drawActor(a) {
   const im=images[a.body]; if(!im)return;
   const idle=a.body.startsWith('npc-');
-  const walking=!idle && !motionOff() && (a.hero ? !!route||frontierSequence?.phase==='escort' : a.type==='frontier'?frontierSequence?.phase==='escort':!frontierState.open&&!a.isKeeper&&a.reaction<=0);
+  // Essential escort travel retains grounded gait under reduced motion; only
+  // decorative particles/fades are suppressed. Explicit Pause freezes the walk.
+  const escorted=(a.hero||a.type==='frontier')&&frontierSequence?.phase==='escort';
+  const walking=!idle&&!paused&&(escorted||!motionOff()&&(a.hero?!!route:!frontierState.open&&!a.isKeeper&&a.reaction<=0));
   // Body 156 walks through seven drawings over two tiles; body 502 over one.
   const stride=(a.gait||0)/(WALK_TILE*walkCycleTiles[a.body]);
   const frame=walking ? 1+Math.floor((stride%1)*7) : 0;
@@ -431,7 +440,7 @@ function tick(now) {
     camera.x+=(camera.targetX-camera.x)*blend;camera.y+=(camera.targetY-camera.y)*blend;
   }
   updateHouseRoofs(dt);viewport();positionLabels();positionFrontierBubble();draw();
-  if(!motionOff()||frontierSequence)requestDraw();
+  if(!motionOff()||frontierSequence&&!paused)requestDraw();
 }
 function reactToArrival(place) {
   for(const n of [...npcs,...keepers])if(n.place===place||Math.hypot(n.x-hero.x,n.y-hero.y)<200){n.reaction=1.1;n.dir=heading(hero.x-n.x,hero.y-n.y);}
@@ -601,6 +610,7 @@ function toast(message) {
   clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#travel-toast').classList.remove('show'),2600);
 }
 function setMotionState() {
+  updateFrontierPauseUI();
   const off=motionOff();
   $('#world').classList.toggle('motion-off',off);
   $('#motion').textContent=off?'▷':'Ⅱ';
@@ -665,6 +675,7 @@ canvas.addEventListener('click',event=>{
 });
 
 
+$('#frontier-resume').onclick=()=>{paused=false;setMotionState();};
 $('#frontier-download').onclick=viewFrontierDownloads;$('#frontier-stay').onclick=()=>dismissFrontier();
 $('#close-panel').onclick=()=>{if($('#zone-dialog').open){closeZoneInfo();return;}go('home');$('.nav[data-place="home"]').focus({preventScroll:true});};
 $('#spell').onclick=()=>setAim(!aiming);
