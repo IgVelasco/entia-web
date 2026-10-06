@@ -272,8 +272,15 @@ function dismissFrontier({focus=true}={}){
  $('#frontier-bubble').hidden=true;$('#world').classList.remove('frontier-active');heldDirections.clear();
  if(focus&&!demoOpen&&!document.hidden)canvas.focus({preventScroll:true});requestDraw();
 }
+function skipFrontierWalk(){
+ const s=frontierSequence;if(!s||s.fast)return;
+ s.fast=true;s.speed=Math.max(320,(s.length-s.distance)/1.2);
+ frontierPhase('escort','Hold tight, traveller. I’ll take you there!');
+ if(paused){paused=false;setMotionState();}
+ last=performance.now();requestDraw();
+}
 function viewFrontierDownloads(){
- if(!frontierState.open)return;dismissFrontier({focus:false});go('gate',{instant:true});
+ if(!frontierState.open||frontierSequence?.phase!=='vanish')return;dismissFrontier({focus:false});go('gate',{instant:true});
  if(width<=900)openZoneInfo('gate');else $('#section-heading')?.focus({preventScroll:true});
 }
 function updateFrontierPauseUI(){
@@ -289,7 +296,7 @@ function advanceFrontier(dt){
  if(s.phase==='appear'&&s.elapsed>=(motionOff()?.05:.8))frontierPhase('speak','Wait, traveller! These lands lead beyond the preview. Come with me. I’ll show you where to download Entia.');
  else if(s.phase==='speak'&&s.elapsed>=3.8)frontierPhase('escort');
  else if(s.phase==='escort'){
-  let nextDistance=Math.min(s.length,s.distance+96*Math.min(dt,.04)),vertex=0;
+  let nextDistance=Math.min(s.length,s.distance+(s.speed||96)*Math.min(dt,.04)),vertex=0;
   // Stop at the next turn of either actor; even a dropped frame stays cardinal.
   for(let i=1;i<s.points.length;i++){vertex+=Math.hypot(s.points[i].x-s.points[i-1].x,s.points[i].y-s.points[i-1].y);for(const stop of [vertex,vertex-48])if(stop>s.distance+.001)nextDistance=Math.min(nextDistance,stop);}
   s.distance=nextDistance;
@@ -298,8 +305,8 @@ function advanceFrontier(dt){
    if(Math.hypot(dx,dy)>.001){actor.dir=heading(dx,dy);actor.gait+=Math.hypot(dx,dy);actor.x=p.x;actor.y=p.y;}
   }
   if(s.distance>=s.length){hero.dir=heading(frontierWizard.x-hero.x,frontierWizard.y-hero.y);frontierWizard.dir=heading(hero.x-frontierWizard.x,hero.y-frontierWizard.y);frontierPhase('farewell','Here we are. The wider world awaits! I’ll open Downloads for you.');}
- }else if(s.phase==='farewell'&&s.elapsed>=2.2){$('#frontier-bubble').hidden=true;frontierPhase('vanish');}
- else if(s.phase==='vanish'&&s.elapsed>=(motionOff()?.05:.8))viewFrontierDownloads();
+ }else if(s.phase==='farewell'&&s.elapsed>=(s.fast?.3:2.2)){$('#frontier-bubble').hidden=true;frontierPhase('vanish');}
+ else if(s.phase==='vanish'&&s.elapsed>=(motionOff()?.05:s.fast?.45:.8))viewFrontierDownloads();
 }
 function positionFrontierBubble(){
  if(!frontierWizard||$('#frontier-bubble').hidden)return;
@@ -309,8 +316,11 @@ function positionFrontierBubble(){
 }
 function drawFrontierWizard(a){
  const s=frontierSequence;if(!s)return;
- const u=motionOff()?1:s.phase==='appear'?clamp(s.elapsed/.8,0,1):s.phase==='vanish'?1-clamp(s.elapsed/.8,0,1):1;
+ const u=motionOff()?1:s.phase==='appear'?clamp(s.elapsed/.8,0,1):s.phase==='vanish'?1-clamp(s.elapsed/(s.fast?.45:.8),0,1):1;
  ctx.save();ctx.globalAlpha=u;glow(a.x,a.y-34,65,.7);drawActor(a);ctx.restore();
+ if(!motionOff()&&s.fast&&s.phase==='escort'){
+  ellipse(a.x,a.y+2,25,9,'#a4e6d799',true,2);glow(a.x,a.y-22,54,.7);
+ }
  if(!motionOff()&&(s.phase==='appear'||s.phase==='vanish')){
   const energy=Math.sin(Math.PI*u);glow(a.x,a.y-40,80,energy);
   ellipse(a.x,a.y+2,18+28*(1-u),6+9*(1-u),'rgba(160,233,221,'+energy+')',true,2);
@@ -676,7 +686,7 @@ canvas.addEventListener('click',event=>{
 
 
 $('#frontier-resume').onclick=()=>{paused=false;setMotionState();};
-$('#frontier-download').onclick=viewFrontierDownloads;$('#frontier-stay').onclick=()=>dismissFrontier();
+$('#frontier-download').onclick=skipFrontierWalk;$('#frontier-stay').onclick=()=>dismissFrontier();
 $('#close-panel').onclick=()=>{if($('#zone-dialog').open){closeZoneInfo();return;}go('home');$('.nav[data-place="home"]').focus({preventScroll:true});};
 $('#spell').onclick=()=>setAim(!aiming);
 $('#motion').onclick=()=>{paused=!paused;setMotionState();};
