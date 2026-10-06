@@ -1,3 +1,13 @@
+# Hallway sprites and click navigation — 6 October 2026
+
+- Replaced flat carpet, column and gate primitives with generated, transparent dark-fantasy pixel-art sprites. The portal faces the left-to-right approach, rather than facing the viewer. The runtime crops occupy under 250 KiB RGBA; the full source atlas is not deployed.
+- Hall masonry now fills the current viewport on wide and tall displays, eliminating the empty dark bands without enlarging the canvas backing store or adding a second scene canvas.
+- Normal floor clicks/taps queue bounded cardinal navigation. Keyboard/thumbstick input overrides it. Prepared spell clicks cast exclusively, including failed casts; Prepare again or Escape cancels aiming.
+- Guide dialogues open through an explicit NPC sprite click, E, or Talk. Distant NPC clicks approach before talking; passive proximity never opens a modal.
+- Click routes use existing model footsteps/collisions and respect the revealed bank. Per-click path search is bounded, and obstruction cancels rather than continuously replanning. Lifecycle interruptions, conversations, preparation and death clear orders.
+- Tutorial copy and Controls explain walking versus casting. Generated assets and their brief are also delivered as a ZIP.
+- Validation: full Node suite, JS syntax checks and diff whitespace checks; native-canvas renders examined at desktop and phone dimensions. This is not full browser/device interaction or memory profiling.
+
 # Motion and presentation refinement — 6 October 2026
 
 User requested better animations and fluidity, with animejs.com as inspiration. Consulted its Timeline and Easings documentation. This version uses native Web Animations rather than downloading the library: speaker/page-keyed staggered dialogue, portrait cards, stable text areas, progress rail, an opening beat, coordinated arena reveal, localized bank materialization, and an essence-secured completion beat before the final Keeper explanation. Hall masonry, alcoves, runner and torch pools are drawn with existing art and one canvas.
