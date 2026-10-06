@@ -8,7 +8,7 @@
   <meta name="description" content="Your journey starts here. Explore Entia’s world, its PvP vision, rankings preview and client availability.">
   <link rel="icon" href="favicon.svg?v=entia" type="image/svg+xml">
   <link rel="preload" href="assets/fonts/Inter-Regular.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="style.css?v=frontier1">
+  <link rel="stylesheet" href="style.css?v=escort2">
 <link rel="stylesheet" href="character.css?v=1"></head>
 <body>
 <div id="app">
@@ -31,6 +31,7 @@
       <span id="location-state">You are here</span>
     </div>
     <div id="locations" role="group" aria-label="Choose a section" aria-describedby="spell-hint"></div>
+    <aside id="frontier-bubble" hidden aria-label="The Wayfarer"><span class="eyebrow">THE WAYFARER</span><p id="frontier-description" role="status" aria-live="polite"></p><div class="frontier-actions"><button id="frontier-download">Skip to downloads</button><button id="frontier-stay">Stay here · Esc</button></div></aside>
     <div id="player-label" aria-hidden="true"><span>YOU</span></div>
     <div id="keeper-reply" aria-hidden="true" hidden></div>
     <section id="main-content" tabindex="-1" aria-label="Current section">
@@ -56,13 +57,12 @@
     <footer><span>✦ <b>NIX</b> <span class="footer-divider">/</span> <span id="footer-place">HOME</span></span><button id="about">Prototype notes</button></footer>
     <div id="loading" role="status"><img class="loading-mark" src="favicon.svg?v=entia" alt="" width="64" height="64"><p>Opening the gates of Nix…</p><button id="retry-load" class="quiet" hidden>Try again</button></div>
   </main>
-  <dialog id="frontier-dialog" aria-labelledby="frontier-title" aria-describedby="frontier-description"><button id="frontier-close" aria-label="Dismiss the wizard">×</button><span class="eyebrow">THE WAYFARER · NIX'S WARD</span><h2 id="frontier-title">There is more beyond.</h2><p id="frontier-description">The world continues past these woods. Download Entia to explore the lands beyond Nix.</p><p class="frontier-availability">The desktop download is not available in this preview yet.</p><div class="frontier-actions"><button id="frontier-download" class="primary">View downloads</button><button id="frontier-stay" class="quiet">Stay in Nix</button></div></dialog>
   <dialog id="zone-dialog" aria-label="Zone information"><button id="close-zone" aria-label="Close zone information">×</button><div id="zone-body"></div></dialog>
   <dialog id="notes" aria-labelledby="notes-heading"><button id="close-notes" aria-label="Close notes">×</button><span class="eyebrow">ABOUT THIS PREVIEW</span><h2 id="notes-heading">About this preview</h2><p>This is a website preview of Entia. The game is in development; downloads and live rankings are not connected yet.</p><p>The website and portal demo do not affect the game’s economy.</p><p>Walk with WASD or arrow keys, or click open ground. Walk up to a named character to open its section, Press C, aim with the pointer, then click to cast Apocalipsis. Walk into the portal to enter the essence demo. Keys 1–4 open sections.</p><p>Pause stops world animation. With reduced motion or pause enabled, each movement key press takes one step.</p></dialog>
 </div>
 <section id="demo-host" aria-label="Entia essence demo" hidden><iframe id="demo-frame" title="Entia playable essence demo" allow="fullscreen"></iframe><div id="demo-loading" role="status"><strong>Crossing into the Veil…</strong><p id="demo-load-message">Your place in Nix is waiting here.</p><button id="demo-loading-back">Back to Nix</button></div></section>
 <dialog id="character-dialog" aria-labelledby="character-title"><button id="character-close" aria-label="Close character editor">×</button><span class="character-kicker">YOUR TRAVELLER / ENTIA</span><h2 id="character-title">Make Nix your own</h2><p>Your character follows you through the website and the Veil.</p><form id="character-form"><div class="character-layout"><div><div class="character-stage"><canvas id="character-preview" width="288" height="320" aria-label="Animated character appearance preview"></canvas><strong id="character-preview-name"></strong></div><div class="character-turn"><button type="button" id="character-turn-left" aria-label="Turn preview left">↶</button><button type="button" id="character-walk" aria-pressed="true">Walk preview</button><button type="button" id="character-turn-right" aria-label="Turn preview right">↷</button></div></div><div><label for="character-name">Character name</label><input id="character-name" maxlength="20" autocomplete="off" placeholder="Avharot"><label>Choose your appearance</label><div class="character-looks"><button type="button" data-character-look="hero" aria-pressed="true">Moonwarden</button><button type="button" data-character-look="mage" aria-pressed="false">Crimson sentinel</button></div><strong id="character-look-name"></strong><p id="character-look-detail"></p><p class="character-note">Two improved sprite sets, with their original equipment. Weapons are part of these complete looks for now.</p><p class="character-note">Saved only in this browser. No account is needed, and appearance does not change combat stats.</p></div></div><div class="character-actions"><button type="button" id="character-cancel">Cancel</button><button class="character-save" type="submit">Use this character</button></div></form></dialog><span id="character-save-status" role="status" aria-live="polite"></span>
-<script src="character.js?v=focus2"></script><script src="world-physics.js?v=4"></script><script src="frontier.js?v=1"></script><script src="app.js?v=frontier1"></script>
+<script src="character.js?v=focus2"></script><script src="world-physics.js?v=4"></script><script src="frontier.js?v=2"></script><script src="app.js?v=escort2"></script>
 
 </body>
 </html>

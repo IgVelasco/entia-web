@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const {initialState, boundaryEvent, closeBoundary, visibleTiles} = require('../dist/frontier.js');
+const {initialState, boundaryEvent, closeBoundary, rearm, pathLength, samplePath, visibleTiles} = require('../dist/frontier.js');
 const event = (from, to, extra={}) => boundaryEvent(initialState(), {from, to, ...extra});
 test('deliberate approach opens the matching edge', () => {
   for (const [edge,from,to] of [
@@ -38,7 +38,7 @@ test('demo, modal, transition or hidden-page suppression does not consume encoun
     assert(boundaryEvent(state,{from:{x:90,y:450},to:{x:60,y:450}}).open);
   }
 });
-test('dismissal, navigation and history preserve once-per-visit seen state', () => {
+test('dismissal does not rearm until an actual safe interior position', () => {
   const shown = event({x:110,y:450},{x:90,y:450});
   const closed = closeBoundary(shown);
   assert.equal(closeBoundary(closed),closed);
@@ -63,3 +63,6 @@ test('panning changes the tile origin without growing backing surfaces', () => {
   const b = visibleTiles({width:1920,height:1080,scale:1.16,ox:1000000,oy:-1000000});
   assert(Math.abs(a.columns-b.columns)<=1);assert(Math.abs(a.rows-b.rows)<=1);
 });
+
+test('safe interior rearming uses hysteresis and never resets an active encounter',()=>{const shown=event({x:110,y:450},{x:90,y:450}),closed=closeBoundary(shown);assert.equal(rearm(closed,{x:128,y:450}),closed);assert.equal(rearm(shown,{x:200,y:450}),shown);const ready=rearm(closed,{x:129,y:450});assert(!ready.seen);assert(boundaryEvent(ready,{from:{x:110,y:450},to:{x:90,y:450}}).open);});
+test('shared route samples stay on cardinal segments and clamp at the end',()=>{const points=[{x:0,y:0},{x:48,y:0},{x:48,y:64}];assert.equal(pathLength(points),112);assert.deepEqual(samplePath(points,24),{x:24,y:0});assert.deepEqual(samplePath(points,80),{x:48,y:32});assert.deepEqual(samplePath(points,999),{x:48,y:64});});

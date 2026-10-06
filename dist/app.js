@@ -12,7 +12,7 @@ let time = 0, last = 0, frameRequest = 0, paused = false, ready = false;
 let images = {}, current = 'home', route = null, spell = null, rings = [], aiming = false;
 let atPlace = 'home', hovered = null, toastTimer, replyTimer;
 let nearbyPlace = null,zoneContent=null;
-let frontierState=WorldFrontier.initialState(),frontierWizard=null,worldPatterns=null;
+let frontierState=WorldFrontier.initialState(),frontierWizard=null,frontierSequence=null,worldPatterns=null;
 const FRONTIER_INSET=30;
 const NEAR_ENTER = 72, NEAR_EXIT = 104;
 const camera = {x: 870, y: 470, targetX: 870, targetY: 470};
@@ -98,7 +98,7 @@ ground.width = W; ground.height = H;
 let groundReady = false;
 // RAO movement: 32 world units per tile, 0.20 s/player step, 0.40 s/NPC step.
 const WALK_TILE = 32, WALK_SPEED = WALK_TILE/.20, NPC_SPEED = WALK_TILE/.40;
-const walkCycleTiles = {hero:2, rogue:1, mage:2, mohawk:2};
+const walkCycleTiles = {'wizard-walk':2,hero:2, rogue:1, mage:2, mohawk:2};
 const heldDirections = new Map();
 const movementKeys = {w:0,ArrowUp:0,d:1,ArrowRight:1,s:2,ArrowDown:2,a:3,ArrowLeft:3};
 const directions = [{x:0,y:-1},{x:1,y:0},{x:0,y:1},{x:-1,y:0}];
@@ -146,7 +146,7 @@ function viewport() {
   const compact=width<=900, left=compact?0:clamp(width*.33,320,450);
   const sceneHeight=compact?Math.min(height,width<=600?480:570):height;
   if(compact&&frontierState.open&&frontierWizard){
-    scale=Math.max(.3,Math.min(1.2,(width-48)/220,(sceneHeight-96)/280));camera.x=camera.targetX=(hero.x+frontierWizard.x)/2;camera.y=camera.targetY=(hero.y+frontierWizard.y)/2-30;ox=width/2-camera.x*scale;oy=sceneHeight*.42-camera.y*scale;
+    scale=Math.max(.3,Math.min(1.2,(width-48)/220,(sceneHeight-96)/280));camera.x=camera.targetX=(hero.x+frontierWizard.x)/2;camera.y=camera.targetY=(hero.y+frontierWizard.y)/2-30;ox=width/2-camera.x*scale;oy=sceneHeight*.6-camera.y*scale;
   }else if(compact){
     // Fit all four destination actors and their labels; walking cannot pan one out of view.
     const leftEdge=Math.min(...keepers.map(k=>k.x))-100,rightEdge=Math.max(...keepers.map(k=>k.x))+100;
@@ -193,7 +193,7 @@ async function load() {
   $('#retry-load').hidden=true;
   $('#loading p').textContent='Opening the gates of Nix…';
   try {
-    const response = await fetch('assets/site-assets.json?v=npcroles7');
+    const response = await fetch('assets/site-assets.json?v=npcroles8');
     if(!response.ok) throw new Error('Asset manifest unavailable');
     const assets = await response.json();
     await Promise.all(Object.entries(assets.images).map(async ([key,file]) => images[key] = await loadImage('assets/'+file)));
@@ -237,9 +237,80 @@ for(let gy=-3;gy<=9;gy++)for(let gx=-3;gx<=10;gx++){const seed=Math.abs((gx*7385
 function visibleBeyondTrees(){const v=worldViewBounds();return beyondTrees.filter(a=>a.x+a.w/2>=v.left&&a.x-a.w/2<=v.right&&a.y>=v.top&&a.y-a.h<=v.bottom);}
 function drawFrontierWard(){const v=worldViewBounds(),near=Math.min(hero.x,W-hero.x,hero.y,H-hero.y),alpha=near<200?.12+(200-near)/1000:.045;ctx.save();ctx.strokeStyle=`rgba(153,203,184,${alpha})`;ctx.lineWidth=2;const line=(vertical,fixed,start,end)=>{ctx.beginPath();let first=true;for(let q=start;q<=end;q+=16){const sway=Math.sin(q/51)*3+(motionOff()?0:Math.sin(time*.5+q/90));const x=vertical?fixed+sway:q,y=vertical?q:fixed+sway;if(first){ctx.moveTo(x,y);first=false;}else ctx.lineTo(x,y);}ctx.stroke();};line(true,FRONTIER_INSET,Math.max(0,v.top),Math.min(H,v.bottom));line(true,W-FRONTIER_INSET,Math.max(0,v.top),Math.min(H,v.bottom));line(false,FRONTIER_INSET,Math.max(0,v.left),Math.min(W,v.right));line(false,H-FRONTIER_INSET,Math.max(0,v.left),Math.min(W,v.right));ctx.restore();}
 function frontierBlocked(){return document.hidden||demoOpen||enteringPortal||$('#notes').open||$('#character-dialog').open||$('#zone-dialog').open;}
-function tryFrontier(from,to,kind='move',explore=true){const next=WorldFrontier.boundaryEvent(frontierState,{from,to,kind,explore,blocked:frontierBlocked(),width:W,height:H,inset:FRONTIER_INSET});if(next===frontierState)return false;frontierState=next;heldDirections.clear();route=null;spell=null;setAim(false);const offsets={west:{x:-40,y:30},east:{x:40,y:30},north:{x:48,y:-22},south:{x:48,y:28}},offset=offsets[next.edge];frontierWizard={x:clamp(hero.x+offset.x,34,W-34),y:clamp(hero.y+offset.y,34,H-34),body:'npc-frontier-wizard',isKeeper:true,gait:0,reaction:0,dir:2,type:'frontier'};frontierWizard.dir=heading(hero.x-frontierWizard.x,hero.y-frontierWizard.y);$('#frontier-dialog').showModal();$('#frontier-download').focus({preventScroll:true});requestDraw();return true;}
-function dismissFrontier({focus=true}={}){frontierState=WorldFrontier.closeBoundary(frontierState);frontierWizard=null;const dialog=$('#frontier-dialog');if(dialog.open)dialog.close();if(focus&&!demoOpen&&!document.hidden)canvas.focus({preventScroll:true});requestDraw();}
-function viewFrontierDownloads(){dismissFrontier({focus:false});go('gate');if(width>900)$('#section-heading')?.focus({preventScroll:true});}
+// Freeze the three wandering NPCs while escorting: the shared, collision-checked
+// path stays valid and the guide and player never chase each other into scenery.
+function planFrontierEscort(){
+ const others=[...keepers,...npcs],start={x:hero.x,y:hero.y},goal=spots.gate.land;
+ const route=townPhysics.path(start,goal,others);if(!route.length)return null;
+ const points=[start,...route],length=WorldFrontier.pathLength(points);
+ for(const delta of [{x:48,y:0},{x:0,y:48},{x:-48,y:0},{x:0,y:-48}]){
+  const tail={x:goal.x+delta.x,y:goal.y+delta.y};
+  if(!townPhysics.clear(goal,tail,others))continue;
+  const extended=[...points,tail];let separated=true;
+  for(let d=0;d<=length;d+=2){const p=WorldFrontier.samplePath(extended,d),q=WorldFrontier.samplePath(extended,d+48);if(Math.hypot(p.x-q.x,p.y-q.y)<24){separated=false;break;}}
+  if(separated)return {points:extended,length,distance:0};
+ }
+ return null;
+}
+function tryFrontier(from,to,kind='move',explore=true){
+ frontierState=WorldFrontier.rearm(frontierState,from,W,H);
+ const next=WorldFrontier.boundaryEvent(frontierState,{from,to,kind,explore,blocked:frontierBlocked(),width:W,height:H,inset:FRONTIER_INSET});
+ if(next===frontierState)return false;
+ const plan=planFrontierEscort();if(!plan){toast('The way is blocked. Step back into town and try again.');return false;}
+ frontierState=next;heldDirections.clear();route=null;spell=null;setAim(false);
+ const spawn=WorldFrontier.samplePath(plan.points,48);
+ frontierWizard={...spawn,body:'wizard-walk',isKeeper:true,gait:0,reaction:0,dir:heading(hero.x-spawn.x,hero.y-spawn.y),type:'frontier'};
+ frontierSequence={...plan,phase:'appear',elapsed:0};
+ $('#frontier-bubble').hidden=true;$('#world').classList.add('frontier-active');last=performance.now();requestDraw();return true;
+}
+function frontierPhase(phase,text){
+ if(!frontierSequence)return;frontierSequence.phase=phase;frontierSequence.elapsed=0;
+ if(text){$('#frontier-description').textContent=text;$('#frontier-bubble').hidden=false;}
+}
+function dismissFrontier({focus=true}={}){
+ frontierSequence=null;frontierState=WorldFrontier.closeBoundary(frontierState);frontierWizard=null;
+ $('#frontier-bubble').hidden=true;$('#world').classList.remove('frontier-active');heldDirections.clear();
+ if(focus&&!demoOpen&&!document.hidden)canvas.focus({preventScroll:true});requestDraw();
+}
+function viewFrontierDownloads(){
+ if(!frontierState.open)return;dismissFrontier({focus:false});go('gate',{instant:true});
+ if(width<=900)openZoneInfo('gate');else $('#section-heading')?.focus({preventScroll:true});
+}
+function advanceFrontier(dt){
+ const s=frontierSequence;if(!s)return;
+ if(frontierBlocked()){dismissFrontier({focus:false});return;}
+ s.elapsed+=dt;
+ if(s.phase==='appear'&&s.elapsed>=(motionOff()?.05:.8))frontierPhase('speak','Wait, traveller! These lands lead beyond the preview. Come with me. I’ll show you where to download Entia.');
+ else if(s.phase==='speak'&&s.elapsed>=3.8)frontierPhase('escort');
+ else if(s.phase==='escort'){
+  let nextDistance=Math.min(s.length,s.distance+160*Math.min(dt,.04)),vertex=0;
+  // Stop at the next turn of either actor; even a dropped frame stays cardinal.
+  for(let i=1;i<s.points.length;i++){vertex+=Math.hypot(s.points[i].x-s.points[i-1].x,s.points[i].y-s.points[i-1].y);for(const stop of [vertex,vertex-48])if(stop>s.distance+.001)nextDistance=Math.min(nextDistance,stop);}
+  s.distance=motionOff()?s.length:nextDistance;
+  for(const [actor,distance] of [[hero,s.distance],[frontierWizard,s.distance+48]]){
+   const p=WorldFrontier.samplePath(s.points,distance),dx=p.x-actor.x,dy=p.y-actor.y;
+   if(Math.hypot(dx,dy)>.001){actor.dir=heading(dx,dy);actor.gait+=Math.hypot(dx,dy);actor.x=p.x;actor.y=p.y;}
+  }
+  if(s.distance>=s.length){hero.dir=heading(frontierWizard.x-hero.x,frontierWizard.y-hero.y);frontierWizard.dir=heading(hero.x-frontierWizard.x,hero.y-frontierWizard.y);frontierPhase('farewell','Here we are. The wider world awaits! I’ll open Downloads for you.');}
+ }else if(s.phase==='farewell'&&s.elapsed>=2.2){$('#frontier-bubble').hidden=true;frontierPhase('vanish');}
+ else if(s.phase==='vanish'&&s.elapsed>=(motionOff()?.05:.8))viewFrontierDownloads();
+}
+function positionFrontierBubble(){
+ if(!frontierWizard||$('#frontier-bubble').hidden)return;
+ const p=screen(frontierWizard),bubble=$('#frontier-bubble');
+ bubble.style.left=clamp(p.x,Math.min(154,width/2),Math.max(width-154,width/2))+'px';
+ bubble.style.top=Math.max(155,p.y-105*scale-12)+'px';
+}
+function drawFrontierWizard(a){
+ const s=frontierSequence;if(!s)return;
+ const u=motionOff()?1:s.phase==='appear'?clamp(s.elapsed/.8,0,1):s.phase==='vanish'?1-clamp(s.elapsed/.8,0,1):1;
+ ctx.save();ctx.globalAlpha=u;glow(a.x,a.y-34,65,.7);drawActor(a);ctx.restore();
+ if(!motionOff()&&(s.phase==='appear'||s.phase==='vanish')){
+  const energy=Math.sin(Math.PI*u);glow(a.x,a.y-40,80,energy);
+  ellipse(a.x,a.y+2,18+28*(1-u),6+9*(1-u),'rgba(160,233,221,'+energy+')',true,2);
+  for(let i=0;i<12;i++){const angle=i*Math.PI/6+u*2,x=a.x+Math.cos(angle)*(12+24*(1-u)),y=a.y-8-u*76+i%3*10;ctx.fillStyle='rgba(220,235,187,'+energy+')';ctx.fillRect(x,y,2,3);}
+ }
+}
 function ellipse(x,y,rx,ry,color,stroke=false,line=1) {
   ctx.beginPath(); ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);
   if(stroke){ctx.strokeStyle=color;ctx.lineWidth=line;ctx.stroke();}else{ctx.fillStyle=color;ctx.fill();}
@@ -252,7 +323,7 @@ function glow(x,y,r,alpha=1) {
 function drawActor(a) {
   const im=images[a.body]; if(!im)return;
   const idle=a.body.startsWith('npc-');
-  const walking=!idle && !motionOff() && (a.hero ? !!route : !a.isKeeper && a.reaction<=0);
+  const walking=!idle && !motionOff() && (a.hero ? !!route||frontierSequence?.phase==='escort' : a.type==='frontier'?frontierSequence?.phase==='escort':!frontierState.open&&!a.isKeeper&&a.reaction<=0);
   // Body 156 walks through seven drawings over two tiles; body 502 over one.
   const stride=(a.gait||0)/(WALK_TILE*walkCycleTiles[a.body]);
   const frame=walking ? 1+Math.floor((stride%1)*7) : 0;
@@ -315,8 +386,9 @@ function draw() {
   drawDestination();
   const layers=[...visibleBeyondTrees(),...scenery.map(s=>({...s,type:'scenery'})),{...homePortal,type:'portal'},...npcs,...keepers,hero,...(frontierWizard?[frontierWizard]:[])].sort((a,b)=>a.y-b.y);
   for(const a of layers){
-    if(a.type==='portal'){drawHomePortal();}else if(a.type==='frontier'){glow(a.x,a.y-28,58,.6);ctx.save();ctx.globalAlpha=.9;drawActor(a);ctx.restore();}else if(a.type==='scenery'||a.type==='outside'){
+    if(a.type==='portal'){drawHomePortal();}else if(a.type==='frontier'){drawFrontierWizard(a);}else if(a.type==='scenery'||a.type==='outside'){
       ctx.save();if(a.type==='outside')ctx.globalAlpha=.72;
+      if(frontierWizard&&!a.id.startsWith('house')&&[hero,frontierWizard].some(p=>a.y>p.y&&Math.abs(a.x-p.x)<a.w/2+20&&p.y>a.y-a.h&&p.y-95<a.y))ctx.globalAlpha=.28;
       ellipse(a.x+15,a.y+7,a.w*.38,a.w*.1,'#07130c40');
       ctx.drawImage(images[a.id.startsWith('house')?a.id+'Facade':a.id],a.x-a.w/2,a.y-a.h,a.w,a.h);ctx.restore();
     }else drawActor(a);
@@ -333,14 +405,16 @@ function requestDraw() {
   frameRequest=requestAnimationFrame(tick);
 }
 function tick(now) {
-  frameRequest=0;if(demoOpen)return;
-  const dt=Math.min((now-last)/1000||0,.04);last=now;
+  frameRequest=0;if(demoOpen||document.hidden)return;
+  const visibleDt=Math.max(0,(now-last)/1000||0),dt=Math.min(visibleDt,.04);last=now;
+  advanceFrontier(visibleDt);frontierState=WorldFrontier.rearm(frontierState,hero,W,H);
   if(!motionOff()){
     time+=dt;
     if(!enteringPortal&&!$('#character-dialog').open&&!frontierState.open)advanceMovement(dt);
     advanceSpell(dt);
     rings=rings.filter(r=>(r.age+=dt)<r.duration);
     for(const n of [...npcs,...keepers]){
+      if(frontierState.open)continue;
       if(n.reaction>0){n.reaction=Math.max(0,n.reaction-dt);n.dir=heading(hero.x-n.x,hero.y-n.y);continue;}
       if(n.isKeeper)continue;
       const [x,y]=n.way[n.idx];
@@ -356,8 +430,8 @@ function tick(now) {
     const blend=1-Math.exp(-dt*7);
     camera.x+=(camera.targetX-camera.x)*blend;camera.y+=(camera.targetY-camera.y)*blend;
   }
-  updateHouseRoofs(dt);viewport();positionLabels();draw();
-  if(!motionOff())requestDraw();
+  updateHouseRoofs(dt);viewport();positionLabels();positionFrontierBubble();draw();
+  if(!motionOff()||frontierSequence)requestDraw();
 }
 function reactToArrival(place) {
   for(const n of [...npcs,...keepers])if(n.place===place||Math.hypot(n.x-hero.x,n.y-hero.y)<200){n.reaction=1.1;n.dir=heading(hero.x-n.x,hero.y-n.y);}
@@ -591,18 +665,19 @@ canvas.addEventListener('click',event=>{
 });
 
 
-$('#frontier-download').onclick=viewFrontierDownloads;$('#frontier-stay').onclick=()=>dismissFrontier();$('#frontier-close').onclick=()=>dismissFrontier();$('#frontier-dialog').addEventListener('cancel',event=>{event.preventDefault();dismissFrontier();});$('#frontier-dialog').addEventListener('close',()=>{if(frontierState.open)dismissFrontier();});
+$('#frontier-download').onclick=viewFrontierDownloads;$('#frontier-stay').onclick=()=>dismissFrontier();
 $('#close-panel').onclick=()=>{if($('#zone-dialog').open){closeZoneInfo();return;}go('home');$('.nav[data-place="home"]').focus({preventScroll:true});};
 $('#spell').onclick=()=>setAim(!aiming);
 $('#motion').onclick=()=>{paused=!paused;setMotionState();};
 $('#zoom-in').onclick=()=>{zoom=Math.min(1.18,zoom+.06);resize();};
 $('#zoom-out').onclick=()=>{zoom=Math.max(.88,zoom-.06);resize();};
 $('#reset-view').onclick=()=>{zoom=1;camera.x=camera.targetX;camera.y=camera.targetY;resize();};
-$('#about').onclick=()=>{clearMovementInput();$('#notes').showModal();};
+$('#about').onclick=()=>{if(frontierState.open)dismissFrontier({focus:false});clearMovementInput();$('#notes').showModal();};
 $('#close-notes').onclick=()=>$('#notes').close();
 $('#retry-load').onclick=load;
 document.addEventListener('keydown',event=>{
   if(enteringPortal||demoOpen)return;
+  if(frontierState.open){if(event.key==='Escape'){event.preventDefault();dismissFrontier();}else if(event.key.startsWith('Arrow')||event.key===' ')event.preventDefault();return;}
   if(event.altKey||event.ctrlKey||event.metaKey||event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')||$('#notes').open||$('#character-dialog').open||$('#zone-dialog').open||frontierState.open)return;
   const movementKey=event.key.length===1?event.key.toLowerCase():event.key;
   if(Object.hasOwn(movementKeys,movementKey)){
@@ -645,7 +720,7 @@ setMotionState();resize();load();
 
 window.addEventListener('pageshow',()=>{recoverScene();if(enteringPortal){document.querySelector('#portal-transition')?.remove();$('#world').classList.remove('entering-portal');enteringPortal=false;hero.x=spots.home.land.x;hero.y=spots.home.land.y;route=null;resize();requestDraw();}});
 
-window.EntiaCharacter?.mount({assets:'assets/',onChange:value=>{hero.body=value.body;setGameText($('#player-label span'),value.name);requestDraw();},onOpen:()=>{clearMovementInput();route=null;setAim(false);},onClose:()=>requestDraw()});
+window.EntiaCharacter?.mount({assets:'assets/',onChange:value=>{hero.body=value.body;setGameText($('#player-label span'),value.name);requestDraw();},onOpen:()=>{if(frontierState.open)dismissFrontier({focus:false});clearMovementInput();route=null;setAim(false);},onClose:()=>requestDraw()});
 
 // Mobile browsers can discard cached canvas pixels while the page is hidden.
 function recoverScene(){groundReady=false;worldPatterns=null;if(demoOpen)return;ground.width=W;ground.height=H;last=performance.now();if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;resize();requestDraw();}

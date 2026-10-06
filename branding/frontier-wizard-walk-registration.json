@@ -1,0 +1,183 @@
+{
+  "sourcePpt": 60,
+  "frame": {
+    "w": 96,
+    "h": 160
+  },
+  "directions": [
+    "north",
+    "east",
+    "south",
+    "west"
+  ],
+  "columns": 8,
+  "frames": "Idle, seven walking poses",
+  "bodyHeight": 88,
+  "headOrigin": {
+    "x": 24,
+    "y": 32
+  },
+  "headPixelsUnchanged": true,
+  "metrics": [
+    {
+      "direction": "north",
+      "frame": 0,
+      "overlap": 274
+    },
+    {
+      "direction": "north",
+      "frame": 1,
+      "overlap": 273
+    },
+    {
+      "direction": "north",
+      "frame": 2,
+      "overlap": 274
+    },
+    {
+      "direction": "north",
+      "frame": 3,
+      "overlap": 271
+    },
+    {
+      "direction": "north",
+      "frame": 4,
+      "overlap": 274
+    },
+    {
+      "direction": "north",
+      "frame": 5,
+      "overlap": 273
+    },
+    {
+      "direction": "north",
+      "frame": 6,
+      "overlap": 275
+    },
+    {
+      "direction": "north",
+      "frame": 7,
+      "overlap": 275
+    },
+    {
+      "direction": "east",
+      "frame": 0,
+      "overlap": 130
+    },
+    {
+      "direction": "east",
+      "frame": 1,
+      "overlap": 116
+    },
+    {
+      "direction": "east",
+      "frame": 2,
+      "overlap": 120
+    },
+    {
+      "direction": "east",
+      "frame": 3,
+      "overlap": 109
+    },
+    {
+      "direction": "east",
+      "frame": 4,
+      "overlap": 120
+    },
+    {
+      "direction": "east",
+      "frame": 5,
+      "overlap": 118
+    },
+    {
+      "direction": "east",
+      "frame": 6,
+      "overlap": 121
+    },
+    {
+      "direction": "east",
+      "frame": 7,
+      "overlap": 119
+    },
+    {
+      "direction": "south",
+      "frame": 0,
+      "overlap": 270
+    },
+    {
+      "direction": "south",
+      "frame": 1,
+      "overlap": 265
+    },
+    {
+      "direction": "south",
+      "frame": 2,
+      "overlap": 264
+    },
+    {
+      "direction": "south",
+      "frame": 3,
+      "overlap": 264
+    },
+    {
+      "direction": "south",
+      "frame": 4,
+      "overlap": 267
+    },
+    {
+      "direction": "south",
+      "frame": 5,
+      "overlap": 267
+    },
+    {
+      "direction": "south",
+      "frame": 6,
+      "overlap": 266
+    },
+    {
+      "direction": "south",
+      "frame": 7,
+      "overlap": 268
+    },
+    {
+      "direction": "west",
+      "frame": 0,
+      "overlap": 139
+    },
+    {
+      "direction": "west",
+      "frame": 1,
+      "overlap": 139
+    },
+    {
+      "direction": "west",
+      "frame": 2,
+      "overlap": 140
+    },
+    {
+      "direction": "west",
+      "frame": 3,
+      "overlap": 143
+    },
+    {
+      "direction": "west",
+      "frame": 4,
+      "overlap": 138
+    },
+    {
+      "direction": "west",
+      "frame": 5,
+      "overlap": 138
+    },
+    {
+      "direction": "west",
+      "frame": 6,
+      "overlap": 150
+    },
+    {
+      "direction": "west",
+      "frame": 7,
+      "overlap": 127
+    }
+  ]
+}

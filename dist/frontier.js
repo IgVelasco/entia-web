@@ -1,6 +1,6 @@
 (function(root){
 'use strict';
-// Read-only outer-world geometry and one-encounter-per-visit state.
+// Outer-world geometry, rearmed boundary encounters and shared escort paths.
 const EDGES = ['west', 'east', 'north', 'south'];
 function distances(point, width, height) {
   return {west: point.x, east: width - point.x, north: point.y, south: height - point.y};
@@ -19,6 +19,11 @@ function boundaryEvent(state, {from, to, kind = 'move', explore = true, blocked 
   return {seen: true, open: true, edge: candidates[0]};
 }
 function closeBoundary(state) { return state.open ? {...state, open: false} : state; }
+function rearm(state, point, width=1440, height=900) {
+  return !state.open && state.seen && Math.min(point.x,width-point.x,point.y,height-point.y)>128 ? initialState() : state;
+}
+function pathLength(points){let length=0;for(let i=1;i<points.length;i++)length+=Math.hypot(points[i].x-points[i-1].x,points[i].y-points[i-1].y);return length;}
+function samplePath(points,distance){for(let i=1;i<points.length;i++){const a=points[i-1],b=points[i],length=Math.hypot(b.x-a.x,b.y-a.y);if(distance<=length&&length)return {x:a.x+(b.x-a.x)*distance/length,y:a.y+(b.y-a.y)*distance/length};distance-=length;}return {...points.at(-1)};}
 function visibleTiles({width, height, scale, ox, oy, tile = 32}) {
   const left = Math.floor(-ox / scale / tile) * tile;
   const top = Math.floor(-oy / scale / tile) * tile;
@@ -26,5 +31,5 @@ function visibleTiles({width, height, scale, ox, oy, tile = 32}) {
   const bottom = Math.ceil((height - oy) / scale / tile) * tile;
   return {left, top, right, bottom, columns: (right - left) / tile, rows: (bottom - top) / tile};
 }
-const api={initialState,boundaryEvent,closeBoundary,visibleTiles};if(typeof module!=='undefined')module.exports=api;root.WorldFrontier=api;
+const api={initialState,boundaryEvent,closeBoundary,rearm,pathLength,samplePath,visibleTiles};if(typeof module!=='undefined')module.exports=api;root.WorldFrontier=api;
 })(typeof window!=='undefined'?window:globalThis);
