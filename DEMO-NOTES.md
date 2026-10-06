@@ -1,3 +1,13 @@
+# Motion and presentation refinement — 6 October 2026
+
+User requested better animations and fluidity, with animejs.com as inspiration. Consulted its Timeline and Easings documentation. This version uses native Web Animations rather than downloading the library: speaker/page-keyed staggered dialogue, portrait cards, stable text areas, progress rail, an opening beat, coordinated arena reveal, localized bank materialization, and an essence-secured completion beat before the final Keeper explanation. Hall masonry, alcoves, runner and torch pools are drawn with existing art and one canvas.
+
+Motion handles are bounded by animated elements, cancelled on return/suspension/recovery/replay, and honor reduced motion. No extra render loop, full-screen blur, snapshot canvas or animation dependency was added. Combat/input pause during the short arena cue; clear resume rules keep repeated visits working.
+
+144 automated checks pass, including animation cancellation, reduced motion, dialogue-key idempotence and simulation pause/release. Headless browser visual QA could not launch: the cloud runtime rejects Chromium's process socket even on the approved execution path. This is not rendered acceptance or a real-iPhone crash test. Existing memory hardening and sharing remain intact.
+
+References: https://animejs.com/documentation/timeline/ and https://animejs.com/documentation/easings/
+
 # Current update — guided tutorial and transition memory (6 October 2026)
 
 The published demo now starts in a safe stone hallway, with three NPC conversations for movement, combat and essence. Walking through the far entrance after all three conversations enters the arena. After two defeats a bank appears at the closest reviewed, unoccupied candidate. A 90-second arena-time fallback prevents quiet-round banking from staying locked. Complete a positive transfer of all carried essence to finish; dying after a partial deposit does not count. The Keeper then explains the provisional match rules. Replay and Home remain available.
