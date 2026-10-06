@@ -1,3 +1,11 @@
+# Hallway alignment correction — 6 October 2026
+
+- One shared hallway geometry now drives the floor, carpet, columns, portal and traversal bounds. The carpet is vertically centered on the floor and horizontally centered on the floor.
+- All four column bases are inside the floor, clear of the outside wall caps. The one-tile upward placement is retained.
+- A newly generated orthographic edge-on portal replaces the diagonal design. The straight sprite is 36 x 276, rendered at native proportions within the room; every row crosses at x528.
+- Hall camera framing fits the full vertical scene on short windows. Pointer-to-world conversion follows that camera, while arena camera and casting behavior remain unchanged. Removed the redundant world title that could clip.
+- Regression checks include column/base bounds, carpet margins, portal bounds, short-window framing and transformed floor clicks. Native-canvas views at desktop, short and phone dimensions were inspected; full browser/device QA remains separate.
+
 # Enclosed hallway and guided prompts — 6 October 2026
 
 - Follow-up correction: unseen guides now prompt automatically only when movement reaches their position. Floor clicks still issue walking orders and never directly open the nearest unrelated guide. Learned guides do not interrupt again; explicit clicks/E can replay them.

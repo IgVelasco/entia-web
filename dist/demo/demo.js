@@ -10,13 +10,14 @@ const motionHandles=new Map();
 let movementOrder=0;const keyboardOrder=new Map();
 const keys=new Set(),touches=new Map(),worldTouches=new Set(),reduced=matchMedia('(prefers-reduced-motion: reduce)');
 const camera={x:510,y:490};
-const assets={hallCarpet:'hall-carpet.png',hallColumn:'hall-column.png',hallPortal:'hall-portal-wide.png',hero:'hero.png',rogue:'rogue.png',mage:'mage.png',grass:'grass.png',path:'path.png',stone:'stone.png',portal:'portal.png',bank:'banking-coffer.png',essence:'essence-pickup.png',spell:'apocalipsis_60.png'};
+const assets={hallCarpet:'hall-carpet.png',hallColumn:'hall-column.png',hallPortal:'hall-portal-straight.png',hero:'hero.png',rogue:'rogue.png',mage:'mage.png',grass:'grass.png',path:'path.png',stone:'stone.png',portal:'portal.png',bank:'banking-coffer.png',essence:'essence-pickup.png',spell:'apocalipsis_60.png'};
 const floor=document.createElement('canvas');floor.width=1;floor.height=1;
 function loadImage(name,file){return new Promise((resolve,reject)=>{let shared;try{shared=embedded&&window.parent.EntiaArtwork?.[name==='spell'?'apocalipsis':name];}catch{}if(shared){images[name]=shared;resolve();return;}const im=new Image();im.onload=async()=>{try{if(typeof createImageBitmap==='function'&&(name==='bank'||name==='essence')){const crop=name==='bank'?[230,255,1075,555]:[300,230,480,1010];const size=name==='bank'?[216,112]:[32,64];images[name]=await createImageBitmap(im,...crop,{resizeWidth:size[0],resizeHeight:size[1],resizeQuality:'pixelated'});im.onload=null;im.src='';}else images[name]=im;resolve();}catch{images[name]=im;resolve();}};im.onerror=()=>reject(Error(file));im.src='../assets/'+file;});}
 async function load(){ready=false;$('#retry').hidden=true;$('#curtain').hidden=false;$('#curtain-title').textContent='Opening the portal…';try{for(const [n,f] of Object.entries(assets))await loadImage(n,f);if(!hostSuspended&&state.phase!=='hallway')buildFloor();ready=true;$('#curtain').hidden=true;drawInventoryIcon();resize();if(!state.tutorial)showHelp(true);notifyParent('entia-demo-ready');schedule();}catch(e){$('#curtain-title').textContent='The portal could not open';$('#curtain-text').textContent='An artwork file did not load. Please try again.';$('#retry').hidden=false;notifyParent('entia-demo-error');}}
 function buildFloor(){if(floor.width!==M.WIDTH)floor.width=M.WIDTH;if(floor.height!==M.HEIGHT)floor.height=M.HEIGHT;const c=floor.getContext('2d');if(c.isContextLost?.())return;c.imageSmoothingEnabled=false;for(let y=0;y<M.HEIGHT;y+=M.TILE)for(let x=0;x<M.WIDTH;x+=M.TILE)c.drawImage(images.grass,x,y,M.TILE,M.TILE);c.save();c.beginPath();c.rect(128,384,864,96);c.rect(576,320,96,480);c.rect(128,480,96,224);c.clip();for(let y=0;y<M.HEIGHT;y+=M.TILE)for(let x=0;x<M.WIDTH;x+=M.TILE)c.drawImage(images.path,x,y,M.TILE,M.TILE);c.restore();for(let y=352;y<512;y+=M.TILE)for(let x=64;x<288;x+=M.TILE)c.drawImage(images.stone,x,y,M.TILE,M.TILE);const shade=c.createRadialGradient(580,450,100,580,450,780);shade.addColorStop(0,'#203a2610');shade.addColorStop(1,'#03120ed9');c.fillStyle=shade;c.fillRect(0,0,M.WIDTH,M.HEIGHT);floorReady=true;}
 
-function resize(){if(hostSuspended)return;const r=canvas.getBoundingClientRect();width=r.width;height=r.height;dpr=Math.min(devicePixelRatio||1,1.5,Math.sqrt(2000000/Math.max(1,width*height)));if(canvas.width!==Math.round(width*dpr))canvas.width=Math.round(width*dpr);if(canvas.height!==Math.round(height*dpr))canvas.height=Math.round(height*dpr);scale=inheritedScale||window.WorldPhysics.presentationScale(window.innerWidth||width);schedule();}
+function resize(){if(hostSuspended)return;const r=canvas.getBoundingClientRect();width=r.width;height=r.height;dpr=Math.min(devicePixelRatio||1,1.5,Math.sqrt(2000000/Math.max(1,width*height)));if(canvas.width!==Math.round(width*dpr))canvas.width=Math.round(width*dpr);if(canvas.height!==Math.round(height*dpr))canvas.height=Math.round(height*dpr);updateView();schedule();}
+function updateView(){const p=state.player;const hall=state.phase==='hallway';const baseScale=inheritedScale||window.WorldPhysics.presentationScale(window.innerWidth||width);scale=hall?Math.min(baseScale,Math.max(.35,(height-32)/320)):baseScale;camera.x=p.x;camera.y=hall?M.hallway.cameraY:p.y;ox=width/2-camera.x*scale;oy=height/2-camera.y*scale;}
 function ellipse(x,y,rx,ry,color,line=false){ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);if(line){ctx.strokeStyle=color;ctx.lineWidth=2;ctx.stroke();}else{ctx.fillStyle=color;ctx.fill();}}
 function text(s,x,y,color='#e6e4cc',size=13){ctx.font=`${size}px Inter, sans-serif`;ctx.textAlign='center';ctx.fillStyle='#07120f';ctx.fillText(s,x+1,y+2);ctx.fillStyle=color;ctx.fillText(s,x,y);}
 function actor(a,body,player=false){const im=images[body];const stride=body==='mage'?32:64;const f=a.moving?1+Math.floor(a.gait/stride*7)%7:0;ellipse(a.x,a.y+1,16,5,'#00110cc0');if(player)ellipse(a.x,a.y+2,20,8,'#e8d491',true);ctx.drawImage(im,f*96,a.dir*160,96,160,Math.round(a.x-30),Math.round(a.y-99.375),60,100);}
@@ -24,7 +25,7 @@ function resourceBar(a,value,maxValue,yOffset=12,mana=false){const x=Math.round(
 function drawDrop(drop){ellipse(drop.x,drop.y+10,10,4,'#00190f88');drawEssence(ctx,drop.x-8,drop.y-16,16,32);text(String(drop.amount),drop.x,drop.y-23,drop.owner==='player'?'#f4d595':'#bce8b2',12);}
 function portal(){const frame=reduced.matches?0:Math.floor(state.time*10)%8;const p=M.gateway;ctx.save();ctx.shadowColor='#bddd66';ctx.shadowBlur=reduced.matches?0:22;ctx.drawImage(images.portal,(frame%4)*240,Math.floor(frame/4)*320,240,320,p.x-96,p.y-248,192,256);ctx.restore();text('RETURN TO NIX',p.x,p.y+32,'#d8e9b1',13);}
 function draw(){if(!ready)return;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#091911';ctx.fillRect(0,0,width,height);const p=state.player;
- camera.x=p.x;camera.y=p.y;ox=width/2-p.x*scale;oy=height/2-p.y*scale;
+ updateView();
  ctx.translate(ox,oy);ctx.scale(scale,scale);ctx.imageSmoothingEnabled=false;if(state.phase==='hallway'){drawHallway();drawDestination();actor(p,window.EntiaCharacter?.get().body||'hero',true);return;}if(!floorReady)buildFloor();ctx.drawImage(floor,0,0);drawDestination();
  text('NIX REFUGE',164,590,'#b3bc9a',11);
  for(const e of state.enemies){if(state.phase!=='arena'||e.hp<=0)continue;if(e.wind>0){ellipse(e.x,e.y,70*(1-e.wind/.85),27*(1-e.wind/.85),'#e7966955');ellipse(e.x,e.y,70,27,'#f0a16a',true);}else ellipse(e.x,e.y+2,25,10,'#db9b6655',true);}
@@ -62,7 +63,7 @@ function ui(){
  if(state.noticeId!==noticeId){noticeId=state.noticeId;$('#message').textContent=state.notice;messageUntil=performance.now()+5000;}$('#message').classList.toggle('visible',performance.now()<messageUntil);
 }
 function input(){if(returning||presentationNow<beatUntil||hudDrawerOpen||$('#help-dialog').open||$('#character-dialog').open||!!state.tutorial?.dialog)return {x:0,y:0};let key=[...keys].filter(k=>k!==' ').at(-1),order=keyboardOrder.get(key)||0;for(const held of touches.values())if(held.key&&held.order>=order){key=held.key;order=held.order;}return key==='d'||key==='arrowright'?{x:1,y:0}:key==='a'||key==='arrowleft'?{x:-1,y:0}:key==='w'||key==='arrowup'?{x:0,y:-1}:key==='s'||key==='arrowdown'?{x:0,y:1}:{x:0,y:0};}
-function aimPoint(){if(!pointer)return null;const point={x:state.player.x+(pointer.x-width/2)/scale,y:state.player.y+(pointer.y-height/2)/scale};const hit=state.enemies.filter(e=>e.hp>0&&Math.abs(e.x-point.x)<28&&point.y>=e.y-88&&point.y<=e.y+8).sort((a,b)=>b.y-a.y)[0];if(state.selectedSpell==='remover'&&Math.abs(point.x-state.player.x)<28&&point.y>=state.player.y-88&&point.y<=state.player.y+8)return {x:state.player.x,y:state.player.y,self:true};return hit?{x:hit.x,y:hit.y,enemyId:hit.name}:point;}
+function aimPoint(){if(!pointer)return null;const point={x:state.player.x+(pointer.x-width/2)/scale,y:(state.phase==='hallway'?M.hallway.cameraY:state.player.y)+(pointer.y-height/2)/scale};const hit=state.enemies.filter(e=>e.hp>0&&Math.abs(e.x-point.x)<28&&point.y>=e.y-88&&point.y<=e.y+8).sort((a,b)=>b.y-a.y)[0];if(state.selectedSpell==='remover'&&Math.abs(point.x-state.player.x)<28&&point.y>=state.player.y-88&&point.y<=state.player.y+8)return {x:state.player.x,y:state.player.y,self:true};return hit?{x:hit.x,y:hit.y,enemyId:hit.name}:point;}
 function prepareSpell(){if(!ready||paused||presentationNow<beatUntil||state.phase==='hallway'||state.tutorial?.stage==='complete')return;setHudDrawer(false);M.cancelWalk(state);state.armed=!state.armed;if(!state.armed){M.tell(state,'Aiming cancelled. Click to walk.');focusGame();return;}M.tell(state,M.spells[state.selectedSpell].name+' ready. '+(state.selectedSpell==='remover'?'Click yourself or another character.':'Point at a rival and click.')+' Esc cancels.');focusGame();}
 function castAtPointer(){const point=aimPoint();if(point)M.cast(state,point);else M.tell?.(state,'Point at the world to aim.');}
 function interact(){const action=M.interact(state);if(action==='exit')returnToNix();else if(action==='talk'){clear();syncGuide();}else if(action==='bank')M.tell(state,'Stay near the bank. It draws in your carried essence automatically.');}
@@ -103,7 +104,7 @@ bindTap($('#cast'),prepareSpell);$('#prepare-spell').onclick=prepareSpell;$('#st
 bindTap($('#interact'),()=>{if(ready&&!paused)interact();focusGame();});$('#pause').onclick=()=>togglePause();$('#resume').onclick=hideHelp;$('#restart').onclick=()=>{if(!ready)return;state=M.createTutorial();resetMotion();returning=false;pointer=null;noticeId=0;messageUntil=0;selectSpell('apocalipsis');hideHelp();};$('#retry').onclick=load;
 function locatePointer(e){const rect=canvas.getBoundingClientRect();pointer={x:e.clientX-rect.left,y:e.clientY-rect.top};}
 canvas.addEventListener('pointermove',locatePointer);
-function worldClick(e){const bounds=canvas.getBoundingClientRect();if(e.button!==undefined&&e.button!==0)return;if(e.clientX<bounds.left||e.clientX>bounds.left+bounds.width||e.clientY<bounds.top||e.clientY>bounds.top+bounds.height)return;if(!ready||paused||presentationNow<beatUntil||hudDrawerOpen||$('#help-dialog').open||$('#character-dialog').open||state.tutorial?.dialog)return;focusGame();locatePointer(e);const world={x:state.player.x+(pointer.x-width/2)/scale,y:state.player.y+(pointer.y-height/2)/scale};
+function worldClick(e){const bounds=canvas.getBoundingClientRect();if(e.button!==undefined&&e.button!==0)return;if(e.clientX<bounds.left||e.clientX>bounds.left+bounds.width||e.clientY<bounds.top||e.clientY>bounds.top+bounds.height)return;if(!ready||paused||presentationNow<beatUntil||hudDrawerOpen||$('#help-dialog').open||$('#character-dialog').open||state.tutorial?.dialog)return;focusGame();locatePointer(e);const world={x:state.player.x+(pointer.x-width/2)/scale,y:(state.phase==='hallway'?M.hallway.cameraY:state.player.y)+(pointer.y-height/2)/scale};
  if(state.armed){M.cancelWalk(state);castAtPointer();ui();schedule();return;}
  if(state.phase==='hallway'){const g=M.guides.find(g=>Math.abs(world.x-g.x)<28&&world.y>=g.y-96&&world.y<=g.y+8);if(g){if(Math.hypot(g.x-state.player.x,g.y-state.player.y)<100){M.cancelWalk(state);M.talk(state,g.id);clear();syncGuide();}else M.walkTo(state,{x:g.x,y:464},g.id);schedule();return;}}
  if(state.phase==='hallway'&&world.x>=464&&state.tutorial.seen.length<3)M.tell(state,'Meet all three guides before entering the arena.');
@@ -158,20 +159,21 @@ function drawHallway(){
  const left=Math.floor((-ox/scale)/96)*96,right=(width-ox)/scale;
  const top=Math.floor((-oy/scale)/48)*48,bottom=(height-oy)/scale;
  hallWall(left,top,right-left,bottom-top);
- // Only the inset passage reads as ground. Its limits match the walking corridor.
- for(let y=392;y<512;y+=32)for(let x=48;x<544;x+=32){ctx.drawImage(images.stone,x,y,32,32);ctx.fillStyle='#20242a20';ctx.fillRect(x,y,32,32);}
- // Raised wall caps and dark inner faces make the surrounding mass inaccessible.
- ctx.fillStyle='#606263';ctx.fillRect(32,382,528,4);ctx.fillStyle='#383b3e';ctx.fillRect(32,386,528,7);ctx.fillStyle='#171a1e';ctx.fillRect(32,393,528,6);
- ctx.fillStyle='#55585b';ctx.fillRect(32,514,528,4);ctx.fillStyle='#2c3035';ctx.fillRect(32,518,528,14);ctx.fillStyle='#14171c';ctx.fillRect(32,532,528,5);
- ctx.fillStyle='#5c5e60';ctx.fillRect(32,382,5,150);ctx.fillRect(555,382,5,150);ctx.fillStyle='#34373c';ctx.fillRect(37,399,11,115);ctx.fillRect(544,399,11,115);ctx.fillStyle='#16191e';ctx.fillRect(48,399,4,115);ctx.fillRect(540,399,4,115);
- ctx.drawImage(images.hallCarpet,48,437,496,68);
- for(const x of [32,208,336,560])ctx.drawImage(images.hallColumn,x-28,268,56,132);
- text('THE HALL OF FIRST STEPS',284,244,'#aa986a',12);
+ const h=M.hallway,f=h.floor,c=h.carpet;
+ ctx.save();ctx.beginPath();ctx.rect(f.x,f.y,f.w,f.h);ctx.clip();
+ for(let y=f.y;y<f.y+f.h;y+=32)for(let x=f.x;x<f.x+f.w;x+=32){ctx.drawImage(images.stone,x,y,32,32);ctx.fillStyle='#20242a20';ctx.fillRect(x,y,32,32);}
+ ctx.restore();
+ // Wall faces are outside the floor rectangle. No cap slices through a column base.
+ ctx.fillStyle='#5d6063';ctx.fillRect(f.x-12,f.y-10,f.w+24,4);ctx.fillStyle='#34383e';ctx.fillRect(f.x-12,f.y-6,f.w+24,6);
+ ctx.fillStyle='#55585b';ctx.fillRect(f.x-12,f.y+f.h,f.w+24,4);ctx.fillStyle='#2c3035';ctx.fillRect(f.x-12,f.y+f.h+4,f.w+24,12);
+ ctx.fillStyle='#5c5e60';ctx.fillRect(f.x-12,f.y-10,4,f.h+26);ctx.fillRect(f.x+f.w+8,f.y-10,4,f.h+26);ctx.fillStyle='#34373c';ctx.fillRect(f.x-8,f.y,8,f.h);ctx.fillRect(f.x+f.w,f.y,8,f.h);
+ ctx.drawImage(images.hallCarpet,c.x,c.y,c.w,c.h);
+ for(const x of h.columns)ctx.drawImage(images.hallColumn,x-28,h.columnY,56,132);
  for(let i=0;i<M.guides.length;i++){const g=M.guides[i],seen=t.seen.includes(g.id),active=t.dialog?.id===g.id;ellipse(g.x,g.y+2,25,9,active?'#ddbd8266':seen?'#83b29244':'#ba986522');actor(g,g.body);text(g.name,g.x,g.y-108,active?'#ffe9b0':'#d2c8a7',12);text(seen?'✓  LEARNED':['01 · MOVE','02 · FIGHT','03 · SECURE'][i],g.x,g.y+23,seen?'#9bcaaa':'#b3a27b',10);}
  const unlocked=t.seen.length===3;
- ctx.save();ctx.globalAlpha=1;ctx.drawImage(images.hallPortal,448,220,images.hallPortal.width,300);ctx.restore();
- if(unlocked&&!reduced.matches){for(let i=0;i<6;i++){const y=356+(i*23+state.time*20)%142;ctx.fillStyle='#a2dbbd88';ctx.fillRect(477+i%3*16,y,2,3);}}
- text(unlocked?'ENTER THE ARENA →':'THE VEIL',496,560,unlocked?'#c5e4b1':'#9d916e',11);
+ ctx.save();ctx.globalAlpha=1;ctx.drawImage(images.hallPortal,h.portal.x,h.portal.y,h.portal.w,h.portal.h);ctx.restore();
+ if(unlocked&&!reduced.matches){for(let i=0;i<6;i++){const y=392+(i*23+state.time*20)%136;ctx.fillStyle='#a2dbbd88';ctx.fillRect(h.exitX-1,y,2,3);}}
+ text(unlocked?'ENTER THE ARENA →':'THE VEIL',h.exitX,568,unlocked?'#c5e4b1':'#9d916e',11);
 
 }
 function syncGuide(){const t=state.tutorial,d=$('#guide-dialog');if(!t?.dialog){dialogKey='';if(d.open)d.close();return;}if(guideHoldUntil>presentationNow||paused||hostSuspended||document.hidden||$('#help-dialog').open||$('#character-dialog').open)return;$('#guide-name').textContent=t.dialog.name;$('#guide-title').textContent=t.dialog.title;$('#guide-text').textContent=t.dialog.lines[t.page];$('#guide-step').textContent=(t.page+1)+' / '+t.dialog.lines.length;$('#guide-meter').style.width=((t.page+1)/t.dialog.lines.length*100)+'%';$('#guide-next').textContent=t.page===t.dialog.lines.length-1?(t.dialog.id==='final'?'Finish':'Understood'):'Continue';if(!d.open){clear();d.showModal();}const key=t.dialog.id+':'+t.page;if(key!==dialogKey){dialogKey=key;paintPortrait(t.dialog.id);animateGuide(t.page===0);}}
