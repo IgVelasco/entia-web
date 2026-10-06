@@ -20,10 +20,10 @@
     "house2Roof": "house-ochre-roof.png?v=darkfit1",
     "houseSteps": "house-steps.png?v=darkfit1",
     "houseInterior": "house-interior-walls-v1.png?v=darkfit1",
-    "npc-home": "npc/home-idle.png",
-    "npc-game": "npc/game-idle-v2.png",
-    "npc-rankings": "npc/rankings-idle-v2.png",
-    "npc-download": "npc/download-idle-v2.png"
+    "npc-home": "npc/home-idle-v3.png",
+    "npc-game": "npc/game-idle-v3.png",
+    "npc-rankings": "npc/rankings-idle-v3.png",
+    "npc-download": "npc/download-idle-v3.png"
   },
   "source_sha": "410676cc2e11170c494ad90eb160944ce8d635cf",
   "spell_source": {

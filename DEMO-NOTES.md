@@ -1,3 +1,9 @@
+# Chunkier readable heads — 6 October 2026
+
+- Redrew all six modular heads with fuller facial planes and stronger features, normalized within 28 x 30 pixels and aligned by the neck rather than the hair bounding box. Clothing and feet anchors are unchanged; the three outfit redesigns remain in this draft.
+- Updated independent head layers, native 32 x 24 head cells, composites, metadata and previews. Added new v3 runtime filenames and cache keys.
+- New faces and previous outfits are draft changes pending publication approval. The live audience is preserved.
+
 # Distinct fuller NPC outfits — 6 October2026
 
 - Redrew Game, Rankings and Download clothes from source art, preserving all existing registered heads. Game now uses broad full plate without a cape; Rankings uses wide parchment/rust scholar robes; Download uses a short olive jacket, roomy breeches and heavy boots.
