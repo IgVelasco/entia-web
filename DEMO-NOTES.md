@@ -133,3 +133,9 @@ Confirmed layout cause: armed target help used display:none while unarmed inside
 - Replaced the approved house surface art with muted weathered umber and slate variants, flatter shingles and more restrained wood/stone. Interior/floor palette adjusted to match, geometry/alpha preserved there.
 - Door clearance reconciled to x270–389,y495–638; steps remain ground-layer y639 onward. Roof/facade/stair recomposition exact. Canvas480×683 remains; source-style candidate silhouette retains minor roof-peak differences from the previous artwork.
 - Existing movement, collision, roof fade and accessibility behavior retained; 122 tests pass. Asset split and visual style inspected; no physical device acceptance claimed.
+
+## Approved dark-slate replacement — October 6
+- Supersedes the held, unpublished brown/chunky style candidate. Uses the approved thinner charcoal-slate / flat aged-timber / rough-stone design with fitted lintel sourcey503, exactly120px-wide clear opening and stairs639–682.
+- Primary house maps to approved slate; decorative second uses restrained warmer variant. Full/roof/facade/stairs splits recombine exactly per staging QA; approved source comparison has identical visible pixels and alpha (one hidden RGB pixel differs).
+- Independent source audit confirms original480×683 reference canvas, floor origin(30,322.5),7×4 interior topology and2tile door. Site uniform60/32 raster scaling retains0.5sourcepixel vertical rounding relative to original364worldheight. Website perimeter is simplified/clipped compared to original full-cell blocking extending30sourcepixels outsidecanvas; no actualRAO map changes or exactcollision-parity claim.
+- 122 regression tests pass. Manifest assets verified and door/steps layering checked; no physical device visual acceptance.
