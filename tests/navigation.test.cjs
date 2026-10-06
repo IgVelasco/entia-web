@@ -9,11 +9,11 @@ const vm = require('node:vm');
 async function village({reduced=false, hash='',width=1440,height=820,coarse=false}={}) {
   const nodes=new Map(), frames=new Map(), draws=[];let nextFrame=0,clock=0;
   const makeNode=()=>{
-    const attributes=new Map(),classes=new Set(),children=new Map(),events={},captured=new Set();
+    const attributes=new Map(),classes=new Set(),children=new Map(),events={},captured=new Set(),eventOptions={};
     return {open:false,showModal(){this.open=true;},close(){this.open=false;events.close?.();},hidden:false,disabled:false,textContent:'',innerHTML:'',style:{values:{},setProperty(k,v){this.values[k]=v;},getPropertyValue(k){return this.values[k];}},dataset:{},scrollTop:0,
       classList:{add:(...items)=>items.forEach(x=>classes.add(x)),remove:(...items)=>items.forEach(x=>classes.delete(x)),toggle:(x,on)=>on?classes.add(x):classes.delete(x),contains:x=>classes.has(x)},
       setAttribute:(key,value)=>attributes.set(key,value),getAttribute:key=>attributes.get(key),removeAttribute:key=>attributes.delete(key),
-      setPointerCapture:id=>captured.add(id),hasPointerCapture:id=>captured.has(id),releasePointerCapture:id=>captured.delete(id),remove(){},events,addEventListener:(key,callback)=>{events[key]=callback;},append(){},focus(){},animate(){},getAnimations:()=>[],matches:()=>false,closest:()=>null,contains:()=>false,
+      setPointerCapture:id=>captured.add(id),hasPointerCapture:id=>captured.has(id),releasePointerCapture:id=>captured.delete(id),remove(){},events,eventOptions,addEventListener:(key,callback,options)=>{events[key]=callback;eventOptions[key]=options;},append(){},focus(){},animate(){},getAnimations:()=>[],matches:()=>false,closest:()=>null,contains:()=>false,
       querySelector(key){if(!children.has(key))children.set(key,makeNode());return children.get(key);},
       getBoundingClientRect:()=>({width,height,left:0,top:80}),
       getContext:()=>new Proxy({drawImage:(...args)=>draws.push(args),createRadialGradient:()=>({addColorStop(){}}),createPattern:()=>({})},{get:(obj,key)=>obj[key]||(()=>{})})
@@ -56,7 +56,7 @@ async function village({reduced=false, hash='',width=1440,height=820,coarse=fals
     path:()=>route?.points,
     state:()=>({ready,current,route:!!route,spell:!!spell,spellPlace:spell?.place,spellHit:spell?.hit,manual:route?.manual,explore:route?.explore,held:heldDirections.size,rings:rings.length,gait:hero.gait,dir:hero.dir,x:hero.x,y:hero.y,atPlace,cameraX:camera.x,cameraTargetX:camera.targetX}),
     groundPoint:(x,y)=>{const p=screen({x,y});return {clientX:p.x,clientY:p.y+80};},
-    target:place=>spots[place].land,
+    target:place=>spots[place].land,keeper:place=>spots[place],scale:()=>scale,spellDetails:()=>spell?{...spell}:null,setNpc:(i,x,y)=>{npcs[i].x=x;npcs[i].y=y;npcs[i].path=[];},
     reaction:place=>keepers.find(k=>k.place===place).reaction,
     label:place=>keepers.find(k=>k.place===place).button.querySelector('.keeper-clan').textContent
   })`,context);
@@ -91,7 +91,7 @@ test('interrupting travel cannot complete an obsolete destination',async()=>{
   api.go('gate',{cast:true});api.finish();
   assert.equal(api.state().current,'gate');
   assert.equal(api.state().atPlace,'gate');
-  assert.equal(api.state().x,api.target('gate').x);
+  assert(Math.hypot(api.state().x-api.keeper('gate').x,api.state().y-api.keeper('gate').y)<=48);
   assert.match(get('#panel-content').innerHTML,/Download Entia/);
   assert.equal(get('#location-name').textContent,'Download');
 });
@@ -121,7 +121,7 @@ test('pause during walking arrives at the latest destination and clears motion',
   api.go('hall',{cast:true});api.advanceRoute(.2);api.pause();
   const s=api.state();
   assert.equal(s.route,false);assert.equal(s.spell,false);assert.equal(s.rings,0);
-  assert.equal(s.x,api.target('hall').x);assert.equal(s.y,api.target('hall').y);
+  assert(Math.hypot(s.x-api.keeper('hall').x,s.y-api.keeper('hall').y)<=48);
   assert.equal(s.cameraX,s.cameraTargetX);
   assert.equal(get('#location-state').textContent,'You are here');
   api.go('gate',{cast:true});
@@ -225,7 +225,7 @@ test('keyboard takeover cancels an old navigation arrival callback',async()=>{
   api.go('hall',{cast:true});api.advanceRoute(.1);
   key('keydown','d');key('keyup','d');api.advanceMovement(2);
   assert.equal(api.state().atPlace,null);assert.equal(api.state().current,'hall');
-  assert.equal(api.state().spell,false);assert.equal(get('#location-state').textContent,'Exploring Nix');
+  assert.equal(api.state().spell,true);assert.equal(get('#location-state').textContent,'Exploring Nix');
   assert.equal(get('#keeper-reply').hidden,true);
 });
 
@@ -373,7 +373,7 @@ test('explicit return opens Home even if the portal was entered from another sec
 
 test('app resume rebuilds lost terrain cache without resetting section or character',async()=>{for(const reduced of [false,true]){const v=await village({reduced});v.api.go('hall',{instant:true});v.api.draw();const before=v.draws.filter(a=>a[0]?.path==='assets/grass.png').length,position=v.api.state();v.document.hidden=true;v.listeners.visibilitychange();v.document.hidden=false;v.listeners.visibilitychange();assert.equal(v.api.groundReady(),false);v.api.draw();assert(v.draws.filter(a=>a[0]?.path==='assets/grass.png').length>before);assert.equal(v.api.state().current,'hall');assert.equal(v.api.state().x,position.x);assert.equal(v.api.state().y,position.y);}});
 test('cached and visible canvas restore trigger rebuilding even with paused animation',async()=>{const v=await village();v.api.pause();v.api.draw();v.api.ground.events.contextlost({preventDefault(){}});assert.equal(v.api.groundReady(),false);v.api.ground.events.contextrestored();v.api.draw();assert(v.api.groundReady());v.get('#scene').events.contextlost({preventDefault(){}});v.get('#scene').events.contextrestored();assert.equal(v.api.groundReady(),false);v.api.draw();v.windowListeners.pageshow();assert.equal(v.api.groundReady(),false);});
-test('mobile zone popup opens and closes without moving the character home',async()=>{const v=await village({width:390,height:480});v.api.go('hall',{cast:true});assert(v.get('#zone-dialog').open);assert(v.api.state().spell);v.get('#close-zone').onclick();assert(!v.get('#zone-dialog').open);assert.equal(v.api.state().current,'hall');assert(v.api.state().route);});
+test('mobile cast popup appears at arrival and closes without moving home',async()=>{const v=await village({width:390,height:480});v.api.go('hall',{cast:true});assert(!v.get('#zone-dialog').open);assert(v.api.state().spell);v.api.finish();assert(v.get('#zone-dialog').open);assert(v.get('#zone-dialog').classList.contains('arrival-effect'));const p=v.api.state();v.get('#close-zone').onclick();assert(!v.get('#zone-dialog').open);assert.equal(v.api.state().current,'hall');assert.equal(v.api.state().x,p.x);assert.equal(v.api.state().y,p.y);});
 test('tapping a world character casts and starts its zone journey',async()=>{const v=await village();const target=v.api.townEntities().find(a=>a.place==='hall');v.clickGround(target.x,target.y-25);assert.equal(v.api.state().spellPlace,'hall');assert.equal(v.api.state().current,'hall');assert(v.api.state().route);});
 
 test('the old collect-lights minigame has no markup, entry points or runtime',()=>{const html=readFileSync(join(__dirname,'../dist/index.html'),'utf8'),js=readFileSync(join(__dirname,'../dist/app.js'),'utf8');assert(!html.includes('id="essence-game"'));assert(!html.includes('id="wander"'));assert(!js.includes('function startGame'));assert(!js.includes('Try collecting lights'));});
@@ -428,7 +428,7 @@ test('reduced-motion escort visibly walks every intermediate frame at a calm spe
  const v=await village({reduced:true,width:390,height:480});v.api.setHero(-48,450);v.clickGround(-100,450);v.step(50);assert.equal(v.api.frontier().sequence.phase,'speak');v.step(1400);assert.equal(v.api.frontier().sequence.phase,'speak');v.step(100);assert.equal(v.api.frontier().sequence.phase,'escort');
  const start=v.api.state();v.step();assert.equal(v.api.frontier().sequence.phase,'escort');assert(Math.hypot(v.api.state().x-start.x,v.api.state().y-start.y)<2);v.api.drawActor(v.api.frontier().wizard);assert(v.draws.at(-1)[1]>0);
  let frames=0;while(v.api.frontier().sequence?.phase==='escort'&&frames++<1500){const prev=v.api.state();v.step(40);const next=v.api.state();assert(Math.hypot(next.x-prev.x,next.y-prev.y)<=3.841);}
- assert(frames>100&&frames<1500);assert.equal(v.api.frontier().sequence.phase,'vanish');assert.equal(v.api.state().x,v.api.target('gate').x);v.step(50);assert.equal(v.api.state().current,'gate');assert(v.get('#zone-dialog').open);assert(v.get('#zone-dialog').classList.contains('pre-revealed'));v.get('#close-zone').onclick();assert(!v.get('#zone-dialog').classList.contains('pre-revealed'));v.step();assert.equal(v.frames.size,0);
+ assert(frames>100&&frames<1500);assert.equal(v.api.frontier().sequence.phase,'vanish');assert.equal(v.api.state().x,v.api.target('gate').x);v.step(50);assert.equal(v.api.state().current,'gate');assert(v.get('#zone-dialog').open);assert(v.get('#zone-dialog').classList.contains('arrival-effect'));v.get('#close-zone').onclick();assert(!v.get('#zone-dialog').classList.contains('arrival-effect'));v.step();assert.equal(v.frames.size,0);
 });
 test('Pause freezes the escort in place and Resume continues without jumping',async()=>{
  const v=await village();v.api.setHero(-48,450);v.clickGround(-100,450);v.step(800);v.step(1500);v.step(40);const before=v.api.state();v.api.pause();v.step(60000);assert.equal(v.api.state().x,before.x);assert.equal(v.api.state().y,before.y);assert.equal(v.api.frontier().sequence.phase,'escort');assert(!v.get('#frontier-resume').hidden);assert.equal(v.frames.size,0);v.get('#frontier-resume').onclick();v.step(40);const after=v.api.state();assert(Math.hypot(after.x-before.x,after.y-before.y)>0);assert(Math.hypot(after.x-before.x,after.y-before.y)<=3.841);
@@ -479,3 +479,11 @@ test('mobile layout retains Home/About as popups without a below-map content are
 test('long thumbstick exploration keeps the player in the mobile viewport',async()=>{const v=await village({width:390,height:620});v.api.setHero(600,450);const stick=mobileStick(v);stick('pointerdown',18,456);for(let i=0;i<200&&!v.api.frontier().open;i++){v.step(40);const p=v.api.heroScreen();assert(p.x>=70&&p.x<=320);assert(p.y>=90&&p.y<=500);}assert(Number.isFinite(v.api.joystick().panX));});
 
 test('wide touch devices retain joystick and popup-only mode',async()=>{const v=await village({width:1024,height:520,coarse:true});v.api.setHero(600,450);const stick=mobileStick(v);assert(stick('pointerdown',120,456));v.step(40);assert(v.api.state().x>600);stick('pointerup');v.api.go('home');assert(v.get('#zone-dialog').open);});
+
+test('Apocalipsis finishes after keyboard, ground and joystick movement takeover',async()=>{for(const method of ['keyboard','ground','joystick']){const v=await village({width:method==='joystick'?390:1440});v.api.castPointer(935,550);v.api.advanceSpell(.1);const before=v.api.spellDetails();if(method==='keyboard'){v.key('keydown','s');v.key('keyup','s');}if(method==='ground')v.clickGround(900,580);if(method==='joystick'){const stick=mobileStick(v);stick('pointerdown',120,456);}assert(v.api.spellDetails());assert.equal(v.api.spellDetails().age,before.age);assert.equal(v.api.spellDetails().x,before.x);v.api.advanceSpell(1.8);assert(v.api.state().spell);v.api.advanceSpell(.11);assert(!v.api.state().spell);}});
+test('casts already near each keeper preserve position instead of walking away',async()=>{for(const place of ['home','arena','hall','gate']){const v=await village();const k=v.api.keeper(place);v.api.setHero(k.x+32,k.y);v.api.go(place,{cast:true});v.api.finish();assert.equal(v.api.state().x,k.x+32);assert.equal(v.api.state().y,k.y);assert.equal(v.api.state().atPlace,place);}});
+test('real-tick casting routes reach adjacent keeper tiles despite roaming NPCs',async()=>{for(const idle of [0,.8,1.6,2.4,3.2,4,4.8,6.4])for(const place of ['home','arena','hall','gate']){const v=await village();for(let i=0;i<idle/.04;i++)v.step(40);v.api.go(place,{cast:true});let frames=0;while(v.api.state().route&&frames++<1000)v.step(40);const p=v.api.state(),k=v.api.keeper(place);assert.equal(p.atPlace,place,place+' '+idle);assert(Math.hypot(p.x-k.x,p.y-k.y)<=48);assert(Math.hypot(p.x-k.x,p.y-k.y)>=20);}});
+test('occupied old landing does not leave cast navigation stranded',async()=>{const v=await village(),land=v.api.target('hall');v.api.setNpc(0,land.x,land.y);v.api.go('hall',{cast:true});for(let i=0;i<800&&v.api.state().route;i++)v.step(40);const p=v.api.state(),k=v.api.keeper('hall');assert.equal(p.atPlace,'hall');assert(Math.hypot(p.x-k.x,p.y-k.y)<=48);});
+test('wizard appearance preserves the mobile zoom and waits until arrival to show Downloads popup',async()=>{for(const width of [390,768]){const v=await village({width,height:620});const before=v.api.scale();v.api.setHero(-48,450);v.clickGround(-100,450);v.api.viewport();assert.equal(v.api.scale(),before);v.step(800);v.step(1500);for(let i=0;i<20;i++)v.step(40);assert.equal(v.api.scale(),before);assert(v.get('#frontier-download-reveal').hidden);assert(!v.get('#zone-dialog').open);v.get('#frontier-download').onclick();v.step(280);v.step(320);v.step(220);assert(v.get('#zone-dialog').open);assert(v.get('#zone-dialog').classList.contains('arrival-effect'));}});
+test('joystick touch guards are non-passive and scoped to cancelable pad gestures',async()=>{const v=await village({width:390});const pad=v.get('#joystick-pad');for(const type of ['touchstart','touchmove']){assert.equal(pad.eventOptions[type].passive,false);let count=0;pad.events[type]({cancelable:true,preventDefault(){count++;}});assert.equal(count,1);pad.events[type]({cancelable:false,preventDefault(){throw Error('Cannot cancel');}});}assert.equal(v.listeners.touchmove,undefined);});
+test('pause and reduced-motion arrival avoid a newly occupied endpoint',async()=>{for(const mode of ['pause','reduce']){const v=await village();v.api.go('hall',{cast:true});v.api.advanceRoute(.1);const target=v.api.path().at(-1);v.api.setNpc(0,target.x,target.y);if(mode==='pause')v.api.pause();else v.api.reduced(true);const p=v.api.state();assert.equal(p.atPlace,'hall');assert(Math.hypot(p.x-target.x,p.y-target.y)>=20);assert(Math.hypot(p.x-v.api.keeper('hall').x,p.y-v.api.keeper('hall').y)<=48);}});

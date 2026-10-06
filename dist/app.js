@@ -149,7 +149,11 @@ function viewport() {
   const compact=compactMode(), left=compact?0:clamp(width*.33,320,450);
   const sceneHeight=height;
   if(compact&&frontierState.open&&frontierWizard){
-    scale=Math.max(.3,Math.min(1.2,(width-48)/220,(sceneHeight-96)/280));camera.x=camera.targetX=(hero.x+frontierWizard.x)/2;camera.y=camera.targetY=(hero.y+frontierWizard.y)/2-30;ox=width/2-camera.x*scale;oy=sceneHeight*.6-camera.y*scale;
+    const s=frontierSequence;scale=s.viewScale*Math.min(width/s.viewWidth,height/s.viewHeight);
+    const px=(hero.x+frontierWizard.x)/2*scale+s.viewOx,py=(hero.y+frontierWizard.y)/2*scale+s.viewOy;
+    s.viewOx+=clamp(px,Math.min(80,width*.25),width-Math.min(80,width*.25))-px;
+    s.viewOy+=clamp(py,Math.min(180,sceneHeight*.4),Math.max(sceneHeight-140,sceneHeight*.55))-py;
+    ox=s.viewOx;oy=s.viewOy;
   }else if(compact){
     // Fit all four destination actors and their labels; walking cannot pan one out of view.
     const leftEdge=Math.min(...keepers.map(k=>k.x))-100,rightEdge=Math.max(...keepers.map(k=>k.x))+100;
@@ -270,7 +274,7 @@ function tryFrontier(from,to,kind='move',explore=true){
  frontierState=next;resetJoystick();heldDirections.clear();route=null;spell=null;setAim(false);
  const spawn=WorldFrontier.samplePath(plan.points,48);
  frontierWizard={...spawn,body:'wizard-walk',isKeeper:true,gait:0,reaction:0,dir:heading(hero.x-spawn.x,hero.y-spawn.y),type:'frontier'};
- frontierSequence={...plan,phase:'appear',elapsed:0};
+ frontierSequence={...plan,phase:'appear',elapsed:0,viewScale:scale,viewWidth:width,viewHeight:height,viewOx:ox,viewOy:oy};
  $('#frontier-download-reveal').innerHTML='<span class="frontier-close-space" aria-hidden="true"></span>'+content('gate');$('#frontier-download-reveal').hidden=true;
  $('#frontier-description').textContent='';$('#frontier-bubble').hidden=true;$('#world').classList.add('frontier-active');updateFrontierPauseUI();last=performance.now();requestDraw();return true;
 }
@@ -292,7 +296,7 @@ function skipFrontierWalk(){
 }
 function viewFrontierDownloads(){
  if(!frontierState.open||frontierSequence?.phase!=='vanish')return;dismissFrontier({focus:false});go('gate',{instant:true,animateContent:false});
- if(compactMode())openZoneInfo('gate',{animate:false});else $('#section-heading')?.focus({preventScroll:true});
+ if(compactMode())openZoneInfo('gate',{arrival:true});else $('#section-heading')?.focus({preventScroll:true});
 }
 function updateFrontierPauseUI(){
  if(!frontierSequence)return;
@@ -327,7 +331,7 @@ function advanceFrontier(dt){
 }
 function updateDownloadReveal(){
  const s=frontierSequence,node=$('#frontier-download-reveal');
- if(!s){node.hidden=true;return;}
+ if(!s||compactMode()){node.hidden=true;return;}
  const revealing=['escort','teleport-in','vanish'].includes(s.phase)||s.phase==='teleport-out'&&s.distance>0;
  node.hidden=!revealing;if(!revealing)return;
  // Reveal the real destination content without navigating or activating controls.
@@ -503,27 +507,46 @@ function arrive(place,announce=true) {
   }
 }
 function advanceRoute(dt) {
-  const r=route;r.elapsed+=dt;let budget=WALK_SPEED*dt;
+  const r=route;if(!r)return;r.elapsed+=dt;
+  if(r.retryIn!==undefined){
+    r.retryIn-=dt;if(r.retryIn>0)return;
+    const next=navigationPath(r.destination);
+    if(!next.length){r.retries=(r.retries||0)+1;if(r.retries>40){route=null;$('#location-state').textContent='Path blocked';$('#world').classList.remove('traveling');toast('The path is blocked. Try approaching from another side.');}else r.retryIn=.2;return;}
+    r.points=next;r.segment=0;r.target=next.at(-1);delete r.retryIn;
+  }
+  let budget=WALK_SPEED*dt;
   if(route===r&&budget>0&&r.segment<r.points.length){
     const target=r.points[r.segment],dx=target.x-hero.x,dy=target.y-hero.y,d=Math.hypot(dx,dy);
     if(d<.01){r.segment++;if(r.segment>=r.points.length){route=null;r.complete?.();}return;}
     const before={x:hero.x,y:hero.y},step=Math.min(budget,d),moved=townPhysics.move(hero,dx/d*step,dy/d*step,[...keepers,...npcs]);
     hero.dir=heading(dx,dy);r.distance+=moved;budget-=step;if(r.explore&&moved>0&&tryFrontier(before,hero))return;
-    if(moved+1e-5<step){route=null;return;}
+    if(moved+1e-5<step){if(r.destination)r.retryIn=.2;else route=null;return;}
     if(step>=d-.001){hero.x=target.x;hero.y=target.y;r.segment++;}
     if(r.explore){portalCrossing();checkNearbySection();}
   }
   if(route===r&&r.segment>=r.points.length){route=null;r.complete?.();}
 }
-function moveHero(points,{complete,instant=false,manual=false,explore=manual,joystick=false}={}) {
-  if(!points.length){route=null;toast('That route is blocked. Try another spot.');return;}
+function moveHero(points,{complete,instant=false,manual=false,explore=manual,joystick=false,destination=null}={}) {
+  if(!points.length){route=null;$('#location-state').textContent='Path blocked';$('#world').classList.remove('traveling');toast('That route is blocked. Try another spot.');return;}
   const target=points.at(-1);let from=hero,length=0;
   for(const p of points){length+=Math.hypot(p.x-from.x,p.y-from.y);from=p;}
   // Every new action replaces the previous route and its completion callback.
   route=null;
   if(motionOff()&&!joystick||instant||length<2){const before={x:hero.x,y:hero.y};hero.x=target.x;hero.y=target.y;if(explore&&tryFrontier(before,hero))return;if(explore)checkNearbySection();complete?.();requestDraw();return;}
-  route={sx:hero.x,sy:hero.y,target,points,segment:0,length,distance:0,elapsed:0,duration:length/WALK_SPEED,complete,manual,explore,joystick};
+  route={sx:hero.x,sy:hero.y,target,points,segment:0,length,distance:0,elapsed:0,duration:length/WALK_SPEED,complete,manual,explore,joystick,destination};
   requestDraw();
+}
+function navigationPath(destination){
+ if(!destination)return [];
+ const keeper=spots[destination.place],others=[...keepers,...npcs];
+ if(!destination.near)return walkingPath(keeper.land);
+ if(Math.hypot(hero.x-keeper.x,hero.y-keeper.y)<=48&&townPhysics.free(hero.x,hero.y,others,hero))return [{x:hero.x,y:hero.y}];
+ const candidates=[];
+ for(const dx of [-32,0,32])for(const dy of [-32,0,32]){
+  if(!dx&&!dy)continue;const target={x:keeper.x+dx,y:keeper.y+dy};
+  const points=townPhysics.path(hero,target,others);if(points.length)candidates.push({points,length:WorldFrontier.pathLength([{x:hero.x,y:hero.y},...points])});
+ }
+ candidates.sort((a,b)=>a.length-b.length);return candidates[0]?.points||[];
 }
 function walkingPath(target) {
   return townPhysics.path(hero,target,[...keepers,...npcs]);
@@ -572,7 +595,7 @@ function beginManualMovement({focus=true}={}) {
     if(distance>.001)moveHero([{x:hero.x+(next.x-hero.x)/distance*step,y:hero.y+(next.y-hero.y)/distance*step}],{manual:true,complete:checkWalkingProgress});
     else route=null;
   }
-  atPlace=null;spell=null;setAim(false);clearTimeout(replyTimer);$('#keeper-reply').hidden=true;
+  atPlace=null;setAim(false);clearTimeout(replyTimer);$('#keeper-reply').hidden=true;
   $('#world').classList.remove('traveling');
   $('#location-state').textContent='Exploring Nix';
   updateKeeperStates();
@@ -660,12 +683,13 @@ function go(place,{history:writeHistory=true,instant=false,announce=true,cast=fa
   clearTimeout(toastTimer);$('#travel-toast').classList.remove('show');$('#travel-toast').textContent='';
   $('#world').classList.remove('walking');
   atPlace=null;current=place;setAim(false);clearTimeout(replyTimer);$('#keeper-reply').hidden=true;
-  setContent(place,{popup:!instant&&ready,animate:animateContent});
+  setContent(place,{popup:!instant&&ready&&!cast,animate:animateContent});
   if(writeHistory && location.hash!=='#'+place)window.history.pushState(null,'','#'+place);
-  spell=null;rings=[];
+  rings=[];
   camera.targetX=990+(spots[place].x-990)*.07;camera.targetY=530+(spots[place].y-530)*.05;
   if(motionOff()||instant){camera.x=camera.targetX;camera.y=camera.targetY;}
-  const points=walkingPath(spots[place].land);
+  const destination={place,near:!instant&&ready};
+  const points=navigationPath(destination);
   if(cast&&!motionOff()&&!instant&&ready){
     rings.push({x:hero.x,y:hero.y,age:0,duration:.32});
     spell={place,x:spots[place].x,y:spots[place].y-32,age:0,delay:.12,duration:.12+apocalipsis.duration,hit:false};
@@ -673,7 +697,7 @@ function go(place,{history:writeHistory=true,instant=false,announce=true,cast=fa
   }
   $('#location-state').textContent=`Walking to ${spots[place].section}…`;
   $('#world').classList.add('traveling');
-  moveHero(points,{instant:instant||!ready,complete:()=>{arrive(place,announce);}});
+  moveHero(points,{instant:instant||!ready,destination,complete:()=>{arrive(place,announce);if(cast&&compactMode()&&ready&&!instant)openZoneInfo(place,{arrival:true});}});
   updateKeeperStates();requestDraw();
 }
 function toast(message) {
@@ -693,7 +717,7 @@ function setMotionState() {
     resetJoystick();heldDirections.clear();
     if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;
     const pending=route;route=null;spell=null;rings=[];
-    if(pending){const before={x:hero.x,y:hero.y};hero.x=pending.target.x;hero.y=pending.target.y;const intercepted=pending.explore&&tryFrontier(before,hero);if(!intercepted){if(pending.explore)checkNearbySection();pending.complete?.();}}
+    if(pending){const points=pending.destination?navigationPath(pending.destination):[pending.target],target=points.at(-1);if(target&&townPhysics.free(target.x,target.y,[...keepers,...npcs],hero)){const before={x:hero.x,y:hero.y};hero.x=target.x;hero.y=target.y;const intercepted=pending.explore&&tryFrontier(before,hero);if(!intercepted){if(pending.explore)checkNearbySection();pending.complete?.();}}else{$('#location-state').textContent='Path blocked';$('#world').classList.remove('traveling');}}
     camera.x=camera.targetX;camera.y=camera.targetY;
     for(const a of [...npcs,...keepers])a.reaction=0;
     for(const animation of $('#world').getAnimations({subtree:true}))animation.cancel();
@@ -747,6 +771,7 @@ canvas.addEventListener('click',event=>{
 });
 
 
+for(const type of ['touchstart','touchmove'])$('#joystick-pad').addEventListener(type,event=>{if(event.cancelable)event.preventDefault();},{passive:false});
 $('#joystick-pad').addEventListener('pointerdown',startJoystick);
 $('#joystick-pad').addEventListener('pointermove',updateJoystick);
 for(const type of ['pointerup','pointercancel','lostpointercapture'])$('#joystick-pad').addEventListener(type,stopJoystick);
@@ -819,8 +844,8 @@ function recoverScene(){groundReady=false;worldPatterns=null;if(demoOpen)return;
 for(const surface of [canvas,ground]){surface.addEventListener('contextlost',event=>{event.preventDefault();groundReady=false;if(frameRequest)cancelAnimationFrame(frameRequest);frameRequest=0;});surface.addEventListener('contextrestored',recoverScene);}
 for(const surface of document.querySelectorAll('header,.world-meta,.world-toolbar,#locations,#player-label,#keeper-reply,button'))for(const type of ['selectstart','dragstart','contextmenu'])surface.addEventListener(type,event=>event.preventDefault());
 
-function openZoneInfo(place,{animate=true}={}){if(!compactMode())return;clearMovementInput();const dialog=$('#zone-dialog');dialog.classList.toggle('pre-revealed',!animate);zoneContent=$(place==='home'?'#intro':'#panel');$('#zone-body').append(zoneContent);if(!dialog.open)dialog.showModal();$('#close-zone').focus({preventScroll:true});}
-function closeZoneInfo(){const dialog=$('#zone-dialog');dialog.classList.remove('pre-revealed');if(dialog.open)dialog.close();if(zoneContent){$('#main-content').append(zoneContent);zoneContent=null;}}
+function openZoneInfo(place,{animate=true,arrival=false}={}){if(!compactMode())return;clearMovementInput();const dialog=$('#zone-dialog');dialog.classList.toggle('pre-revealed',!animate);dialog.classList.toggle('arrival-effect',arrival);zoneContent=$(place==='home'?'#intro':'#panel');$('#zone-body').append(zoneContent);if(!dialog.open)dialog.showModal();$('#close-zone').focus({preventScroll:true});}
+function closeZoneInfo(){const dialog=$('#zone-dialog');dialog.classList.remove('pre-revealed','arrival-effect');if(dialog.open)dialog.close();if(zoneContent){$('#main-content').append(zoneContent);zoneContent=null;}}
 $('#close-zone').onclick=closeZoneInfo;
 $('#zone-dialog').addEventListener('close',()=>{if(!$('#zone-dialog').open&&zoneContent){$('#main-content').append(zoneContent);zoneContent=null;}});
 $('#zone-dialog').addEventListener('click',event=>{if(event.target===$('#zone-dialog'))closeZoneInfo();});
