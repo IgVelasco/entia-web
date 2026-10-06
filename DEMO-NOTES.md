@@ -1,3 +1,11 @@
+# Reusable role character kit — 6 October 2026
+
+- Generated six separate four-direction face/outfit designs: movement assassin, fatherly Home mentor, battle-ready Game veteran, Rankings chronicler, Download courier and bank steward.
+- New compact96x640 idle sheets replace the matching website keepers and tutorial guides. NPC consumers explicitly use one idle column; existing player/enemy walk sheets remain unchanged. Home/demo share loaded NPC images when possible. All six runtime sheets total about1.4MiB decoded RGBA.
+- Delivered separate head/clothing layers, per-direction images, combined previews and native60x64 body/32x24 head cells with direction/anchor manifests. Body/head anchors(30,64)/(16,24), proposed head_offset_y=-54. Production import still needs GRH IDs and engine verification.
+- These are idle sets only; no fake repeated walk frames. Sources and normalization scripts are included in the reusable kit.
+- Checked all cardinal previews, source alpha/feet alignment, exact layer recomposition, runtime asset identities and native registration. Full Node suite and canvas renders checked; no live engine import or physical-browser QA claimed.
+
 # Keyboard focus on entry — 6 October 2026
 
 - The parent hands desktop focus to the visible loaded demo iframe on cold entry and reentry. The demo focuses its canvas when ready/activated and after finishing an NPC conversation or closing the character editor.

@@ -1,0 +1,5 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const roles=['movement','home','game','rankings','download','bank'];
+for(const role of roles)test(role+' idle asset is a compact RGBA four-direction sheet',()=>{const p=path.join(__dirname,'../dist/assets/npc',role+'-idle.png'),b=fs.readFileSync(p);assert.equal(b.toString('ascii',1,4),'PNG');assert.equal(b.readUInt32BE(16),96);assert.equal(b.readUInt32BE(20),640);assert.equal(b[25],6);assert(b.length<80000);});
+test('role keeper assets are listed without altering player animation assets',()=>{const a=require('../dist/assets/site-assets.json');for(const role of ['home','game','rankings','download'])assert.equal(a.images['npc-'+role],'npc/'+role+'-idle.png');assert.equal(a.images.hero,'hero.png');assert.equal(a.npc_idle_format.columns,1);assert.equal(a.npc_idle_format.walk_animation_included,false);});
+test('asset manifest cache key changes with the role-keeper mapping',()=>{const app=fs.readFileSync(path.join(__dirname,'../dist/app.js'),'utf8');assert(app.includes('site-assets.json?v=npcroles1'));});

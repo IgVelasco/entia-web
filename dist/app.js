@@ -15,10 +15,10 @@ let nearbyPlace = null,zoneContent=null;
 const NEAR_ENTER = 72, NEAR_EXIT = 104;
 const camera = {x: 870, y: 470, targetX: 870, targetY: 470};
 const spots = {
-  home: {x: 800, y: 440, section: 'Home', clan: 'Nix', body: 'rogue', greeting: 'Welcome to Nix.', land: {x: 870, y: 470}},
-  arena: {x: 1190, y: 345, section: 'Game', clan: 'PvP', body: 'hero', greeting: 'Find your next rival.', land: {x: 1100, y: 410}},
-  hall: {x: 1170, y: 655, section: 'Rankings', clan: 'Preview', body: 'mage', greeting: 'Live rankings are coming later.', land: {x: 1075, y: 680}},
-  gate: {x: 780, y: 715, section: 'Download', clan: 'Unavailable', body: 'hero', greeting: 'No download is linked yet.', land: {x: 880, y: 725}}
+  home: {x: 800, y: 440, section: 'Home', clan: 'Nix', body: 'npc-home', greeting: 'Welcome to Nix.', land: {x: 870, y: 470}},
+  arena: {x: 1190, y: 345, section: 'Game', clan: 'PvP', body: 'npc-game', greeting: 'Find your next rival.', land: {x: 1100, y: 410}},
+  hall: {x: 1170, y: 655, section: 'Rankings', clan: 'Preview', body: 'npc-rankings', greeting: 'Live rankings are coming later.', land: {x: 1075, y: 680}},
+  gate: {x: 780, y: 715, section: 'Download', clan: 'Unavailable', body: 'npc-download', greeting: 'No download is linked yet.', land: {x: 880, y: 725}}
 };
 for(const p of Object.values(spots)){p.x=townTileCenter(p.x);p.y=townTileCenter(p.y);p.land=onTownGrid(p.land);}
 const hero = {...spots.home.land, body:'hero',dir:2,gait:0,hero:true};
@@ -189,7 +189,7 @@ async function load() {
   $('#retry-load').hidden=true;
   $('#loading p').textContent='Opening the gates of Nix…';
   try {
-    const response = await fetch('assets/site-assets.json?v=darkfit1');
+    const response = await fetch('assets/site-assets.json?v=npcroles1');
     if(!response.ok) throw new Error('Asset manifest unavailable');
     const assets = await response.json();
     await Promise.all(Object.entries(assets.images).map(async ([key,file]) => images[key] = await loadImage('assets/'+file)));
@@ -234,11 +234,12 @@ function glow(x,y,r,alpha=1) {
 }
 function drawActor(a) {
   const im=images[a.body]; if(!im)return;
-  const walking=!motionOff() && (a.hero ? !!route : !a.isKeeper && a.reaction<=0);
+  const idle=a.body.startsWith('npc-');
+  const walking=!idle && !motionOff() && (a.hero ? !!route : !a.isKeeper && a.reaction<=0);
   // Body 156 walks through seven drawings over two tiles; body 502 over one.
   const stride=(a.gait||0)/(WALK_TILE*walkCycleTiles[a.body]);
   const frame=walking ? 1+Math.floor((stride%1)*7) : 0;
-  const fw=im.width/8, fh=im.height/4, dw=60, dh=fh/fw*dw;
+  const fw=idle?96:im.width/8, fh=im.height/4, dw=60, dh=fh/fw*dw;
   ellipse(a.x,a.y+2,18,6,'rgba(7,20,12,.62)');
   if(a.hero)ellipse(a.x,a.y+2,25,10,'#e7c885',true,1.5);
   ctx.drawImage(im,frame*fw,a.dir*fh,fw,fh,Math.round(a.x-dw/2),Math.round(a.y-dh),dw,dh);
