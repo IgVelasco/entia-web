@@ -512,127 +512,127 @@
     "reconstructionMismatches": 0,
     "opaqueMismatches": 0,
     "maxDelta": 0,
-    "minimumNeckOverlap": 36,
+    "minimumNeckOverlap": 35,
     "frames": [
       {
         "direction": 0,
         "frame": 0,
-        "neckOverlapPixels": 63
+        "neckOverlapPixels": 62
       },
       {
         "direction": 0,
         "frame": 1,
-        "neckOverlapPixels": 66
-      },
-      {
-        "direction": 0,
-        "frame": 2,
-        "neckOverlapPixels": 65
-      },
-      {
-        "direction": 0,
-        "frame": 3,
-        "neckOverlapPixels": 65
-      },
-      {
-        "direction": 0,
-        "frame": 4,
-        "neckOverlapPixels": 63
-      },
-      {
-        "direction": 0,
-        "frame": 5,
-        "neckOverlapPixels": 65
-      },
-      {
-        "direction": 0,
-        "frame": 6,
         "neckOverlapPixels": 64
       },
       {
         "direction": 0,
-        "frame": 7,
-        "neckOverlapPixels": 65
-      },
-      {
-        "direction": 1,
-        "frame": 0,
-        "neckOverlapPixels": 39
-      },
-      {
-        "direction": 1,
-        "frame": 1,
-        "neckOverlapPixels": 41
-      },
-      {
-        "direction": 1,
         "frame": 2,
-        "neckOverlapPixels": 42
+        "neckOverlapPixels": 63
       },
       {
-        "direction": 1,
+        "direction": 0,
         "frame": 3,
-        "neckOverlapPixels": 40
+        "neckOverlapPixels": 63
       },
       {
-        "direction": 1,
+        "direction": 0,
         "frame": 4,
-        "neckOverlapPixels": 41
+        "neckOverlapPixels": 62
       },
       {
-        "direction": 1,
+        "direction": 0,
         "frame": 5,
-        "neckOverlapPixels": 42
+        "neckOverlapPixels": 63
       },
       {
-        "direction": 1,
+        "direction": 0,
         "frame": 6,
-        "neckOverlapPixels": 40
+        "neckOverlapPixels": 62
+      },
+      {
+        "direction": 0,
+        "frame": 7,
+        "neckOverlapPixels": 63
       },
       {
         "direction": 1,
-        "frame": 7,
-        "neckOverlapPixels": 41
-      },
-      {
-        "direction": 2,
         "frame": 0,
         "neckOverlapPixels": 38
       },
       {
-        "direction": 2,
+        "direction": 1,
         "frame": 1,
-        "neckOverlapPixels": 36
+        "neckOverlapPixels": 40
       },
       {
-        "direction": 2,
+        "direction": 1,
         "frame": 2,
-        "neckOverlapPixels": 42
+        "neckOverlapPixels": 41
       },
       {
-        "direction": 2,
+        "direction": 1,
         "frame": 3,
-        "neckOverlapPixels": 44
+        "neckOverlapPixels": 39
       },
       {
-        "direction": 2,
+        "direction": 1,
         "frame": 4,
         "neckOverlapPixels": 40
       },
       {
-        "direction": 2,
+        "direction": 1,
         "frame": 5,
-        "neckOverlapPixels": 42
+        "neckOverlapPixels": 41
+      },
+      {
+        "direction": 1,
+        "frame": 6,
+        "neckOverlapPixels": 39
+      },
+      {
+        "direction": 1,
+        "frame": 7,
+        "neckOverlapPixels": 40
       },
       {
         "direction": 2,
-        "frame": 6,
+        "frame": 0,
+        "neckOverlapPixels": 37
+      },
+      {
+        "direction": 2,
+        "frame": 1,
+        "neckOverlapPixels": 35
+      },
+      {
+        "direction": 2,
+        "frame": 2,
         "neckOverlapPixels": 41
       },
       {
         "direction": 2,
-        "frame": 7,
+        "frame": 3,
+        "neckOverlapPixels": 43
+      },
+      {
+        "direction": 2,
+        "frame": 4,
         "neckOverlapPixels": 39
+      },
+      {
+        "direction": 2,
+        "frame": 5,
+        "neckOverlapPixels": 41
+      },
+      {
+        "direction": 2,
+        "frame": 6,
+        "neckOverlapPixels": 40
+      },
+      {
+        "direction": 2,
+        "frame": 7,
+        "neckOverlapPixels": 38
       },
       {
         "direction": 3,
@@ -675,5 +675,14 @@
         "neckOverlapPixels": 40
       }
     ]
+  },
+  "matte_cleanup": {
+    "revision": 2,
+    "method": "Exterior-connected neutral background fringe removal before original fixed head registration",
+    "pale_boundary_pixels_before": 48,
+    "pale_boundary_pixels_after": 0,
+    "output_pixels_deleted": 50,
+    "eye_regions_unchanged": true,
+    "retained_rgb_unchanged": true
   }
 }

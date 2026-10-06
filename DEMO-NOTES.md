@@ -227,3 +227,6 @@ The user approved publishing the six corrected guides and their supplied mohawk 
 The new walker uses body156's documented two-tile gait cycle. Other roaming actors are unchanged. Six guide images already contain the approved corrected alignment, faces and distinct clothing. This publication does not claim every eye refinement is complete or install any asset in the RAO repository.
 
 The mohawk sheet is93,298compressed bytes and1,966,080decodedRGBA bytes, loaded once with existing scene assets; no extra timer or per-frame compositing is added.
+
+# Mohawk fringe cleanup — 7 October 2026 Mallorca
+Removed the neutral pale exterior residue from the user head source without repainting retained pixels. All eye regions and head geometry are unchanged. Pale boundary count is48→0 across four direction heads. Rebuilt all32walking cells from the same originalbody/staff; non-head pixels are byte-identical. Collar overlap remains at least35opaque pixels. The new cached sheet is93,067bytes and retains the same decoded memory budget.

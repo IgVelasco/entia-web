@@ -189,7 +189,7 @@ async function load() {
   $('#retry-load').hidden=true;
   $('#loading p').textContent='Opening the gates of Nix…';
   try {
-    const response = await fetch('assets/site-assets.json?v=npcroles5');
+    const response = await fetch('assets/site-assets.json?v=npcroles6');
     if(!response.ok) throw new Error('Asset manifest unavailable');
     const assets = await response.json();
     await Promise.all(Object.entries(assets.images).map(async ([key,file]) => images[key] = await loadImage('assets/'+file)));

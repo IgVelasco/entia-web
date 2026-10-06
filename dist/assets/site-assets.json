@@ -24,7 +24,7 @@
     "npc-game": "npc/game-idle-v4.png",
     "npc-rankings": "npc/rankings-idle-v4.png",
     "npc-download": "npc/download-idle-v4.png",
-    "mohawk": "npc/mohawk-walk-v1.png"
+    "mohawk": "npc/mohawk-walk-v2.png"
   },
   "source_sha": "410676cc2e11170c494ad90eb160944ce8d635cf",
   "spell_source": {
