@@ -1,0 +1,679 @@
+{
+  "source_repository": "IgVelasco/rao-client",
+  "source_commit": "410676cc2e11170c494ad90eb160944ce8d635cf",
+  "frame_size": [
+    96,
+    160
+  ],
+  "body_asset": "body-156.png",
+  "body_source_frame_size": [
+    60,
+    135
+  ],
+  "body_origin": [
+    18,
+    25
+  ],
+  "weapon_asset": "weapon-17.png",
+  "weapon_source_frame_size": [
+    48,
+    108
+  ],
+  "weapon_resized_frame_size": [
+    60,
+    135
+  ],
+  "weapon_resize": "nearest",
+  "directions": [
+    "north",
+    "east",
+    "south",
+    "west"
+  ],
+  "layer_order_by_direction": [
+    [
+      "weapon",
+      "body",
+      "head"
+    ],
+    [
+      "body",
+      "head",
+      "weapon"
+    ],
+    [
+      "body",
+      "head",
+      "weapon"
+    ],
+    [
+      "weapon",
+      "body",
+      "head"
+    ]
+  ],
+  "frames": [
+    {
+      "direction": 0,
+      "frame": 0,
+      "weapon_origin": [
+        18,
+        25
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        18,
+        25
+      ]
+    },
+    {
+      "direction": 0,
+      "frame": 1,
+      "weapon_origin": [
+        18,
+        25
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        18,
+        25
+      ]
+    },
+    {
+      "direction": 0,
+      "frame": 2,
+      "weapon_origin": [
+        18,
+        25
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        18,
+        25
+      ]
+    },
+    {
+      "direction": 0,
+      "frame": 3,
+      "weapon_origin": [
+        18,
+        25
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        18,
+        25
+      ]
+    },
+    {
+      "direction": 0,
+      "frame": 4,
+      "weapon_origin": [
+        18,
+        25
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        18,
+        25
+      ]
+    },
+    {
+      "direction": 0,
+      "frame": 5,
+      "weapon_origin": [
+        18,
+        25
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        18,
+        25
+      ]
+    },
+    {
+      "direction": 0,
+      "frame": 6,
+      "weapon_origin": [
+        18,
+        25
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        18,
+        25
+      ]
+    },
+    {
+      "direction": 0,
+      "frame": 7,
+      "weapon_origin": [
+        18,
+        25
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        18,
+        25
+      ]
+    },
+    {
+      "direction": 1,
+      "frame": 0,
+      "weapon_origin": [
+        5,
+        26
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        5,
+        26
+      ]
+    },
+    {
+      "direction": 1,
+      "frame": 1,
+      "weapon_origin": [
+        -5,
+        26
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        -5,
+        26
+      ]
+    },
+    {
+      "direction": 1,
+      "frame": 2,
+      "weapon_origin": [
+        13,
+        23
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        13,
+        23
+      ]
+    },
+    {
+      "direction": 1,
+      "frame": 3,
+      "weapon_origin": [
+        5,
+        26
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        5,
+        26
+      ]
+    },
+    {
+      "direction": 1,
+      "frame": 4,
+      "weapon_origin": [
+        12,
+        21
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        12,
+        21
+      ]
+    },
+    {
+      "direction": 1,
+      "frame": 5,
+      "weapon_origin": [
+        4,
+        26
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        4,
+        26
+      ]
+    },
+    {
+      "direction": 1,
+      "frame": 6,
+      "weapon_origin": [
+        4,
+        26
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        4,
+        26
+      ]
+    },
+    {
+      "direction": 1,
+      "frame": 7,
+      "weapon_origin": [
+        -2,
+        25
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        -2,
+        25
+      ]
+    },
+    {
+      "direction": 2,
+      "frame": 0,
+      "weapon_origin": [
+        17,
+        25
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        17,
+        25
+      ]
+    },
+    {
+      "direction": 2,
+      "frame": 1,
+      "weapon_origin": [
+        19,
+        18
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        19,
+        18
+      ]
+    },
+    {
+      "direction": 2,
+      "frame": 2,
+      "weapon_origin": [
+        18,
+        23
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        18,
+        23
+      ]
+    },
+    {
+      "direction": 2,
+      "frame": 3,
+      "weapon_origin": [
+        17,
+        25
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        17,
+        25
+      ]
+    },
+    {
+      "direction": 2,
+      "frame": 4,
+      "weapon_origin": [
+        14,
+        25
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        14,
+        25
+      ]
+    },
+    {
+      "direction": 2,
+      "frame": 5,
+      "weapon_origin": [
+        18,
+        24
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        18,
+        24
+      ]
+    },
+    {
+      "direction": 2,
+      "frame": 6,
+      "weapon_origin": [
+        19,
+        19
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        19,
+        19
+      ]
+    },
+    {
+      "direction": 2,
+      "frame": 7,
+      "weapon_origin": [
+        17,
+        24
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        17,
+        24
+      ]
+    },
+    {
+      "direction": 3,
+      "frame": 0,
+      "weapon_origin": [
+        18,
+        25
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        18,
+        25
+      ]
+    },
+    {
+      "direction": 3,
+      "frame": 1,
+      "weapon_origin": [
+        18,
+        25
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        18,
+        25
+      ]
+    },
+    {
+      "direction": 3,
+      "frame": 2,
+      "weapon_origin": [
+        18,
+        25
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        18,
+        25
+      ]
+    },
+    {
+      "direction": 3,
+      "frame": 3,
+      "weapon_origin": [
+        18,
+        25
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        18,
+        25
+      ]
+    },
+    {
+      "direction": 3,
+      "frame": 4,
+      "weapon_origin": [
+        18,
+        25
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        18,
+        25
+      ]
+    },
+    {
+      "direction": 3,
+      "frame": 5,
+      "weapon_origin": [
+        18,
+        25
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        18,
+        25
+      ]
+    },
+    {
+      "direction": 3,
+      "frame": 6,
+      "weapon_origin": [
+        18,
+        25
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        18,
+        25
+      ]
+    },
+    {
+      "direction": 3,
+      "frame": 7,
+      "weapon_origin": [
+        18,
+        25
+      ],
+      "mismatching_visible_pixels": 0,
+      "predicted": [
+        18,
+        25
+      ]
+    }
+  ],
+  "new_head": {
+    "file": "mohawk-heads-60ppt.png",
+    "cell": [
+      48,
+      48
+    ],
+    "origin": [
+      24,
+      32
+    ],
+    "neck_anchor": [
+      48,
+      78
+    ],
+    "source_ppt": 60
+  },
+  "verification": {
+    "sourceCommit": "410676cc2e11170c494ad90eb160944ce8d635cf",
+    "bodyFamily": 156,
+    "walkCycleTiles": 2,
+    "frameSize": {
+      "w": 96,
+      "h": 160
+    },
+    "columns": 8,
+    "directions": [
+      "north",
+      "east",
+      "south",
+      "west"
+    ],
+    "headOrigin": {
+      "x": 24,
+      "y": 32
+    },
+    "neckAnchor": {
+      "x": 48,
+      "y": 78
+    },
+    "reconstructionMismatches": 0,
+    "opaqueMismatches": 0,
+    "maxDelta": 0,
+    "minimumNeckOverlap": 36,
+    "frames": [
+      {
+        "direction": 0,
+        "frame": 0,
+        "neckOverlapPixels": 63
+      },
+      {
+        "direction": 0,
+        "frame": 1,
+        "neckOverlapPixels": 66
+      },
+      {
+        "direction": 0,
+        "frame": 2,
+        "neckOverlapPixels": 65
+      },
+      {
+        "direction": 0,
+        "frame": 3,
+        "neckOverlapPixels": 65
+      },
+      {
+        "direction": 0,
+        "frame": 4,
+        "neckOverlapPixels": 63
+      },
+      {
+        "direction": 0,
+        "frame": 5,
+        "neckOverlapPixels": 65
+      },
+      {
+        "direction": 0,
+        "frame": 6,
+        "neckOverlapPixels": 64
+      },
+      {
+        "direction": 0,
+        "frame": 7,
+        "neckOverlapPixels": 65
+      },
+      {
+        "direction": 1,
+        "frame": 0,
+        "neckOverlapPixels": 39
+      },
+      {
+        "direction": 1,
+        "frame": 1,
+        "neckOverlapPixels": 41
+      },
+      {
+        "direction": 1,
+        "frame": 2,
+        "neckOverlapPixels": 42
+      },
+      {
+        "direction": 1,
+        "frame": 3,
+        "neckOverlapPixels": 40
+      },
+      {
+        "direction": 1,
+        "frame": 4,
+        "neckOverlapPixels": 41
+      },
+      {
+        "direction": 1,
+        "frame": 5,
+        "neckOverlapPixels": 42
+      },
+      {
+        "direction": 1,
+        "frame": 6,
+        "neckOverlapPixels": 40
+      },
+      {
+        "direction": 1,
+        "frame": 7,
+        "neckOverlapPixels": 41
+      },
+      {
+        "direction": 2,
+        "frame": 0,
+        "neckOverlapPixels": 38
+      },
+      {
+        "direction": 2,
+        "frame": 1,
+        "neckOverlapPixels": 36
+      },
+      {
+        "direction": 2,
+        "frame": 2,
+        "neckOverlapPixels": 42
+      },
+      {
+        "direction": 2,
+        "frame": 3,
+        "neckOverlapPixels": 44
+      },
+      {
+        "direction": 2,
+        "frame": 4,
+        "neckOverlapPixels": 40
+      },
+      {
+        "direction": 2,
+        "frame": 5,
+        "neckOverlapPixels": 42
+      },
+      {
+        "direction": 2,
+        "frame": 6,
+        "neckOverlapPixels": 41
+      },
+      {
+        "direction": 2,
+        "frame": 7,
+        "neckOverlapPixels": 39
+      },
+      {
+        "direction": 3,
+        "frame": 0,
+        "neckOverlapPixels": 43
+      },
+      {
+        "direction": 3,
+        "frame": 1,
+        "neckOverlapPixels": 43
+      },
+      {
+        "direction": 3,
+        "frame": 2,
+        "neckOverlapPixels": 43
+      },
+      {
+        "direction": 3,
+        "frame": 3,
+        "neckOverlapPixels": 43
+      },
+      {
+        "direction": 3,
+        "frame": 4,
+        "neckOverlapPixels": 40
+      },
+      {
+        "direction": 3,
+        "frame": 5,
+        "neckOverlapPixels": 42
+      },
+      {
+        "direction": 3,
+        "frame": 6,
+        "neckOverlapPixels": 39
+      },
+      {
+        "direction": 3,
+        "frame": 7,
+        "neckOverlapPixels": 40
+      }
+    ]
+  }
+}

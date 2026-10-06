@@ -24,7 +24,7 @@ for(const p of Object.values(spots)){p.x=townTileCenter(p.x);p.y=townTileCenter(
 const hero = {...spots.home.land, body:'hero',dir:2,gait:0,hero:true};
 const keepers = Object.entries(spots).map(([place, p]) => ({...p, place, dir: 2, isKeeper: true, reaction: 0}));
 const npcs = [
-  {x: 975, y: 490, body: 'rogue', dir: 1, way: [[975,490],[1070,490],[1070,530],[975,530]], idx: 1, gait: 0, reaction: 0},
+  {x: 975, y: 490, body: 'mohawk', dir: 1, way: [[975,490],[1070,490],[1070,530],[975,530]], idx: 1, gait: 0, reaction: 0},
   {x: 1010, y: 730, body: 'mage', dir: 2, way: [[1010,730],[1190,730],[1190,695],[1010,695]], idx: 1, gait: 0, reaction: 0},
   {x: 742, y: 565, body: 'rogue', dir: 0, way: [[742,565],[742,625],[815,625],[815,565]], idx: 1, gait: 0, reaction: 0}
 ];
@@ -96,7 +96,7 @@ ground.width = W; ground.height = H;
 let groundReady = false;
 // RAO movement: 32 world units per tile, 0.20 s/player step, 0.40 s/NPC step.
 const WALK_TILE = 32, WALK_SPEED = WALK_TILE/.20, NPC_SPEED = WALK_TILE/.40;
-const walkCycleTiles = {hero:2, rogue:1, mage:2};
+const walkCycleTiles = {hero:2, rogue:1, mage:2, mohawk:2};
 const heldDirections = new Map();
 const movementKeys = {w:0,ArrowUp:0,d:1,ArrowRight:1,s:2,ArrowDown:2,a:3,ArrowLeft:3};
 const directions = [{x:0,y:-1},{x:1,y:0},{x:0,y:1},{x:-1,y:0}];
@@ -189,7 +189,7 @@ async function load() {
   $('#retry-load').hidden=true;
   $('#loading p').textContent='Opening the gates of Nix…';
   try {
-    const response = await fetch('assets/site-assets.json?v=npcroles4');
+    const response = await fetch('assets/site-assets.json?v=npcroles5');
     if(!response.ok) throw new Error('Asset manifest unavailable');
     const assets = await response.json();
     await Promise.all(Object.entries(assets.images).map(async ([key,file]) => images[key] = await loadImage('assets/'+file)));

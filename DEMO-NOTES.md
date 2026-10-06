@@ -220,3 +220,10 @@ Confirmed layout cause: armed target help used display:none while unarmed inside
 - Reusable kit includes an independent face/outfit mixer and transparent layered exports. The website keeps compact precomposed idle sheets, adding no selection-related image allocations or per-frame composition.
 - Stronger sclera/pupil clusters are evaluated after downscaling, not just in source portraits. All NPCs remain four-direction idle poses. This is not a RAO engine asset installation.
 - Native-size eye QA remains incomplete: source whites improved, but some E/S/W views still lose them. This version is a saved draft, not a completed eye pass or production publication.
+
+# Approved character publication — 6 October 2026
+The user approved publishing the six corrected guides and their supplied mohawk as one roaming NPC. The mohawk walker uses the original body156 and staff17 layers, retaining idle plus all seven real walking drawings. The original combined rogue sheet was reconstructed with zero visible RGBA differences before substituting the head. Direction-specific staff ordering and per-frame origins are retained. The new head has at least36opaque overlap pixels at the collar in all32frames, with no new walk-frame generation.
+
+The new walker uses body156's documented two-tile gait cycle. Other roaming actors are unchanged. Six guide images already contain the approved corrected alignment, faces and distinct clothing. This publication does not claim every eye refinement is complete or install any asset in the RAO repository.
+
+The mohawk sheet is93,298compressed bytes and1,966,080decodedRGBA bytes, loaded once with existing scene assets; no extra timer or per-frame compositing is added.

@@ -23,7 +23,8 @@
     "npc-home": "npc/home-idle-v4.png",
     "npc-game": "npc/game-idle-v4.png",
     "npc-rankings": "npc/rankings-idle-v4.png",
-    "npc-download": "npc/download-idle-v4.png"
+    "npc-download": "npc/download-idle-v4.png",
+    "mohawk": "npc/mohawk-walk-v1.png"
   },
   "source_sha": "410676cc2e11170c494ad90eb160944ce8d635cf",
   "spell_source": {
@@ -77,6 +78,23 @@
     "neck_socket": {
       "x": 48,
       "y": 78
-    }
+    },
+    "source_ppt": 60
+  },
+  "mohawk_walk_format": {
+    "frame_width": 96,
+    "frame_height": 160,
+    "columns": 8,
+    "direction_rows": [
+      "north",
+      "east",
+      "south",
+      "west"
+    ],
+    "source_ppt": 60,
+    "body_family": 156,
+    "walk_cycle_tiles": 2,
+    "animation": "Original body and staff idle plus seven walking frames; separate user-provided four-direction head",
+    "decoded_rgba_bytes": 1966080
   }
 }
