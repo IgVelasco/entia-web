@@ -213,3 +213,10 @@ Confirmed layout cause: armed target help used display:none while unarmed inside
 - Primary house maps to approved slate; decorative second uses restrained warmer variant. Full/roof/facade/stairs splits recombine exactly per staging QA; approved source comparison has identical visible pixels and alpha (one hidden RGB pixel differs).
 - Independent source audit confirms original480×683 reference canvas, floor origin(30,322.5),7×4 interior topology and2tile door. Site uniform60/32 raster scaling retains0.5sourcepixel vertical rounding relative to original364worldheight. Website perimeter is simplified/clipped compared to original full-cell blocking extending30sourcepixels outsidecanvas; no actualRAO map changes or exactcollision-parity claim.
 - 122 regression tests pass. Manifest assets verified and door/steps layering checked; no physical device visual acceptance.
+
+# Modular registration and eyes — 6 October 2026
+- Baked NPC images use a shared collar socket, rather than body bounding-box centres. Heads sit 4 source pixels lower into the collar; body scale and feet baseline are unchanged.
+- Native kit export is generated from the same registered pixel grid, eliminating independently resampled heads. All 144 face/outfit/direction combinations have opaque neck overlap and exact full/native raster agreement.
+- Reusable kit includes an independent face/outfit mixer and transparent layered exports. The website keeps compact precomposed idle sheets, adding no selection-related image allocations or per-frame composition.
+- Stronger sclera/pupil clusters are evaluated after downscaling, not just in source portraits. All NPCs remain four-direction idle poses. This is not a RAO engine asset installation.
+- Native-size eye QA remains incomplete: source whites improved, but some E/S/W views still lose them. This version is a saved draft, not a completed eye pass or production publication.

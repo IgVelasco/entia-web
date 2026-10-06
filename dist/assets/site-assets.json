@@ -20,10 +20,10 @@
     "house2Roof": "house-ochre-roof.png?v=darkfit1",
     "houseSteps": "house-steps.png?v=darkfit1",
     "houseInterior": "house-interior-walls-v1.png?v=darkfit1",
-    "npc-home": "npc/home-idle-v3.png",
-    "npc-game": "npc/game-idle-v3.png",
-    "npc-rankings": "npc/rankings-idle-v3.png",
-    "npc-download": "npc/download-idle-v3.png"
+    "npc-home": "npc/home-idle-v4.png",
+    "npc-game": "npc/game-idle-v4.png",
+    "npc-rankings": "npc/rankings-idle-v4.png",
+    "npc-download": "npc/download-idle-v4.png"
   },
   "source_sha": "410676cc2e11170c494ad90eb160944ce8d635cf",
   "spell_source": {
@@ -72,6 +72,11 @@
       "south",
       "west"
     ],
-    "walk_animation_included": false
+    "walk_animation_included": false,
+    "registration_revision": 3,
+    "neck_socket": {
+      "x": 48,
+      "y": 78
+    }
   }
 }
