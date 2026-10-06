@@ -10,7 +10,7 @@ async function village({reduced=false, hash='',width=1440,height=820}={}) {
   const nodes=new Map(), frames=new Map(), draws=[];let nextFrame=0,clock=0;
   const makeNode=()=>{
     const attributes=new Map(),classes=new Set(),children=new Map(),events={};
-    return {open:false,showModal(){this.open=true;},close(){this.open=false;events.close?.();},hidden:false,disabled:false,textContent:'',innerHTML:'',style:{setProperty(){}},dataset:{},scrollTop:0,
+    return {open:false,showModal(){this.open=true;},close(){this.open=false;events.close?.();},hidden:false,disabled:false,textContent:'',innerHTML:'',style:{values:{},setProperty(k,v){this.values[k]=v;},getPropertyValue(k){return this.values[k];}},dataset:{},scrollTop:0,
       classList:{add:(...items)=>items.forEach(x=>classes.add(x)),remove:(...items)=>items.forEach(x=>classes.delete(x)),toggle:(x,on)=>on?classes.add(x):classes.delete(x),contains:x=>classes.has(x)},
       setAttribute:(key,value)=>attributes.set(key,value),getAttribute:key=>attributes.get(key),removeAttribute:key=>attributes.delete(key),
       remove(){},events,addEventListener:(key,callback)=>{events[key]=callback;},append(){},focus(){},animate(){},getAnimations:()=>[],matches:()=>false,closest:()=>null,contains:()=>false,
@@ -414,8 +414,8 @@ test('wizard escorts every edge to Downloads with collision-safe feet and a foll
   const before=v.historyCalls.length,others=v.api.townEntities().slice(1,8),npcStart=JSON.stringify(v.api.npcPositions());
   v.step(800);assert.equal(v.api.frontier().sequence.phase,'speak');assert(!v.get('#frontier-bubble').hidden);v.step(1500);assert.equal(v.api.frontier().sequence.phase,'escort');
   let steps=0;while(v.api.frontier().sequence?.phase==='escort'&&steps++<1000){const old=v.api.state(),oldW={...v.api.frontier().wizard};v.step(40);const p=v.api.state(),w=v.api.frontier().wizard;assert(Math.abs(p.x-old.x)<.001||Math.abs(p.y-old.y)<.001);assert(Math.abs(w.x-oldW.x)<.001||Math.abs(w.y-oldW.y)<.001);assert(v.api.townPhysics.free(p.x,p.y,others));assert(v.api.townPhysics.free(w.x,w.y,others));assert(Math.hypot(p.x-w.x,p.y-w.y)>=20);assert.equal(v.api.state().current,'home');}
-  assert(steps<1000);assert.equal(JSON.stringify(v.api.npcPositions()),npcStart);assert.equal(v.api.frontier().sequence.phase,'farewell');assert.equal(v.api.state().x,v.api.target('gate').x);assert.equal(v.api.state().y,v.api.target('gate').y);
-  v.step(2200);assert.equal(v.api.frontier().sequence.phase,'vanish');assert(v.get('#frontier-bubble').hidden);v.step(800);assert(!v.api.frontier().open);assert.equal(v.api.state().current,'gate');assert.equal(v.api.state().route,false);assert.equal(v.historyCalls.length,before+1);v.api.viewFrontierDownloads();assert.equal(v.historyCalls.length,before+1);
+  assert(steps<1000);assert.equal(JSON.stringify(v.api.npcPositions()),npcStart);assert.equal(v.api.frontier().sequence.phase,'vanish');assert.equal(v.api.state().x,v.api.target('gate').x);assert.equal(v.api.state().y,v.api.target('gate').y);
+  assert(v.get('#frontier-bubble').hidden);v.step(219);assert(v.api.frontier().wizard);v.step(1);assert(!v.api.frontier().open);assert.equal(v.api.state().current,'gate');assert.equal(v.api.state().route,false);assert.equal(v.historyCalls.length,before+1);v.api.viewFrontierDownloads();assert.equal(v.historyCalls.length,before+1);
  }
 });
 test('Stay here rearms the next fresh attempt without inward travel or automatic repeat',async()=>{
@@ -428,7 +428,7 @@ test('reduced-motion escort visibly walks every intermediate frame at a calm spe
  const v=await village({reduced:true,width:390,height:480});v.api.setHero(-48,450);v.clickGround(-100,450);v.step(50);assert.equal(v.api.frontier().sequence.phase,'speak');v.step(1400);assert.equal(v.api.frontier().sequence.phase,'speak');v.step(100);assert.equal(v.api.frontier().sequence.phase,'escort');
  const start=v.api.state();v.step();assert.equal(v.api.frontier().sequence.phase,'escort');assert(Math.hypot(v.api.state().x-start.x,v.api.state().y-start.y)<2);v.api.drawActor(v.api.frontier().wizard);assert(v.draws.at(-1)[1]>0);
  let frames=0;while(v.api.frontier().sequence?.phase==='escort'&&frames++<1500){const prev=v.api.state();v.step(40);const next=v.api.state();assert(Math.hypot(next.x-prev.x,next.y-prev.y)<=3.841);}
- assert(frames>100&&frames<1500);assert.equal(v.api.frontier().sequence.phase,'farewell');assert.equal(v.api.state().x,v.api.target('gate').x);v.step(2200);v.step(50);assert.equal(v.api.state().current,'gate');assert(v.get('#zone-dialog').open);v.step();assert.equal(v.frames.size,0);
+ assert(frames>100&&frames<1500);assert.equal(v.api.frontier().sequence.phase,'vanish');assert.equal(v.api.state().x,v.api.target('gate').x);v.step(50);assert.equal(v.api.state().current,'gate');assert(v.get('#zone-dialog').open);assert(v.get('#zone-dialog').classList.contains('pre-revealed'));v.get('#close-zone').onclick();assert(!v.get('#zone-dialog').classList.contains('pre-revealed'));v.step();assert.equal(v.frames.size,0);
 });
 test('Pause freezes the escort in place and Resume continues without jumping',async()=>{
  const v=await village();v.api.setHero(-48,450);v.clickGround(-100,450);v.step(800);v.step(1500);v.step(40);const before=v.api.state();v.api.pause();v.step(60000);assert.equal(v.api.state().x,before.x);assert.equal(v.api.state().y,before.y);assert.equal(v.api.frontier().sequence.phase,'escort');assert(!v.get('#frontier-resume').hidden);assert.equal(v.frames.size,0);v.get('#frontier-resume').onclick();v.step(40);const after=v.api.state();assert(Math.hypot(after.x-before.x,after.y-before.y)>0);assert(Math.hypot(after.x-before.x,after.y-before.y)<=3.841);
@@ -437,9 +437,9 @@ test('hidden time freezes the wizard and a long resumed frame cannot skip new sp
  const v=await village();v.api.setHero(-48,450);v.clickGround(-100,450);v.step(300);v.document.hidden=true;v.listeners.visibilitychange();assert.equal(v.frames.size,0);v.step(60000);assert.equal(v.api.frontier().sequence.phase,'appear');v.document.hidden=false;v.listeners.visibilitychange();v.step(500);assert.equal(v.api.frontier().sequence.phase,'speak');assert.equal(v.api.frontier().sequence.elapsed,0);v.step(100);assert.equal(v.api.frontier().sequence.phase,'speak');
 });
 test('escape, newer navigation, history and demo entry cancel every wizard phase',async()=>{
- for(const phase of ['appear','speak','escort','farewell','vanish'])for(const action of ['escape','navigate','history','demo']){
+ for(const phase of ['appear','speak','escort','vanish'])for(const action of ['escape','navigate','history','demo']){
   const v=await village({reduced:true});v.api.setHero(-48,450);v.clickGround(-100,450);
-  if(phase!=='appear')v.step(50);if(['escort','farewell','vanish'].includes(phase))v.step(1500);if(['farewell','vanish'].includes(phase))for(let i=0;i<1500&&v.api.frontier().sequence.phase==='escort';i++)v.step(40);if(phase==='vanish')v.step(2200);
+  if(phase!=='appear')v.step(50);if(['escort','vanish'].includes(phase))v.step(1500);if(['vanish'].includes(phase))for(let i=0;i<1500&&v.api.frontier().sequence.phase==='escort';i++)v.step(40);
   assert.equal(v.api.frontier().sequence.phase,phase);
   if(action==='escape')v.key('keydown','Escape');if(action==='navigate')v.api.go('hall');if(action==='history'){v.location.hash='#arena';v.api.restoreHash();}if(action==='demo')v.api.showDemo();
   const writes=v.historyCalls.length;v.api.advanceFrontier(100);assert(!v.api.frontier().open);assert.equal(v.api.frontier().wizard,null);assert(v.get('#frontier-bubble').hidden);assert.equal(v.historyCalls.length,writes);assert.notEqual(v.api.state().current,'gate');
@@ -449,3 +449,12 @@ test('escape, newer navigation, history and demo entry cancel every wizard phase
 test('Skip mid-escort waits for its teleport effect and remains cancellable',async()=>{const v=await village();v.api.setHero(-48,450);v.clickGround(-100,450);v.step(800);v.step(1500);for(let i=0;i<40;i++)v.step(16);const p=v.api.state();v.get('#frontier-download').onclick();v.step(16);assert.equal(v.api.state().x,p.x);assert.equal(v.api.state().y,p.y);assert.equal(v.api.frontier().sequence.phase,'teleport-out');v.key('keydown','Escape');for(let i=0;i<300;i++)v.step(16);assert(!v.api.frontier().open);assert.notEqual(v.api.state().current,'gate');});
 
 test('old boundary is now traversable, new limits remain solid, and no ward line is drawn',async()=>{const v=await village();v.api.setHero(48,450);v.clickGround(16,450);v.api.finish();assert(!v.api.frontier().open);assert(Math.abs(v.api.state().x-16)<.001);assert(v.api.townPhysics.free(-66,450));assert(!v.api.townPhysics.free(-67,450));assert(v.api.townPhysics.free(1506,450));assert(!v.api.townPhysics.free(1507,450));assert(v.api.townPhysics.free(720,-66));assert(!v.api.townPhysics.free(720,-67));assert(v.api.townPhysics.free(720,966));assert(!v.api.townPhysics.free(720,967));assert(!readFileSync(join(__dirname,'../dist/app.js'),'utf8').includes('drawFrontierWard'));});
+
+test('Downloads reveals progressively during walking and hands off without a second animation',async()=>{
+ for(const reduced of [false,true]){
+ const v=await village({reduced});v.api.setHero(-48,450);v.clickGround(-100,450);const preview=v.get('#frontier-download-reveal'),writes=v.historyCalls.length;assert(preview.hidden);v.step(reduced?50:800);v.step(1500);assert(!preview.hidden);assert.match(preview.innerHTML,/No game download is available/);assert.equal(Number(preview.style.getPropertyValue('--reveal')),0);let last=0,intermediate=false;
+ while(v.api.frontier().sequence.phase==='escort'){v.step(40);const progress=Number(preview.style.getPropertyValue('--reveal'));assert(progress>=last&&progress<=1);if(progress>0&&progress<1)intermediate=true;last=progress;assert.equal(v.api.state().current,'home');assert.equal(v.historyCalls.length,writes);}
+ assert(intermediate);assert.equal(last,1);assert.equal(v.api.frontier().sequence.phase,'vanish');let animations=0;v.get('#panel-content').animate=()=>animations++;v.step(reduced?50:220);assert.equal(v.api.frontier().wizard,null);assert(preview.hidden);assert.equal(animations,0);assert.equal(v.api.state().current,'gate');assert.equal(v.historyCalls.length,writes+1);
+ }
+});
+test('download reveal freezes with Pause and disappears on cancellation',async()=>{const v=await village();v.api.setHero(-48,450);v.clickGround(-100,450);v.step(800);v.step(1500);for(let i=0;i<50;i++)v.step(40);const preview=v.get('#frontier-download-reveal'),p=preview.style.getPropertyValue('--reveal');v.api.pause();v.step(20000);assert.equal(preview.style.getPropertyValue('--reveal'),p);v.key('keydown','Escape');assert(preview.hidden);assert.equal(v.api.state().current,'home');});
