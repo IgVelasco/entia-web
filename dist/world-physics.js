@@ -1,8 +1,8 @@
 (function(root){
 'use strict';
 // Shared cardinal, foot-level collision rules for Nix and the training ground.
-function create({width,height,minY=0,radius=10,obstacles=[]}){
- const free=(x,y,others=[],self=null)=>x>=radius+20&&x<=width-radius-20&&y>=minY+radius+20&&y<=height-radius-20&&!obstacles.some(o=>x+radius>o.x&&x-radius<o.x+o.w&&y+radius>o.y&&y-radius<o.y+o.h)&&!others.some(a=>a!==self&&(a.hp===undefined||a.hp>0)&&Math.hypot(x-a.x,y-a.y)<radius*2);
+function create({width,height,minX=0,minY=0,maxX=width,maxY=height,radius=10,obstacles=[]}){
+ const free=(x,y,others=[],self=null)=>x>=minX+radius+20&&x<=maxX-radius-20&&y>=minY+radius+20&&y<=maxY-radius-20&&!obstacles.some(o=>x+radius>o.x&&x-radius<o.x+o.w&&y+radius>o.y&&y-radius<o.y+o.h)&&!others.some(a=>a!==self&&(a.hp===undefined||a.hp>0)&&Math.hypot(x-a.x,y-a.y)<radius*2);
  function clear(a,b,others=[],self=null){const length=Math.hypot(b.x-a.x,b.y-a.y),n=Math.max(1,Math.ceil(length/4));for(let i=1;i<=n;i++)if(!free(a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n,others,self))return false;return true;}
  function move(a,dx,dy,others=[]){if(dx&&dy){if(Math.abs(dx)>=Math.abs(dy))dy=0;else dx=0;}const length=Math.hypot(dx,dy),n=Math.max(1,Math.ceil(length/4));let travelled=0;for(let i=0;i<n;i++){const x=a.x+dx/n,y=a.y+dy/n;if(!free(x,y,others,a))break;a.x=x;a.y=y;travelled+=length/n;}a.gait=(a.gait||0)+travelled;return travelled;}
  function path(start,target,others=[]){if(!free(target.x,target.y,others,start))return [];const direct=[{x:start.x,y:target.y},{x:target.x,y:target.y}];if(clear(start,direct[0],others,start)&&clear(direct[0],target,others,start))return direct.filter((p,i)=>i||Math.hypot(p.x-start.x,p.y-start.y)>.01);

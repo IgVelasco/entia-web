@@ -13,7 +13,7 @@ let images = {}, current = 'home', route = null, spell = null, rings = [], aimin
 let atPlace = 'home', hovered = null, toastTimer, replyTimer;
 let nearbyPlace = null,zoneContent=null;
 let frontierState=WorldFrontier.initialState(),frontierWizard=null,frontierSequence=null,worldPatterns=null;
-const FRONTIER_INSET=30;
+const FRONTIER_INSET=30, FRONTIER_MARGIN=96;
 const NEAR_ENTER = 72, NEAR_EXIT = 104;
 const camera = {x: 870, y: 470, targetX: 870, targetY: 470};
 const spots = {
@@ -43,7 +43,7 @@ const homePortal=onTownGrid({x:1010,y:420});
 function houseBounds(s){const left=s.x-s.w/2;return {left,doorX:left+144,front:s.y-64};}
 const townObstacles=scenery.flatMap(s=>{if(!s.id.startsWith('house'))return [{x:s.x-22,y:s.y-28,w:44,h:38}];const b=houseBounds(s);if(s.decorative)return [{x:b.left,y:s.y-192,w:256,h:192}];return [{x:b.left,y:s.y-208,w:256,h:16},{x:b.left,y:s.y-192,w:16,h:128},{x:b.left+240,y:s.y-192,w:16,h:128},{x:b.left,y:b.front,w:144,h:64},{x:b.doorX+64,y:b.front,w:48,h:64}];});
 townObstacles.push({x:homePortal.x-74,y:homePortal.y-35,w:30,h:45},{x:homePortal.x+44,y:homePortal.y-35,w:30,h:45});
-const townPhysics=WorldPhysics.create({width:W,height:H,radius:10,obstacles:townObstacles});
+const townPhysics=WorldPhysics.create({width:W,height:H,minX:-FRONTIER_MARGIN,minY:-FRONTIER_MARGIN,maxX:W+FRONTIER_MARGIN,maxY:H+FRONTIER_MARGIN,radius:10,obstacles:townObstacles});
 const houses=scenery.filter(s=>s.id.startsWith('house'));
 for(const house of houses)house.roofAlpha=1;
 function insideHouse(house,actor=hero){if(house.decorative)return false;const b=houseBounds(house),x=townTileCenter(actor.x),y=townTileCenter(actor.y);return x>=b.left+16&&x<b.left+240&&y>=house.y-192&&y<house.y-32;}
@@ -233,9 +233,8 @@ function drawWorldContinuation(){ensureWorldPatterns();const v=worldViewBounds()
 }
 function shadeWorld(){const v=worldViewBounds(),shade=ctx.createRadialGradient(1000,500,200,980,500,780);shade.addColorStop(0,'#dbc58308');shade.addColorStop(1,'#0a190dbb');ctx.fillStyle=shade;ctx.fillRect(v.left,v.top,v.right-v.left,v.bottom-v.top);}
 const beyondTrees=[];
-for(let gy=-3;gy<=9;gy++)for(let gx=-3;gx<=10;gx++){const seed=Math.abs((gx*73856093)^(gy*19349663)),x=gx*192+(seed%67),y=gy*160+((seed>>>8)%69);if(x>=-60&&x<=W+60&&y>=-60&&y<=H+60)continue;if((x<0||x>W)&&(Math.abs(y-768)<75||Math.abs(y-480)<75))continue;if((y<0||y>H)&&(Math.abs(x-1152)<75||Math.abs(x-768)<75))continue;if(seed%5===0)continue;beyondTrees.push({id:seed%2?'pine':'tree2',x,y,w:196+(seed%38),h:236+(seed%42),type:'outside'});}
+for(let gy=-3;gy<=9;gy++)for(let gx=-3;gx<=10;gx++){const seed=Math.abs((gx*73856093)^(gy*19349663)),x=gx*192+(seed%67),y=gy*160+((seed>>>8)%69);if(x>=-FRONTIER_MARGIN-60&&x<=W+FRONTIER_MARGIN+60&&y>=-FRONTIER_MARGIN-60&&y<=H+FRONTIER_MARGIN+60)continue;if((x<0||x>W)&&(Math.abs(y-768)<75||Math.abs(y-480)<75))continue;if((y<0||y>H)&&(Math.abs(x-1152)<75||Math.abs(x-768)<75))continue;if(seed%5===0)continue;beyondTrees.push({id:seed%2?'pine':'tree2',x,y,w:196+(seed%38),h:236+(seed%42),type:'outside'});}
 function visibleBeyondTrees(){const v=worldViewBounds();return beyondTrees.filter(a=>a.x+a.w/2>=v.left&&a.x-a.w/2<=v.right&&a.y>=v.top&&a.y-a.h<=v.bottom);}
-function drawFrontierWard(){const v=worldViewBounds(),near=Math.min(hero.x,W-hero.x,hero.y,H-hero.y),alpha=near<200?.12+(200-near)/1000:.045;ctx.save();ctx.strokeStyle=`rgba(153,203,184,${alpha})`;ctx.lineWidth=2;const line=(vertical,fixed,start,end)=>{ctx.beginPath();let first=true;for(let q=start;q<=end;q+=16){const sway=Math.sin(q/51)*3+(motionOff()?0:Math.sin(time*.5+q/90));const x=vertical?fixed+sway:q,y=vertical?q:fixed+sway;if(first){ctx.moveTo(x,y);first=false;}else ctx.lineTo(x,y);}ctx.stroke();};line(true,FRONTIER_INSET,Math.max(0,v.top),Math.min(H,v.bottom));line(true,W-FRONTIER_INSET,Math.max(0,v.top),Math.min(H,v.bottom));line(false,FRONTIER_INSET,Math.max(0,v.left),Math.min(W,v.right));line(false,H-FRONTIER_INSET,Math.max(0,v.left),Math.min(W,v.right));ctx.restore();}
 function frontierBlocked(){return document.hidden||demoOpen||enteringPortal||$('#notes').open||$('#character-dialog').open||$('#zone-dialog').open;}
 // Freeze the three wandering NPCs while escorting: the shared, collision-checked
 // path stays valid and the guide and player never chase each other into scenery.
@@ -253,8 +252,8 @@ function planFrontierEscort(){
  return null;
 }
 function tryFrontier(from,to,kind='move',explore=true){
- frontierState=WorldFrontier.rearm(frontierState,from,W,H);
- const next=WorldFrontier.boundaryEvent(frontierState,{from,to,kind,explore,blocked:frontierBlocked(),width:W,height:H,inset:FRONTIER_INSET});
+
+ const next=WorldFrontier.boundaryEvent(frontierState,{from:{x:from.x+FRONTIER_MARGIN,y:from.y+FRONTIER_MARGIN},to:{x:to.x+FRONTIER_MARGIN,y:to.y+FRONTIER_MARGIN},kind,explore,blocked:frontierBlocked(),width:W+FRONTIER_MARGIN*2,height:H+FRONTIER_MARGIN*2,inset:FRONTIER_INSET});
  if(next===frontierState)return false;
  const plan=planFrontierEscort();if(!plan){toast('The way is blocked. Step back into town and try again.');return false;}
  frontierState=next;heldDirections.clear();route=null;spell=null;setAim(false);
@@ -274,8 +273,8 @@ function dismissFrontier({focus=true}={}){
 }
 function skipFrontierWalk(){
  const s=frontierSequence;if(!s||s.fast)return;
- s.fast=true;s.speed=Math.max(320,(s.length-s.distance)/1.2);
- frontierPhase('escort','Hold tight, traveller. I’ll take you there!');
+ s.fast=true;
+ frontierPhase('teleport-out','Hold tight, traveller. I’ll take you there!');
  if(paused){paused=false;setMotionState();}
  last=performance.now();requestDraw();
 }
@@ -294,9 +293,16 @@ function advanceFrontier(dt){
  if(paused)return;
  s.elapsed+=dt;
  if(s.phase==='appear'&&s.elapsed>=(motionOff()?.05:.8))frontierPhase('speak','Wait, traveller! These lands lead beyond the preview. Come with me. I’ll show you where to download Entia.');
- else if(s.phase==='speak'&&s.elapsed>=3.8)frontierPhase('escort');
- else if(s.phase==='escort'){
-  let nextDistance=Math.min(s.length,s.distance+(s.speed||96)*Math.min(dt,.04)),vertex=0;
+ else if(s.phase==='speak'&&s.elapsed>=1.5)frontierPhase('escort');
+ else if(s.phase==='teleport-out'&&s.elapsed>=(motionOff()?.05:.28)){
+  s.distance=s.length;
+  for(const [actor,distance] of [[hero,s.length],[frontierWizard,s.length+48]])Object.assign(actor,WorldFrontier.samplePath(s.points,distance));
+  hero.dir=heading(frontierWizard.x-hero.x,frontierWizard.y-hero.y);frontierWizard.dir=heading(hero.x-frontierWizard.x,hero.y-frontierWizard.y);
+  frontierPhase('teleport-in');
+ }else if(s.phase==='teleport-in'&&s.elapsed>=(motionOff()?.05:.32)){
+  $('#frontier-bubble').hidden=true;frontierPhase('vanish');
+ }else if(s.phase==='escort'){
+  let nextDistance=Math.min(s.length,s.distance+96*Math.min(dt,.04)),vertex=0;
   // Stop at the next turn of either actor; even a dropped frame stays cardinal.
   for(let i=1;i<s.points.length;i++){vertex+=Math.hypot(s.points[i].x-s.points[i-1].x,s.points[i].y-s.points[i-1].y);for(const stop of [vertex,vertex-48])if(stop>s.distance+.001)nextDistance=Math.min(nextDistance,stop);}
   s.distance=nextDistance;
@@ -318,9 +324,6 @@ function drawFrontierWizard(a){
  const s=frontierSequence;if(!s)return;
  const u=motionOff()?1:s.phase==='appear'?clamp(s.elapsed/.8,0,1):s.phase==='vanish'?1-clamp(s.elapsed/(s.fast?.45:.8),0,1):1;
  ctx.save();ctx.globalAlpha=u;glow(a.x,a.y-34,65,.7);drawActor(a);ctx.restore();
- if(!motionOff()&&s.fast&&s.phase==='escort'){
-  ellipse(a.x,a.y+2,25,9,'#a4e6d799',true,2);glow(a.x,a.y-22,54,.7);
- }
  if(!motionOff()&&(s.phase==='appear'||s.phase==='vanish')){
   const energy=Math.sin(Math.PI*u);glow(a.x,a.y-40,80,energy);
   ellipse(a.x,a.y+2,18+28*(1-u),6+9*(1-u),'rgba(160,233,221,'+energy+')',true,2);
@@ -347,9 +350,17 @@ function drawActor(a) {
   const stride=(a.gait||0)/(WALK_TILE*walkCycleTiles[a.body]);
   const frame=walking ? 1+Math.floor((stride%1)*7) : 0;
   const fw=idle?96:im.width/8, fh=im.height/4, dw=60, dh=fh/fw*dw;
+  const teleport=frontierSequence&&['teleport-out','teleport-in'].includes(frontierSequence.phase)&&(a.hero||a.type==='frontier');
+  const teleportProgress=teleport?clamp(frontierSequence.elapsed/(frontierSequence.phase==='teleport-out'?.28:.32),0,1):0;
+  ctx.save();if(teleport&&!motionOff())ctx.globalAlpha*=frontierSequence.phase==='teleport-out'?1-teleportProgress:teleportProgress;
   ellipse(a.x,a.y+2,18,6,'rgba(7,20,12,.62)');
   if(a.hero)ellipse(a.x,a.y+2,25,10,'#e7c885',true,1.5);
   ctx.drawImage(im,frame*fw,a.dir*fh,fw,fh,Math.round(a.x-dw/2),Math.round(a.y-dh),dw,dh);
+  ctx.restore();
+  if(teleport&&!motionOff()){
+   const pulse=Math.sin(Math.PI*teleportProgress);glow(a.x,a.y-40,70,pulse*1.5);ellipse(a.x,a.y+2,18+22*pulse,6+7*pulse,'rgba(171,231,219,'+(1-teleportProgress)+')',true,2);
+   for(let i=0;i<8;i++){const angle=i*Math.PI/4+teleportProgress*3;ctx.fillStyle='rgba(226,239,197,'+pulse+')';ctx.fillRect(a.x+Math.cos(angle)*24,a.y-teleportProgress*90+Math.sin(angle)*12,3,4);}
+  }
 }
 function drawDestination() {
   for(const [key,p] of Object.entries(spots)) {
@@ -401,7 +412,7 @@ function draw() {
   if(motionOff())updateHouseRoofs(0);
   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#102017';ctx.fillRect(0,0,width,height);
   ctx.translate(ox,oy);ctx.scale(scale,scale);ctx.imageSmoothingEnabled=false;
-  drawWorldContinuation();if(!groundReady)buildGround();ctx.drawImage(ground,0,0);shadeWorld();drawFrontierWard();
+  drawWorldContinuation();if(!groundReady)buildGround();ctx.drawImage(ground,0,0);shadeWorld();
   drawDestination();
   const layers=[...visibleBeyondTrees(),...scenery.map(s=>({...s,type:'scenery'})),{...homePortal,type:'portal'},...npcs,...keepers,hero,...(frontierWizard?[frontierWizard]:[])].sort((a,b)=>a.y-b.y);
   for(const a of layers){
@@ -426,7 +437,7 @@ function requestDraw() {
 function tick(now) {
   frameRequest=0;if(demoOpen||document.hidden)return;
   const visibleDt=Math.max(0,(now-last)/1000||0),dt=Math.min(visibleDt,.04);last=now;
-  advanceFrontier(visibleDt);frontierState=WorldFrontier.rearm(frontierState,hero,W,H);
+  advanceFrontier(visibleDt);
   if(!motionOff()){
     time+=dt;
     if(!enteringPortal&&!$('#character-dialog').open&&!frontierState.open)advanceMovement(dt);
