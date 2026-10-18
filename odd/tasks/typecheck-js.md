@@ -24,14 +24,17 @@ The site is ~1,400 lines of global-script JavaScript with no types. Shapes such 
 - [x] **T1 — Tooling and test dependency.** Add `package.json` with pinned `typescript@7.0.2` and `pngjs@7.0.0`, `test`/`typecheck` scripts, `.gitignore` for `node_modules/`.
   - Route: inline (mechanical, 2 small config files; no trigger fired).
   - Evidence: before, 234/235 tests pass — `npc-assets.test.cjs` fails with `MODULE_NOT_FOUND` for `pngjs` because the repo had no `package.json`. After `npm install`: 235/235 pass.
-- [ ] **T2 — Clean type-check for site and demo.** `tsconfig.base.json`, `tsconfig.site.json`, `tsconfig.demo.json`; typed declarations for cross-script globals; JSDoc/minimal fixes in `dist/app.js`, `dist/character.js`, `dist/demo/demo.js`, `dist/demo/tutorial.js`.
+- [x] **T2 — Clean type-check for site and demo.** `tsconfig.base.json`, `tsconfig.site.json`, `tsconfig.demo.json`; typed declarations for cross-script globals; JSDoc/minimal fixes in `dist/app.js`, `dist/character.js`, `dist/demo/demo.js`, `dist/demo/tutorial.js`.
   - Route: delegated writer (writer trigger: 2+ non-trivial files — `app.js` 54 errors, `demo.js` 36 errors).
   - Acceptance: `npm run typecheck` exits 0; `npm test` 235/235; no runtime behavior change.
+  - Evidence: RED after splitting projects: site 61, demo 61 errors. GREEN: `npm run typecheck` exit 0, `npm test` 235/235. `dist/` diff is JSDoc/casts only (27+/20-).
+  - Globals: `WorldPhysics`, `WorldFrontier`, `EssenceDemo` derived via `typeof import(...)`; `EntiaCharacter` and `Window.EntiaArtwork` hand-written in `types/shared.d.ts`.
+  - Known limits: `tsconfig.site.json` uses `moduleDetection: "force"` because `app.js` declares a top-level `screen` (shadowing DOM `window.screen`) that tests call by name; this stops the site project catching cross-script top-level name collisions. Members added to `EssenceDemo` by `tutorial.js`/`navigation.js` via `Object.assign` are untyped.
 
 ## Delivery
 - Strategy: `ask-on-risk`. Forecast well under 400 authored changed lines; single PR.
-- Review (RDD): `gentle-ai` is not installed on this machine, so the assessment is **unavailable** for every commit; no review was run.
+- Review: none run; Gentle AI review tooling was retired by Nacho.
 
 ## Progress / next step
-- T1 done. Next: T2.
+- T1 and T2 done. Next: Nacho's call on push/PR.
 - Engram mirror `odd/typecheck-js/tasks`: **pending** — no Engram tools are available in this session.

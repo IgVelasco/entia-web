@@ -36,6 +36,7 @@ function defeatEnemy(s,e){s.kills++;e.respawn=14;e.wind=0;e.step=null;e.immobili
 function respawnPlayer(s){const p=s.player,amount=drop(s,p.x,p.y,s.carried,'player');s.dropped+=amount;s.carried-=amount;cancelDeposit(s);clearPotionKeys(s);p.step=null;p.hp=100;p.mana=100;p.immobilized=0;s.armed=false;s.meditating=false;p.x=176;p.y=560;s.flash=1;for(const e of s.enemies){e.wind=0;e.cooldown=Math.max(e.cooldown,1);}tell(s,`You fell and dropped ${amount} essence. Rivals can steal it; defeat them to recover it. ${s.secured} secured stays safe.`);}
 function canPickup(s,d,radius=22){return s.time>=d.readyAt&&Math.hypot(d.x-s.player.x,d.y-s.player.y)<=radius;}
 function pickup(s,radius=20){const found=s.drops.filter(d=>canPickup(s,d,radius));if(!found.length)return 0;const amount=found.reduce((n,d)=>n+d.amount,0),ids=new Set(found.map(d=>d.id));s.drops=s.drops.filter(d=>!ids.has(d.id));s.carried+=amount;const first=!s.bankUnlocked;s.bankUnlocked=true;tell(s,first?`+${amount} essence picked up. The reliquary has appeared south of the return portal.`:`+${amount} essence picked up. Carry it to the reliquary or keep fighting.`);return amount;}
+/** @returns {'pickup'|'bank'|'exit'|'talk'|'enter'|false} The tutorial's override adds 'talk' and 'enter'. */
 function interact(s){if(pickup(s,22))return 'pickup';if(nearBank(s))return 'bank';if(nearGate(s))return 'exit';return false;}
 function cancelDeposit(s){s.bank=0;s.bankAmount=0;s.bankFraction=0;}
 

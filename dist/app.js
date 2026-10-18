@@ -27,7 +27,11 @@ const spots = {
 };
 for(const p of Object.values(spots)){p.x=townTileCenter(p.x);p.y=townTileCenter(p.y);p.land=onTownGrid(p.land);}
 const hero = {...spots.home.land, body:'hero',dir:2,gait:0,hero:true};
+// Keepers stand at a spot and own a label button; roaming NPCs follow a waypoint loop. Both share one update loop.
+/** @typedef {{x:number,y:number,body:string,dir:number,reaction:number,gait?:number,place?:string,isKeeper?:boolean,way?:number[][],idx?:number,path?:{x:number,y:number}[]}} TownActor */
+/** @type {(typeof spots.home & TownActor & {button?:HTMLButtonElement})[]} */
 const keepers = Object.entries(spots).map(([place, p]) => ({...p, place, dir: 2, isKeeper: true, reaction: 0}));
+/** @type {TownActor[]} */
 const npcs = [
   {x: 975, y: 490, body: 'mohawk', dir: 1, way: [[975,490],[1070,490],[1070,530],[975,530]], idx: 1, gait: 0, reaction: 0},
   {x: 1010, y: 730, body: 'mage', dir: 2, way: [[1010,730],[1190,730],[1190,695],[1010,695]], idx: 1, gait: 0, reaction: 0},
@@ -187,7 +191,7 @@ function positionLabels() {
     const p = screen(k);
     k.button.style.transform = `translate3d(${Math.round(p.x)}px,${Math.round(p.y)}px,0) translate(-50%, -100%)`;
     // The hit target covers the sprite; CSS anchors its name below the feet.
-    k.button.querySelector('.keeper-hit').style.height = `${Math.round(64*scale)}px`;
+    /** @type {HTMLElement} */(k.button.querySelector('.keeper-hit')).style.height = `${Math.round(64*scale)}px`;
   }
   const p = screen(hero);
   const crowded=keepers.some(k=>{const q=screen(k);return Math.abs(q.x-p.x)<100&&Math.abs(q.y-p.y)<50;});
@@ -526,9 +530,10 @@ function advanceRoute(dt) {
   }
   if(route===r&&r.segment>=r.points.length){route=null;r.complete?.();}
 }
+/** @param {{x:number,y:number}[]} points @param {{complete?:()=>void,instant?:boolean,manual?:boolean,explore?:boolean,joystick?:boolean,destination?:{place:string,near:boolean}}} [options] */
 function moveHero(points,{complete,instant=false,manual=false,explore=manual,joystick=false,destination=null}={}) {
   if(!points.length){route=null;$('#location-state').textContent='Path blocked';$('#world').classList.remove('traveling');toast('That route is blocked. Try another spot.');return;}
-  const target=points.at(-1);let from=hero,length=0;
+  const target=points.at(-1);let from=/** @type {{x:number,y:number}} */(hero),length=0;
   for(const p of points){length+=Math.hypot(p.x-from.x,p.y-from.y);from=p;}
   // Every new action replaces the previous route and its completion callback.
   route=null;
@@ -741,11 +746,11 @@ function focusContentIfNeeded(trigger) {
   }
 }
 document.addEventListener('click',event=>{
-  if(compactMode()&&event.target.closest('.skip-link')){event.preventDefault();openZoneInfo(current);return;}
-  if(event.target.closest('#portal-journey')){walkToPortal();canvas.focus({preventScroll:true});return;}
-  const destination=event.target.closest('button[data-place], a[data-place]');
+  if(compactMode()&&/** @type {Element} */(event.target).closest('.skip-link')){event.preventDefault();openZoneInfo(current);return;}
+  if(/** @type {Element} */(event.target).closest('#portal-journey')){walkToPortal();canvas.focus({preventScroll:true});return;}
+  const destination=/** @type {HTMLElement} */(/** @type {Element} */(event.target).closest('button[data-place], a[data-place]'));
   if(destination){event.preventDefault();go(destination.dataset.place,{cast:!!destination.dataset.cast});focusContentIfNeeded(destination);return;}
-  const rank=event.target.closest('[data-rank]');
+  const rank=/** @type {HTMLElement} */(/** @type {Element} */(event.target).closest('[data-rank]'));
   if(rank){
     $$('[data-rank]').forEach(b=>{b.classList.toggle('active',b===rank);b.setAttribute('aria-pressed',String(b===rank));});
     $('#ranks').innerHTML=rankRows(rank.dataset.rank);return;
@@ -791,7 +796,7 @@ $('#retry-load').onclick=load;
 document.addEventListener('keydown',event=>{
   if(enteringPortal||demoOpen)return;
   if(frontierState.open){if(event.key==='Escape'){event.preventDefault();dismissFrontier();}else if(event.key.startsWith('Arrow')||event.key===' ')event.preventDefault();return;}
-  if(event.altKey||event.ctrlKey||event.metaKey||event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')||$('#notes').open||$('#character-dialog').open||$('#zone-dialog').open||frontierState.open)return;
+  if(event.altKey||event.ctrlKey||event.metaKey||/** @type {Element} */(event.target).closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')||$('#notes').open||$('#character-dialog').open||$('#zone-dialog').open||frontierState.open)return;
   const movementKey=event.key.length===1?event.key.toLowerCase():event.key;
   if(Object.hasOwn(movementKeys,movementKey)){
     if(!ready)return;
@@ -817,7 +822,7 @@ document.addEventListener('keyup',event=>{
   heldDirections.delete(event.key.length===1?event.key.toLowerCase():event.key);
 });
 document.addEventListener('focusin',event=>{
-  if(event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),dialog'))clearMovementInput();
+  if(/** @type {Element} */(event.target).closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),dialog'))clearMovementInput();
 });
 window.addEventListener('blur',clearMovementInput);
 window.addEventListener('pointerup',stopJoystick);window.addEventListener('pointercancel',stopJoystick);

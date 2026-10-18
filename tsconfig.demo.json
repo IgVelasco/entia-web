@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.base.json",
+  "files": [
+    "types/shared.d.ts",
+    "types/demo.d.ts",
+    "dist/character.js",
+    "dist/world-physics.js",
+    "dist/demo/model.js",
+    "dist/demo/tutorial.js",
+    "dist/demo/navigation.js",
+    "dist/demo/demo.js"
+  ]
+}
