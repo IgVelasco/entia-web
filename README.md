@@ -5,7 +5,7 @@ The Nix site (`index.html`) and its embedded offline demo (`demo/index.html`), b
 ## Commands
 
 - `npm run dev` — local dev server.
-- `npm run build` — builds both pages into `dist/`, which hosting serves (`.openai/hosting.json`). `dist/` is build output: never edit it.
+- `npm run build` — builds both pages into `dist/`, which Sites serves (`.openai/hosting.json`). Sites deploys run `npm ci` and `npm run build`. `dist/` is build output: never edit it.
 - `npm test` — Node test suite.
 - `npm run typecheck` — type-checks the page scripts.
 
