@@ -1,6 +1,6 @@
-// Globals shared by the site (dist/index.html) and the demo (dist/demo/index.html).
+// Globals shared by the site (index.html) and the demo (demo/index.html).
 // world-physics.js also exports its API through module.exports, so its type is derived from the source.
-declare var WorldPhysics: typeof import('../dist/world-physics.js');
+declare var WorldPhysics: typeof import('../public/world-physics.js');
 
 // character.js is a plain browser script with no module export, so its API is described here;
 // the assignment in character.js is checked against this shape.

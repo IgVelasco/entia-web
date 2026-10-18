@@ -3,11 +3,11 @@
   "files": [
     "types/shared.d.ts",
     "types/demo.d.ts",
-    "dist/character.js",
-    "dist/world-physics.js",
-    "dist/demo/model.js",
-    "dist/demo/tutorial.js",
-    "dist/demo/navigation.js",
-    "dist/demo/demo.js"
+    "public/character.js",
+    "public/world-physics.js",
+    "public/demo/model.js",
+    "public/demo/tutorial.js",
+    "public/demo/navigation.js",
+    "public/demo/demo.js"
   ]
 }

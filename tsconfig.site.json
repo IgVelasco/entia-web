@@ -6,9 +6,9 @@
   "files": [
     "types/shared.d.ts",
     "types/site.d.ts",
-    "dist/character.js",
-    "dist/world-physics.js",
-    "dist/frontier.js",
-    "dist/app.js"
+    "public/character.js",
+    "public/world-physics.js",
+    "public/frontier.js",
+    "public/app.js"
   ]
 }
