@@ -2,9 +2,8 @@
   "extends": "./tsconfig.base.json",
   "files": [
     "types/shared.d.ts",
+    "src/shared/globals.ts",
     "types/demo.d.ts",
-    "public/character.js",
-    "public/world-physics.js",
     "public/demo/model.js",
     "public/demo/tutorial.js",
     "public/demo/navigation.js",

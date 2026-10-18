@@ -1,4 +1,5 @@
 const test = require('node:test');
+const {loadSandboxModule}=require('./helpers/sandbox-module.cjs');
 const assert = require('node:assert/strict');
 const {readFileSync} = require('node:fs');
 const {join} = require('node:path');
@@ -34,8 +35,7 @@ async function village({reduced=false, hash='',width=1440,height=820,coarse=fals
     requestAnimationFrame:callback=>{frames.set(++nextFrame,callback);return nextFrame;},cancelAnimationFrame:id=>frames.delete(id),
     setTimeout:()=>0,clearTimeout(){},console,performance:{now:()=>clock},history
   });
-  vm.runInContext(readFileSync(join(__dirname,'../public/world-physics.js'),'utf8'),context);
-  context.WorldPhysics=context.window.WorldPhysics;
+  context.WorldPhysics=context.window.WorldPhysics=loadSandboxModule(context,join(__dirname,'../src/shared/physics.ts'));
   vm.runInContext(readFileSync(join(__dirname,'../public/frontier.js'),'utf8'),context);context.WorldFrontier=context.window.WorldFrontier;
   vm.runInContext(readFileSync(join(__dirname,'../public/app.js'),'utf8'),context);
   await new Promise(resolve=>setImmediate(resolve));

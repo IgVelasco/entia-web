@@ -4,8 +4,15 @@
     "checkJs": true,
     "noEmit": true,
     "target": "es2022",
-    "lib": ["es2023", "dom", "dom.iterable"],
+    "lib": [
+      "es2023",
+      "dom",
+      "dom.iterable"
+    ],
     "skipLibCheck": true,
-    "strict": false
+    "strict": false,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true
   }
 }

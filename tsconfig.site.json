@@ -5,9 +5,8 @@
   },
   "files": [
     "types/shared.d.ts",
+    "src/shared/globals.ts",
     "types/site.d.ts",
-    "public/character.js",
-    "public/world-physics.js",
     "public/frontier.js",
     "public/app.js"
   ]

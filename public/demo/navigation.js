@@ -2,7 +2,7 @@
 (function(root){
 'use strict';
 const M=typeof module!=='undefined'?require('./tutorial.js'):root.EssenceDemo;
-const Physics=typeof module!=='undefined'?require('../world-physics.js'):root.WorldPhysics;
+const Physics=typeof module!=='undefined'?require('../../src/shared/physics.ts'):root.WorldPhysics;
 const originalUpdate=M.update;
 function cancelWalk(s){s.navigation=null;}
 function walkTo(s,target,guide=null){

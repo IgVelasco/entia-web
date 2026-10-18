@@ -12,6 +12,7 @@ The Nix site (`index.html`) and its embedded offline demo (`demo/index.html`), b
 ## Layout
 
 - `index.html`, `demo/index.html` — page entries.
-- `public/` — page scripts, styles and assets, copied into `dist/` unchanged. They are classic scripts sharing globals until they move to `src/` as TypeScript modules.
-- `types/` — declarations for the globals shared between those scripts.
-- `tests/` — Node tests.
+- `src/` — strict TypeScript modules. `src/site/main.ts` and `src/demo/main.ts` are the page entries; `src/shared/globals.ts` exposes shared modules to the remaining classic scripts.
+- `public/` — classic page scripts (loaded with `defer`, after the module entry), styles and assets, copied into `dist/` unchanged. Scripts move to `src/` as they are converted.
+- `types/` — declarations for globals still defined by classic scripts.
+- `tests/` — Node tests. `tests/helpers/sandbox-module.cjs` loads a `src/` module into a test's vm sandbox.

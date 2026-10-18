@@ -1,7 +1,7 @@
 /* Single-player teaching rules, intentionally independent from RAO's live economy. */
 (function(root){
 'use strict';
-const Physics=typeof module!=='undefined'?require('../world-physics.js'):root.WorldPhysics;
+const Physics=typeof module!=='undefined'?require('../../src/shared/physics.ts'):root.WorldPhysics;
 const WIDTH=1200,HEIGHT=880,RADIUS=10;
 const TILE=32;
 const spells={apocalipsis:{name:'Apocalipsis',mana:15},inmovilizar:{name:'Inmovilizar',mana:20},remover:{name:'Remover parálisis',mana:10}};
