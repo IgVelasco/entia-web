@@ -1,0 +1,12 @@
+{
+  "name": "entia",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.cjs",
+    "typecheck": "tsc -p tsconfig.site.json && tsc -p tsconfig.demo.json"
+  },
+  "devDependencies": {
+    "pngjs": "7.0.0",
+    "typescript": "7.0.2"
+  }
+}
