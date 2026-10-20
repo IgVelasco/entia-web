@@ -2,6 +2,16 @@
 
 The Nix site (`index.html`) and its embedded offline demo (`demo/index.html`), built with Vite.
 
+## Getting started
+
+1. Install Node 22 with [nvm](https://github.com/nvm-sh/nvm): `nvm install` then `nvm use` in the repo root (reads `.nvmrc`; see Node below for why).
+2. Install dependencies: `npm ci`.
+3. Start the dev server: `npm run dev`, then open the URL it prints. The site is at `/`, the demo at `/demo/`.
+4. For a production-like check, run `npm run build` and then `npm run preview`, which serves `dist/`.
+5. The e2e suite runs in Google Chrome. If it isn't installed, run `npx playwright install chrome` once.
+
+Before opening a pull request, run `npm run typecheck`, `npm run lint`, `npm test`, `npm run build` and `npm run test:e2e`. CI runs the same checks on every pull request.
+
 ## Node
 
 Use Node 22 (`.nvmrc` pins 22.22.3; run `nvm use`). Node 24's V8 intermittently segfaults in garbage collection while running the vm-sandbox tests (`tests/navigation.test.cjs`), reproduced on 24.5.0 and 24.15.0.
