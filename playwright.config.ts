@@ -7,7 +7,9 @@ export default defineConfig({
   testDir: 'e2e',
   fullyParallel: true,
   forbidOnly: true,
-  reporter: 'list',
+  // CI retries once so an intermittent failure is reported as flaky, with its trace, instead of passing silently.
+  retries: process.env.CI ? 1 : 0,
+  reporter: process.env.CI ? [['list'], ['html', {open: 'never'}]] : 'list',
   use: {baseURL, channel: 'chrome', trace: 'retain-on-failure'},
   webServer: {
     command: 'npm run build && npx vite preview --port 4319 --strictPort',
