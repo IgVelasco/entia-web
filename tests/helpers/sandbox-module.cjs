@@ -5,12 +5,18 @@ const {dirname,resolve}=require('node:path');
 const vm=require('node:vm');
 const {transformSync}=require('esbuild');
 
+// A file's CommonJS output depends only on its contents, so each file is transformed once per process.
+const compiled=new Map();
+function compile(path){
+  if(!compiled.has(path))compiled.set(path,transformSync(readFileSync(path,'utf8'),{loader:'ts',format:'cjs',target:'es2022',sourcefile:path}).code);
+  return compiled.get(path);
+}
+
 function loadSandboxModule(context,file,cache=new Map()){
   const path=resolve(file);
   if(cache.has(path))return cache.get(path).exports;
   const module={exports:{}};cache.set(path,module);
-  const {code}=transformSync(readFileSync(path,'utf8'),{loader:'ts',format:'cjs',target:'es2022',sourcefile:path});
-  const evaluate=vm.runInContext(`(function(module,exports,require){${code}\n})`,context,{filename:path});
+  const evaluate=vm.runInContext(`(function(module,exports,require){${compile(path)}\n})`,context,{filename:path});
   evaluate(module,module.exports,specifier=>loadSandboxModule(context,resolve(dirname(path),specifier),cache));
   return module.exports;
 }
