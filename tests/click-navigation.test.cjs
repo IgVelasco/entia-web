@@ -1,22 +1,201 @@
-const test=require('node:test'),assert=require('node:assert/strict');
-const M=require('../src/demo/rules/navigation.ts').default;
-const advance=(s,seconds,input={x:0,y:0})=>{for(let i=0;i<seconds*50;i++)M.update(s,.02,input);};
-function arena(){const s=M.create();s.enemies=[];return s;}
-test('walking toward each unseen guide prompts automatically, but idle proximity does not',()=>{const s=M.createTutorial();advance(s,2);assert.equal(s.tutorial.dialog,null);advance(s,1,{x:1,y:0});assert.equal(s.tutorial.dialog.id,'warden');while(s.tutorial.dialog)M.nextGuide(s);advance(s,.4,{x:-1,y:0});advance(s,.4,{x:1,y:0});assert.equal(s.tutorial.dialog,null);advance(s,1,{x:1,y:0});assert.equal(s.tutorial.dialog.id,'arcanist');});
-test('hall click arrives precisely and an explicit guide approach talks only on arrival',()=>{const s=M.createTutorial();s.tutorial.seen=M.guides.map(g=>g.id);assert(M.walkTo(s,{x:300,y:481}));advance(s,3);assert.equal(s.player.x,300);assert.equal(s.player.y,481);assert.equal(s.navigation,null);assert.equal(s.tutorial.dialog,null);assert(M.walkTo(s,{x:400,y:464},'keeper'));advance(s,2);assert.equal(s.tutorial.dialog.id,'keeper');});
-test('arena click walks cardinally to a nearby tile without overshooting',()=>{const s=arena();assert(M.walkTo(s,{x:433,y:499}));advance(s,4);assert.equal(s.player.x,432);assert.equal(s.player.y,496);assert.equal(s.navigation,null);});
-test('retarget during a footstep plans from its endpoint',()=>{const s=arena();M.walkTo(s,{x:600,y:432});advance(s,.06);assert(s.player.step);M.walkTo(s,{x:400,y:560});advance(s,4);assert.equal(s.player.x,400);assert.equal(s.player.y,560);assert.equal(s.navigation,null);});
-test('keyboard takes over and cancels the queued route',()=>{const s=arena();M.walkTo(s,{x:600,y:432});M.update(s,.02,{x:0,y:1});assert.equal(s.navigation,null);assert(s.player.y>432);});
-test('prepared cast consumes click mode without creating a route',()=>{const s=arena();s.armed=true;assert(!M.walkTo(s,{x:450,y:432}));assert(M.cast(s,{x:450,y:432}));assert.equal(s.armed,false);assert.equal(s.navigation,null);assert.equal(s.player.x,304);});
-test('bank routing never enters its solid footprint',()=>{const s=arena();s.bankUnlocked=true;s.bankPosition={x:432,y:432};assert(M.walkTo(s,{x:560,y:432}));let wentAround=false;for(let i=0;i<300;i++){M.update(s,.02);if(s.player.y!==432)wentAround=true;assert(!(s.player.x>375&&s.player.x<489&&s.player.y>412&&s.player.y<456));}assert(wentAround);assert.equal(s.player.x,560);assert.equal(s.player.y,432);});
-test('invalid or blocked destination replaces and cancels an old route',()=>{const s=arena();M.walkTo(s,{x:450,y:432});assert(!M.walkTo(s,{x:NaN,y:1}));assert.equal(s.navigation,null);assert(!M.walkTo(s,{x:-900,y:1}));});
-test('new blocking actor stops a route without endlessly replanning',()=>{const s=arena();M.walkTo(s,{x:450,y:432});s.enemies=[{x:336,y:432,hp:1,maxHp:1,kind:'stationary',cooldown:99,immobilized:0,gait:0}];advance(s,1);assert.equal(s.player.x,304);assert.equal(s.navigation,null);});
-test('immobilization pauses a walking route and resumes after recovery',()=>{const s=arena();M.walkTo(s,{x:400,y:432});s.player.immobilized=1;advance(s,.7);assert.equal(s.player.x,304);assert(s.navigation);advance(s,3);assert.equal(s.player.x,400);assert.equal(s.navigation,null);});
-test('death and modal conversation clear old walking orders',()=>{const s=arena();M.walkTo(s,{x:600,y:432});s.player.hp=0;M.update(s,.02);assert.equal(s.navigation,null);assert.equal(s.player.x,176);const h=M.createTutorial();M.walkTo(h,{x:400,y:464});M.talk(h,'warden');M.update(h,.02);assert.equal(h.navigation,null);});
-test('a blocked incoming edge does not discard a cell reachable from another direction',()=>{const s=arena();s.enemies=[{x:320,y:448,hp:1}];assert(M.walkTo(s,{x:336,y:432}));assert(s.navigation.points.some(p=>p.y<432));assert.deepEqual(s.navigation.points.at(-1),{x:336,y:432});});
-test('lethal hit during a click route preserves the death and drop notice',()=>{const s=arena();M.walkTo(s,{x:432,y:432});M.update(s,.02);s.player.hp=12;s.fx=[{x:s.player.x,y:s.player.y,owner:'enemy',spell:'apocalipsis',age:.29,hit:false}];M.update(s,.02);assert.equal(s.player.x,176);assert.equal(s.navigation,null);assert.match(s.notice,/You fell and dropped/);});
+const test = require('node:test'),
+  assert = require('node:assert/strict');
+const M = require('../src/demo/rules/navigation.ts').default;
+const advance = (s, seconds, input = { x: 0, y: 0 }) => {
+  for (let i = 0; i < seconds * 50; i++) M.update(s, 0.02, input);
+};
+function arena() {
+  const s = M.create();
+  s.enemies = [];
+  return s;
+}
+test('walking toward each unseen guide prompts automatically, but idle proximity does not', () => {
+  const s = M.createTutorial();
+  advance(s, 2);
+  assert.equal(s.tutorial.dialog, null);
+  advance(s, 1, { x: 1, y: 0 });
+  assert.equal(s.tutorial.dialog.id, 'warden');
+  while (s.tutorial.dialog) M.nextGuide(s);
+  advance(s, 0.4, { x: -1, y: 0 });
+  advance(s, 0.4, { x: 1, y: 0 });
+  assert.equal(s.tutorial.dialog, null);
+  advance(s, 1, { x: 1, y: 0 });
+  assert.equal(s.tutorial.dialog.id, 'arcanist');
+});
+test('hall click arrives precisely and an explicit guide approach talks only on arrival', () => {
+  const s = M.createTutorial();
+  s.tutorial.seen = M.guides.map((g) => g.id);
+  assert(M.walkTo(s, { x: 300, y: 481 }));
+  advance(s, 3);
+  assert.equal(s.player.x, 300);
+  assert.equal(s.player.y, 481);
+  assert.equal(s.navigation, null);
+  assert.equal(s.tutorial.dialog, null);
+  assert(M.walkTo(s, { x: 400, y: 464 }, 'keeper'));
+  advance(s, 2);
+  assert.equal(s.tutorial.dialog.id, 'keeper');
+});
+test('arena click walks cardinally to a nearby tile without overshooting', () => {
+  const s = arena();
+  assert(M.walkTo(s, { x: 433, y: 499 }));
+  advance(s, 4);
+  assert.equal(s.player.x, 432);
+  assert.equal(s.player.y, 496);
+  assert.equal(s.navigation, null);
+});
+test('retarget during a footstep plans from its endpoint', () => {
+  const s = arena();
+  M.walkTo(s, { x: 600, y: 432 });
+  advance(s, 0.06);
+  assert(s.player.step);
+  M.walkTo(s, { x: 400, y: 560 });
+  advance(s, 4);
+  assert.equal(s.player.x, 400);
+  assert.equal(s.player.y, 560);
+  assert.equal(s.navigation, null);
+});
+test('keyboard takes over and cancels the queued route', () => {
+  const s = arena();
+  M.walkTo(s, { x: 600, y: 432 });
+  M.update(s, 0.02, { x: 0, y: 1 });
+  assert.equal(s.navigation, null);
+  assert(s.player.y > 432);
+});
+test('prepared cast consumes click mode without creating a route', () => {
+  const s = arena();
+  s.armed = true;
+  assert(!M.walkTo(s, { x: 450, y: 432 }));
+  assert(M.cast(s, { x: 450, y: 432 }));
+  assert.equal(s.armed, false);
+  assert.equal(s.navigation, null);
+  assert.equal(s.player.x, 304);
+});
+test('bank routing never enters its solid footprint', () => {
+  const s = arena();
+  s.bankUnlocked = true;
+  s.bankPosition = { x: 432, y: 432 };
+  assert(M.walkTo(s, { x: 560, y: 432 }));
+  let wentAround = false;
+  for (let i = 0; i < 300; i++) {
+    M.update(s, 0.02);
+    if (s.player.y !== 432) wentAround = true;
+    assert(!(s.player.x > 375 && s.player.x < 489 && s.player.y > 412 && s.player.y < 456));
+  }
+  assert(wentAround);
+  assert.equal(s.player.x, 560);
+  assert.equal(s.player.y, 432);
+});
+test('invalid or blocked destination replaces and cancels an old route', () => {
+  const s = arena();
+  M.walkTo(s, { x: 450, y: 432 });
+  assert(!M.walkTo(s, { x: NaN, y: 1 }));
+  assert.equal(s.navigation, null);
+  assert(!M.walkTo(s, { x: -900, y: 1 }));
+});
+test('new blocking actor stops a route without endlessly replanning', () => {
+  const s = arena();
+  M.walkTo(s, { x: 450, y: 432 });
+  s.enemies = [{ x: 336, y: 432, hp: 1, maxHp: 1, kind: 'stationary', cooldown: 99, immobilized: 0, gait: 0 }];
+  advance(s, 1);
+  assert.equal(s.player.x, 304);
+  assert.equal(s.navigation, null);
+});
+test('immobilization pauses a walking route and resumes after recovery', () => {
+  const s = arena();
+  M.walkTo(s, { x: 400, y: 432 });
+  s.player.immobilized = 1;
+  advance(s, 0.7);
+  assert.equal(s.player.x, 304);
+  assert(s.navigation);
+  advance(s, 3);
+  assert.equal(s.player.x, 400);
+  assert.equal(s.navigation, null);
+});
+test('death and modal conversation clear old walking orders', () => {
+  const s = arena();
+  M.walkTo(s, { x: 600, y: 432 });
+  s.player.hp = 0;
+  M.update(s, 0.02);
+  assert.equal(s.navigation, null);
+  assert.equal(s.player.x, 176);
+  const h = M.createTutorial();
+  M.walkTo(h, { x: 400, y: 464 });
+  M.talk(h, 'warden');
+  M.update(h, 0.02);
+  assert.equal(h.navigation, null);
+});
+test('a blocked incoming edge does not discard a cell reachable from another direction', () => {
+  const s = arena();
+  s.enemies = [{ x: 320, y: 448, hp: 1 }];
+  assert(M.walkTo(s, { x: 336, y: 432 }));
+  assert(s.navigation.points.some((p) => p.y < 432));
+  assert.deepEqual(s.navigation.points.at(-1), { x: 336, y: 432 });
+});
+test('lethal hit during a click route preserves the death and drop notice', () => {
+  const s = arena();
+  M.walkTo(s, { x: 432, y: 432 });
+  M.update(s, 0.02);
+  s.player.hp = 12;
+  s.fx = [{ x: s.player.x, y: s.player.y, owner: 'enemy', spell: 'apocalipsis', age: 0.29, hit: false }];
+  M.update(s, 0.02);
+  assert.equal(s.player.x, 176);
+  assert.equal(s.navigation, null);
+  assert.match(s.notice, /You fell and dropped/);
+});
 
-test('long floor click pauses at the first unlearned guide and clears the remaining route',()=>{const s=M.createTutorial();M.walkTo(s,{x:430,y:464});advance(s,3);assert.equal(s.tutorial.dialog.id,'warden');assert.equal(s.navigation,null);assert(s.player.x<144);while(s.tutorial.dialog)M.nextGuide(s);const x=s.player.x;advance(s,2);assert.equal(s.player.x,x);assert.equal(s.tutorial.dialog,null);});
-test('all three lessons prompt once during a keyboard hallway traversal',()=>{const s=M.createTutorial(),heard=[];for(let i=0;i<800&&s.phase==='hallway';i++){if(s.tutorial.dialog){heard.push(s.tutorial.dialog.id);while(s.tutorial.dialog)M.nextGuide(s);}else M.update(s,.02,{x:1,y:0});}assert.equal(s.phase,'arena');assert.deepEqual(heard,['warden','arcanist','keeper']);});
-test('wide portal entry spans every walkable row and uses the same straight threshold',()=>{for(const y of [448,464,480,496]){const s=M.createTutorial();s.tutorial.seen=M.guides.map(g=>g.id);s.player.y=y;s.player.x=470;M.walkTo(s,{x:544,y});advance(s,2);assert.equal(s.phase,'arena');assert.equal(s.navigation,null);}assert.equal(M.hallExitX(496),M.hallExitX(448));});
-test('hallway layout centers the carpet and keeps column feet and the gateway inside the floor',()=>{const h=M.hallway,f=h.floor,c=h.carpet,p=h.portal;assert.equal(c.y+c.h/2,f.y+f.h/2);assert.equal(c.x+c.w/2,f.x+f.w/2);for(const x of h.columns){assert(x-28>=f.x);assert(x+28<=f.x+f.w);assert(h.columnY+132>=f.y+12);assert(h.columnY+132<=f.y+f.h);}assert(p.x>=f.x);assert(p.x+p.w<=f.x+f.w);assert(p.y+p.h<=f.y+f.h);assert.equal(p.x+p.w/2,h.exitX);});
+test('long floor click pauses at the first unlearned guide and clears the remaining route', () => {
+  const s = M.createTutorial();
+  M.walkTo(s, { x: 430, y: 464 });
+  advance(s, 3);
+  assert.equal(s.tutorial.dialog.id, 'warden');
+  assert.equal(s.navigation, null);
+  assert(s.player.x < 144);
+  while (s.tutorial.dialog) M.nextGuide(s);
+  const x = s.player.x;
+  advance(s, 2);
+  assert.equal(s.player.x, x);
+  assert.equal(s.tutorial.dialog, null);
+});
+test('all three lessons prompt once during a keyboard hallway traversal', () => {
+  const s = M.createTutorial(),
+    heard = [];
+  for (let i = 0; i < 800 && s.phase === 'hallway'; i++) {
+    if (s.tutorial.dialog) {
+      heard.push(s.tutorial.dialog.id);
+      while (s.tutorial.dialog) M.nextGuide(s);
+    } else M.update(s, 0.02, { x: 1, y: 0 });
+  }
+  assert.equal(s.phase, 'arena');
+  assert.deepEqual(heard, ['warden', 'arcanist', 'keeper']);
+});
+test('wide portal entry spans every walkable row and uses the same straight threshold', () => {
+  for (const y of [448, 464, 480, 496]) {
+    const s = M.createTutorial();
+    s.tutorial.seen = M.guides.map((g) => g.id);
+    s.player.y = y;
+    s.player.x = 470;
+    M.walkTo(s, { x: 544, y });
+    advance(s, 2);
+    assert.equal(s.phase, 'arena');
+    assert.equal(s.navigation, null);
+  }
+  assert.equal(M.hallExitX(496), M.hallExitX(448));
+});
+test('hallway layout centers the carpet and keeps column feet and the gateway inside the floor', () => {
+  const h = M.hallway,
+    f = h.floor,
+    c = h.carpet,
+    p = h.portal;
+  assert.equal(c.y + c.h / 2, f.y + f.h / 2);
+  assert.equal(c.x + c.w / 2, f.x + f.w / 2);
+  for (const x of h.columns) {
+    assert(x - 28 >= f.x);
+    assert(x + 28 <= f.x + f.w);
+    assert(h.columnY + 132 >= f.y + 12);
+    assert(h.columnY + 132 <= f.y + f.h);
+  }
+  assert(p.x >= f.x);
+  assert(p.x + p.w <= f.x + f.w);
+  assert(p.y + p.h <= f.y + f.h);
+  assert.equal(p.x + p.w / 2, h.exitX);
+});

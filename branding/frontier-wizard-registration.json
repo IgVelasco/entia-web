@@ -8,12 +8,7 @@
     "w": 96,
     "h": 160
   },
-  "directions": [
-    "north",
-    "east",
-    "south",
-    "west"
-  ],
+  "directions": ["north", "east", "south", "west"],
   "head": {
     "file": "heads-original.png",
     "frame": {
