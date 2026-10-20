@@ -7,7 +7,6 @@
     "erasableSyntaxOnly": true
   },
   "include": [
-    "src",
-    "types/shared.d.ts"
+    "src"
   ]
 }

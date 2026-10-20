@@ -1,7 +1,7 @@
 import {resolve} from 'node:path';
 import {defineConfig} from 'vite';
 
-// Two pages: the Nix site and the embedded offline demo. Page scripts still live in public/ as classic scripts.
+// Two pages: the Nix site and the embedded offline demo.
 export default defineConfig({
   base: './',
   build: {
