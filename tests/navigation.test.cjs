@@ -1,8 +1,13 @@
 const test = require('node:test');
+const {loadSandboxModule}=require('./helpers/sandbox-module.cjs');
 const assert = require('node:assert/strict');
 const {readFileSync} = require('node:fs');
 const {join} = require('node:path');
 const vm = require('node:vm');
+// vm expressions reach the site controller through these sandbox globals: its context object and each module's exports.
+const siteGlobals=load=>({site:load('site/context.ts').site,Context:load('site/context.ts'),Town:load('site/town.ts'),Camera:load('site/camera.ts'),Labels:load('site/labels.ts'),Render:load('site/render.ts'),Spell:load('site/spell.ts'),Escort:load('site/escort.ts'),Movement:load('site/movement.ts'),Input:load('site/input.ts'),Routing:load('site/routing.ts'),Portal:load('site/portal.ts'),Loop:load('site/loop.ts')});
+// The site controller's modules, for source-text checks.
+const siteSource=()=>['context','main','town','camera','labels','render','spell','frontier','escort','movement','input','routing','content','portal','assets','loop'].map(m=>readFileSync(join(__dirname,`../src/site/${m}.ts`),'utf8')).join('\n');
 
 // Exercise the actual navigation state machine with a deterministic clock.
 // Rendering and browser layout are checked separately in the live preview.
@@ -30,35 +35,31 @@ async function village({reduced=false, hash='',width=1440,height=820,coarse=fals
   const document={body:makeNode(),hidden:false,querySelector:get,querySelectorAll:key=>key==='.nav'?nav:key==='[data-essence]'?lights:[],createElement:()=>makeNode(),addEventListener:(key,cb)=>{listeners[key]=cb;}};
   const context=vm.createContext({document,window:{location:{assign(){}},history,addEventListener:(key,cb)=>{windowListeners[key]=cb;}},location,matchMedia:query=>query.includes('pointer: coarse')?{matches:coarse,addEventListener(){}}:preference,devicePixelRatio:1,
     Image:class{constructor(){this.width=768;this.height=640;}set src(value){this.path=value;this.onload();}},
-    fetch:async()=>({ok:true,json:async()=>JSON.parse(readFileSync(join(__dirname,'../dist/assets/site-assets.json'),'utf8'))}),
     requestAnimationFrame:callback=>{frames.set(++nextFrame,callback);return nextFrame;},cancelAnimationFrame:id=>frames.delete(id),
     setTimeout:()=>0,clearTimeout(){},console,performance:{now:()=>clock},history
   });
-  vm.runInContext(readFileSync(join(__dirname,'../dist/world-physics.js'),'utf8'),context);
-  context.WorldPhysics=context.window.WorldPhysics;
-  vm.runInContext(readFileSync(join(__dirname,'../dist/frontier.js'),'utf8'),context);context.WorldFrontier=context.window.WorldFrontier;
-  vm.runInContext(readFileSync(join(__dirname,'../dist/app.js'),'utf8'),context);
+  const modules=new Map(),load=file=>loadSandboxModule(context,join(__dirname,'../src',file),modules);load('site/main.ts');Object.assign(context,siteGlobals(load));
   await new Promise(resolve=>setImmediate(resolve));
-  const api=vm.runInContext(`({go,advanceRoute,advanceSpell,drawSpell,drawActor,restoreHash,advanceMovement,isWalkable,houseBounds,townPhysics,houses,insideHouse,updateHouseRoofs,
-    pause(){paused=true;setMotionState();},
-    reduced(value){motionPreference.matches=value;setMotionState();},
-    finish(){for(let i=0;i<500&&route;i++)advanceRoute(.1);},
-    tick,viewport,walkToPortal,castPointer,showDemo,closeDemo,draw,ground,groundReady:()=>groundReady,
-    demoState:()=>({open:demoOpen,loaded:demoLoaded,blocked:portalReentryBlocked}),
-    townEntities:()=>[hero,...keepers,...npcs,...scenery,homePortal],
-    frontier:()=>({...frontierState,wizard:frontierWizard,sequence:frontierSequence}),advanceFrontier,positionFrontierBubble,frontierScreen:()=>frontierWizard?screen(frontierWizard):null,tryFrontier,dismissFrontier,viewFrontierDownloads,worldViewBounds,visibleBeyondTrees,
-    moveHero,resize,clearMovementInput,joystick:()=>({pointer:joystickPointer,direction:joystickDirection,panX:mobilePanX,panY:mobilePanY}),
-    setHero:(x,y)=>{hero.x=x;hero.y=y;route=null;},
-    placeHero(x,y){hero.x=x;hero.y=y;viewport();positionLabels();},
-    heroScreen:()=>screen(hero),viewportSize:()=>({width,height}),npcPositions:()=>npcs.map(n=>({x:n.x,y:n.y})),
-    drawHero(){drawActor(hero);},
-    drawKeeper(){drawActor(keepers[0]);},
-    path:()=>route?.points,
-    state:()=>({ready,current,route:!!route,spell:!!spell,spellPlace:spell?.place,spellHit:spell?.hit,manual:route?.manual,explore:route?.explore,held:heldDirections.size,rings:rings.length,gait:hero.gait,dir:hero.dir,x:hero.x,y:hero.y,atPlace,cameraX:camera.x,cameraTargetX:camera.targetX}),
-    groundPoint:(x,y)=>{const p=screen({x,y});return {clientX:p.x,clientY:p.y+80};},
-    target:place=>spots[place].land,keeper:place=>spots[place],scale:()=>scale,spellDetails:()=>spell?{...spell}:null,setNpc:(i,x,y)=>{npcs[i].x=x;npcs[i].y=y;npcs[i].path=[];},
-    reaction:place=>keepers.find(k=>k.place===place).reaction,
-    label:place=>keepers.find(k=>k.place===place).button.querySelector('.keeper-clan').textContent
+  const api=vm.runInContext(`({go:Routing.go,advanceRoute:Movement.advanceRoute,advanceSpell:Spell.advanceSpell,drawSpell:Spell.drawSpell,drawActor:Render.drawActor,restoreHash:Routing.restoreHash,advanceMovement:Movement.advanceMovement,isWalkable:Movement.isWalkable,houseBounds:Town.houseBounds,townPhysics:Town.townPhysics,houses:Town.houses,insideHouse:Town.insideHouse,updateHouseRoofs:Town.updateHouseRoofs,
+    pause(){site.paused=true;Loop.setMotionState();},
+    reduced(value){Context.motionPreference.matches=value;Loop.setMotionState();},
+    finish(){for(let i=0;i<500&&site.route;i++)Movement.advanceRoute(.1);},
+    tick:Loop.tick,viewport:Camera.viewport,walkToPortal:Portal.walkToPortal,castPointer:Input.castPointer,showDemo:Portal.showDemo,closeDemo:Portal.closeDemo,draw:Render.draw,ground:Context.ground,groundReady:()=>site.groundReady,
+    demoState:()=>({open:site.demoOpen,loaded:site.demoLoaded,blocked:site.portalReentryBlocked}),
+    townEntities:()=>[Town.hero,...Town.keepers,...Town.npcs,...Town.scenery,Town.homePortal],
+    frontier:()=>({...site.frontierState,wizard:site.frontierWizard,sequence:site.frontierSequence}),advanceFrontier:Escort.advanceFrontier,positionFrontierBubble:Escort.positionFrontierBubble,frontierScreen:()=>site.frontierWizard?Camera.worldToScreen(site.frontierWizard):null,tryFrontier:Escort.tryFrontier,dismissFrontier:Escort.dismissFrontier,viewFrontierDownloads:Escort.viewFrontierDownloads,worldViewBounds:Render.worldViewBounds,visibleBeyondTrees:Render.visibleBeyondTrees,
+    moveHero:Movement.moveHero,resize:Camera.resize,clearMovementInput:Movement.clearMovementInput,joystick:()=>({pointer:site.joystickPointer,direction:site.joystickDirection,panX:site.mobilePanX,panY:site.mobilePanY}),
+    setHero:(x,y)=>{Town.hero.x=x;Town.hero.y=y;site.route=null;},
+    placeHero(x,y){Town.hero.x=x;Town.hero.y=y;Camera.viewport();Labels.positionLabels();},
+    heroScreen:()=>Camera.worldToScreen(Town.hero),viewportSize:()=>({width:site.width,height:site.height}),npcPositions:()=>Town.npcs.map(n=>({x:n.x,y:n.y})),
+    drawHero(){Render.drawActor(Town.hero);},
+    drawKeeper(){Render.drawActor(Town.keepers[0]);},
+    path:()=>site.route?.points,
+    state:()=>({ready:site.ready,current:site.current,route:!!site.route,spell:!!site.spell,spellPlace:site.spell?.place,spellHit:site.spell?.hit,manual:site.route?.manual,explore:site.route?.explore,held:Movement.heldDirections.size,rings:site.rings.length,gait:Town.hero.gait,dir:Town.hero.dir,x:Town.hero.x,y:Town.hero.y,atPlace:site.atPlace,cameraX:Camera.camera.x,cameraTargetX:Camera.camera.targetX}),
+    groundPoint:(x,y)=>{const p=Camera.worldToScreen({x,y});return {clientX:p.x,clientY:p.y+80};},
+    target:place=>Town.spots[place].land,keeper:place=>Town.spots[place],scale:()=>site.scale,spellDetails:()=>site.spell?{...site.spell}:null,setNpc:(i,x,y)=>{Town.npcs[i].x=x;Town.npcs[i].y=y;Town.npcs[i].path=[];},
+    reaction:place=>Town.keepers.find(k=>k.place===place).reaction,
+    label:place=>Town.keepers.find(k=>k.place===place).button.querySelector('.keeper-clan').textContent
   })`,context);
   assert.equal(api.state().ready,true);
   const key=(type,value,options={})=>{
@@ -376,11 +377,11 @@ test('cached and visible canvas restore trigger rebuilding even with paused anim
 test('mobile cast popup appears at arrival and closes without moving home',async()=>{const v=await village({width:390,height:480});v.api.go('hall',{cast:true});assert(!v.get('#zone-dialog').open);assert(v.api.state().spell);v.api.finish();assert(v.get('#zone-dialog').open);assert(v.get('#zone-dialog').classList.contains('arrival-effect'));const p=v.api.state();v.get('#close-zone').onclick();assert(!v.get('#zone-dialog').open);assert.equal(v.api.state().current,'hall');assert.equal(v.api.state().x,p.x);assert.equal(v.api.state().y,p.y);});
 test('tapping a world character casts and starts its zone journey',async()=>{const v=await village();const target=v.api.townEntities().find(a=>a.place==='hall');v.clickGround(target.x,target.y-25);assert.equal(v.api.state().spellPlace,'hall');assert.equal(v.api.state().current,'hall');assert(v.api.state().route);});
 
-test('the old collect-lights minigame has no markup, entry points or runtime',()=>{const html=readFileSync(join(__dirname,'../dist/index.html'),'utf8'),js=readFileSync(join(__dirname,'../dist/app.js'),'utf8');assert(!html.includes('id="essence-game"'));assert(!html.includes('id="wander"'));assert(!js.includes('function startGame'));assert(!js.includes('Try collecting lights'));});
+test('the old collect-lights minigame has no markup, entry points or runtime',()=>{const html=readFileSync(join(__dirname,'../index.html'),'utf8'),js=siteSource();assert(!html.includes('id="essence-game"'));assert(!html.includes('id="wander"'));assert(!js.includes('function startGame'));assert(!js.includes('Try collecting lights'));});
 
 test('phone overview retains all four actor areas while navigating each zone',async()=>{for(const width of [320,390,430]){const v=await village({width,height:480});for(const place of ['home','arena','hall','gate']){v.api.go(place,{instant:true});v.api.viewport();for(const k of v.api.townEntities().filter(a=>a.isKeeper)){const screen=v.api.groundPoint(k.x,k.y);assert(screen.clientX>=32&&screen.clientX<=width-32);assert(screen.clientY-80>=40&&screen.clientY-80<=420);}}}});
 
-test('home popup has a slower translucent reveal and preserves reduced motion',()=>{const css=readFileSync(join(__dirname,'../dist/style.css'),'utf8');assert(css.includes('zone-reveal 1.1s ease-out'));assert(css.includes('background:rgba(14,33,26,.84)'));assert(css.includes('#zone-dialog[open],#zone-dialog[open]::backdrop{animation:none}'));});
+test('home popup has a slower translucent reveal and preserves reduced motion',()=>{const css=readFileSync(join(__dirname,'../src/site/style.css'),'utf8');assert(css.includes('zone-reveal 1.1s ease-out'));assert(css.includes('background:rgba(14,33,26,.84)'));assert(css.includes('#zone-dialog[open],#zone-dialog[open]::backdrop{animation:none}'));});
 
 test('both house variants have equal native tile scale and open two-tile entrances',async()=>{const v=await village();for(const h of v.api.townEntities().filter(p=>p.id?.startsWith('house')&&!p.decorative)){assert.equal(h.w,256);assert.equal(h.h,683*32/60);const b=v.api.houseBounds(h);assert.equal(b.doorX%32,0);for(const x of [b.doorX+16,b.doorX+48]){assert(v.api.townPhysics.free(x,h.y-16));assert(v.api.townPhysics.free(x,h.y-48));}assert(!v.api.townPhysics.free(b.doorX-16,h.y-16));assert(!v.api.townPhysics.free(b.doorX+80,h.y-16));assert(v.api.townPhysics.free(b.doorX+16,h.y-80));}});
 
@@ -388,7 +389,7 @@ test('house interior is reachable through the doorway, walls remain solid and ro
 test('decorative left house stays closed and does not cover the Game character',async()=>{const v=await village();const h=v.api.houses.find(h=>h.decorative),b=v.api.houseBounds(h),game=v.api.townEntities().find(p=>p.place==='arena');assert(h.x<600);assert(game.x>h.x+h.w/2);assert(!v.api.townPhysics.free(b.doorX+16,h.y-16));v.api.placeHero(b.doorX+16,h.y-100);v.api.updateHouseRoofs(1);assert.equal(h.roofAlpha,1);});
 test('reduced-motion house roof changes immediately',async()=>{const v=await village({reduced:true});const h=v.api.houses.find(h=>!h.decorative),b=v.api.houseBounds(h);v.api.placeHero(b.doorX+16,h.y-112);v.api.updateHouseRoofs(0);assert.equal(h.roofAlpha,0);});
 
-test('inactive Home releases scene surfaces and repeated transitions reuse one frame',async()=>{const a=await village();const run=s=>vm.runInContext(s,a.context);run('showDemo(true)');assert.equal(run('canvas.width'),1);assert.equal(run('ground.width'),1);run('recoverScene()');assert.equal(run('ground.width'),1);run('closeDemo(true);draw()');assert(run('canvas.width')>1);assert.equal(run('ground.width'),1440);for(let i=0;i<20;i++)run('showDemo(true);closeDemo(true)');assert(run('demoFrameStarted'));assert(!run('demoOpen'));});
+test('inactive Home releases scene surfaces and repeated transitions reuse one frame',async()=>{const a=await village();const run=s=>vm.runInContext(s,a.context);run('Portal.showDemo(true)');assert.equal(run('Context.canvas.width'),1);assert.equal(run('Context.ground.width'),1);run('Loop.recoverScene()');assert.equal(run('Context.ground.width'),1);run('Portal.closeDemo(true);Render.draw()');assert(run('Context.canvas.width')>1);assert.equal(run('Context.ground.width'),1440);for(let i=0;i<20;i++)run('Portal.showDemo(true);Portal.closeDemo(true)');assert(run('site.demoFrameStarted'));assert(!run('site.demoOpen'));});
 test('parent hands keyboard focus to the visible iframe on cold and warm entry only',async()=>{const v=await village(),frame=v.get('#demo-frame');let focused=0;frame.focus=()=>focused++;frame.contentWindow={postMessage(){}};v.api.showDemo(true);assert.equal(focused,0);v.windowListeners.message({origin:v.location.origin,source:frame.contentWindow,data:{type:'entia-demo-ready'}});assert.equal(focused,1);v.api.closeDemo(true);v.windowListeners.message({origin:v.location.origin,source:frame.contentWindow,data:{type:'entia-demo-ready'}});assert.equal(focused,1);v.api.showDemo(true);assert.equal(focused,2);});
 test('home role keepers render a complete idle cell rather than one eighth of it',async()=>{const v=await village();v.api.drawActor({x:100,y:200,body:'npc-home',dir:2,gait:100,reaction:0});const call=v.draws.at(-1);assert.equal(call[1],0);assert.equal(call[2],320);assert.equal(call[3],96);assert.equal(call[4],160);});
 test('mohawk walker uses its real gait frames and reduced motion selects idle',async()=>{const v=await village(),actor={x:100,y:200,body:'mohawk',dir:1,gait:32,reaction:0};v.api.drawActor(actor);let call=v.draws.at(-1);assert(call[0].path.endsWith('npc/mohawk-walk-v3.png'));assert.equal(call[1],4*96);assert.equal(call[2],160);assert.equal(call[3],96);assert.equal(call[4],160);v.api.reduced(true);v.api.drawActor(actor);call=v.draws.at(-1);assert.equal(call[1],0);});
@@ -404,7 +405,7 @@ test('Skip uses out/in teleport phases then opens Downloads once',async()=>{
 test('wizard encounter prevents world hotkeys, Escape dismisses without navigating',async()=>{const v=await village();v.api.setHero(-48,450);v.clickGround(-100,450);const before=v.api.state().current;v.key('keydown','4');assert.equal(v.api.state().current,before);v.key('keydown','Escape');assert.equal(v.api.frontier().open,false);assert.equal(v.api.state().current,before);});
 test('mobile and tablet frame the wizard encounter instead of leaving it outside the keeper overview',async()=>{for(const width of [375,768])for(const[x,y,to]of [[-48,450,{x:-100,y:450}],[720,-48,{x:720,y:-100}]]){const v=await village({width,height:820});v.api.setHero(x,y);v.api.tryFrontier({x,y},to,'attempt');v.api.viewport();const hero=v.api.heroScreen(),wizard=v.api.frontierScreen();assert(hero.x>0&&hero.x<width);assert(wizard.x>0&&wizard.x<width);assert(hero.y>100&&hero.y<820);assert(wizard.y>100&&wizard.y<820);}});
 test('continued terrain keeps the original collision and cached-canvas bounds',async()=>{const v=await village();v.api.draw();assert.equal(v.api.ground.width,1440);assert.equal(v.api.ground.height,900);assert.equal(v.api.isWalkable(-30,450),true);assert.equal(v.api.isWalkable(1470,450),true);assert.equal(v.api.isWalkable(-67,450),false);assert.equal(v.api.isWalkable(1507,450),false);assert(v.api.visibleBeyondTrees().length<200);const bounds=v.api.worldViewBounds();assert(bounds.right>bounds.left);assert(bounds.bottom>bounds.top);});
-test('manual movement returns focus to the game without leaving a boxed keeper label',async()=>{const v=await village();let focus=0;v.get('#scene').focus=()=>focus++;v.key('keydown','w');assert(focus>0);const css=readFileSync(join(__dirname,'../dist/style.css'),'utf8');assert(css.includes('.keeper:focus-visible .keeper-label{outline:none}'));assert(css.includes('.keeper:focus-visible .keeper-label strong{text-decoration:underline'));});
+test('manual movement returns focus to the game without leaving a boxed keeper label',async()=>{const v=await village();let focus=0;v.get('#scene').focus=()=>focus++;v.key('keydown','w');assert(focus>0);const css=readFileSync(join(__dirname,'../src/site/style.css'),'utf8');assert(css.includes('.keeper:focus-visible .keeper-label{outline:none}'));assert(css.includes('.keeper:focus-visible .keeper-label strong{text-decoration:underline'));});
 test('the boundary apparition uses the approved bearded wizard rather than a roaming look',async()=>{const v=await village();v.api.setHero(-48,450);v.clickGround(-100,450);assert.equal(v.api.frontier().wizard.body,'wizard-walk');v.api.drawActor(v.api.frontier().wizard);const draw=v.draws.at(-1);assert(draw[0].path.endsWith('npc/frontier-wizard-walk-v2.png'));assert.equal(draw[1],0);assert.equal(draw[3],96);});
 
 
@@ -448,7 +449,7 @@ test('escape, newer navigation, history and demo entry cancel every wizard phase
 
 test('Skip mid-escort waits for its teleport effect and remains cancellable',async()=>{const v=await village();v.api.setHero(-48,450);v.clickGround(-100,450);v.step(800);v.step(1500);for(let i=0;i<40;i++)v.step(16);const p=v.api.state();v.get('#frontier-download').onclick();v.step(16);assert.equal(v.api.state().x,p.x);assert.equal(v.api.state().y,p.y);assert.equal(v.api.frontier().sequence.phase,'teleport-out');v.key('keydown','Escape');for(let i=0;i<300;i++)v.step(16);assert(!v.api.frontier().open);assert.notEqual(v.api.state().current,'gate');});
 
-test('old boundary is now traversable, new limits remain solid, and no ward line is drawn',async()=>{const v=await village();v.api.setHero(48,450);v.clickGround(16,450);v.api.finish();assert(!v.api.frontier().open);assert(Math.abs(v.api.state().x-16)<.001);assert(v.api.townPhysics.free(-66,450));assert(!v.api.townPhysics.free(-67,450));assert(v.api.townPhysics.free(1506,450));assert(!v.api.townPhysics.free(1507,450));assert(v.api.townPhysics.free(720,-66));assert(!v.api.townPhysics.free(720,-67));assert(v.api.townPhysics.free(720,966));assert(!v.api.townPhysics.free(720,967));assert(!readFileSync(join(__dirname,'../dist/app.js'),'utf8').includes('drawFrontierWard'));});
+test('old boundary is now traversable, new limits remain solid, and no ward line is drawn',async()=>{const v=await village();v.api.setHero(48,450);v.clickGround(16,450);v.api.finish();assert(!v.api.frontier().open);assert(Math.abs(v.api.state().x-16)<.001);assert(v.api.townPhysics.free(-66,450));assert(!v.api.townPhysics.free(-67,450));assert(v.api.townPhysics.free(1506,450));assert(!v.api.townPhysics.free(1507,450));assert(v.api.townPhysics.free(720,-66));assert(!v.api.townPhysics.free(720,-67));assert(v.api.townPhysics.free(720,966));assert(!v.api.townPhysics.free(720,967));assert(!siteSource().includes('drawFrontierWard'));});
 
 test('Downloads reveals progressively during walking and hands off without a second animation',async()=>{
  for(const reduced of [false,true]){
@@ -475,7 +476,7 @@ test('mobile thumbstick cleans capture/input on lifecycle changes and cannot rev
  assert.equal(v.api.joystick().pointer,null,action);assert.equal(v.api.joystick().direction,null,action);stick('pointermove',120,456);assert.equal(v.api.joystick().pointer,null,action);
  }
 });
-test('mobile layout retains Home/About as popups without a below-map content area',async()=>{const v=await village({width:390,height:620});v.api.go('home');assert(v.get('#zone-dialog').open);v.get('#close-zone').onclick();v.get('#mobile-about').onclick();assert(v.get('#notes').open);const css=readFileSync(join(__dirname,'../dist/style.css'),'utf8');assert(css.includes('#main-content,footer{display:none!important}'));assert(css.includes('height:100dvh;display:flex'));assert(css.includes('#world,#world.frontier-active'));});
+test('mobile layout retains Home/About as popups without a below-map content area',async()=>{const v=await village({width:390,height:620});v.api.go('home');assert(v.get('#zone-dialog').open);v.get('#close-zone').onclick();v.get('#mobile-about').onclick();assert(v.get('#notes').open);const css=readFileSync(join(__dirname,'../src/site/style.css'),'utf8');assert(css.includes('#main-content,footer{display:none!important}'));assert(css.includes('height:100dvh;display:flex'));assert(css.includes('#world,#world.frontier-active'));});
 test('long thumbstick exploration keeps the player in the mobile viewport',async()=>{const v=await village({width:390,height:620});v.api.setHero(600,450);const stick=mobileStick(v);stick('pointerdown',18,456);for(let i=0;i<200&&!v.api.frontier().open;i++){v.step(40);const p=v.api.heroScreen();assert(p.x>=70&&p.x<=320);assert(p.y>=90&&p.y<=500);}assert(Number.isFinite(v.api.joystick().panX));});
 
 test('wide touch devices retain joystick and popup-only mode',async()=>{const v=await village({width:1024,height:520,coarse:true});v.api.setHero(600,450);const stick=mobileStick(v);assert(stick('pointerdown',120,456));v.step(40);assert(v.api.state().x>600);stick('pointerup');v.api.go('home');assert(v.get('#zone-dialog').open);});

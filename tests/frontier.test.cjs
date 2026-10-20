@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const {initialState, boundaryEvent, closeBoundary, rearm, pathLength, samplePath, visibleTiles} = require('../dist/frontier.js');
+const {initialState, boundaryEvent, closeBoundary, rearm, pathLength, samplePath, visibleTiles} = require('../src/site/frontier.ts');
 const event = (from, to, extra={}) => boundaryEvent(initialState(), {from, to, ...extra});
 test('deliberate approach opens the matching edge', () => {
   for (const [edge,from,to] of [

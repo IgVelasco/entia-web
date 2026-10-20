@@ -1,4 +1,4 @@
-const test=require('node:test'),assert=require('node:assert/strict'),M=require('../dist/demo/model.js'),P=require('../dist/world-physics.js');
+const test=require('node:test'),assert=require('node:assert/strict'),M=require('../src/demo/rules/model.ts').default,P=require('../src/shared/physics.ts');
 const cast=(s,target)=>{s.armed=true;return M.cast(s,target);};
 const tick=(s,seconds,input)=>{for(let i=0;i<Math.ceil(seconds/.02);i++)M.update(s,.02,input);};
 const collectAll=s=>{s.time+=.6;let amount=0;for(const d of [...s.drops]){s.player.x=d.x;s.player.y=d.y;amount+=M.pickup(s);}return amount;};
