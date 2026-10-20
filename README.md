@@ -40,7 +40,7 @@ Until then, type-aware lint rules reason with TypeScript 6, so a lint fix (espec
 - `npm run test:e2e` — Playwright suite in the installed Google Chrome against a fresh build (`e2e/`).
 - `npm run typecheck` — type-checks `src/` and the e2e suite.
 - `npm run lint` — ESLint with typescript-eslint's type-aware recommended rules.
-- `npm run format` — formats the repo with Prettier (`.prettierrc.json`); `npm run format:check` reports unformatted files without changing them, and CI runs it.
+- `npm run format` — formats the repo with Prettier (`.prettierrc.json`); `npm run format:check` reports unformatted files without changing them, and CI runs it. The commit that first formatted the repo is listed in `.git-blame-ignore-revs`; GitHub's blame view skips it, and `git config blame.ignoreRevsFile .git-blame-ignore-revs` makes local `git blame` skip it too.
 
 ## Layout
 
