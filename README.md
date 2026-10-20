@@ -17,6 +17,6 @@ Use Node 22 (`.nvmrc` pins 22.22.3; run `nvm use`). Node 24's V8 intermittently 
 ## Layout
 
 - `index.html`, `demo/index.html` — page entries.
-- `src/` — strict TypeScript modules. `src/site/main.ts` and `src/demo/main.ts` are the page entries. The site controller (`src/site/*.ts`, sharing state through `src/site/context.ts`) imports its boundary rules (`src/site/frontier.ts`) and the shared modules (`src/shared/`) directly; the demo controller (`src/demo/*.ts`, sharing state through `src/demo/context.ts`) does the same with its game rules (`src/demo/rules/`).
-- `public/` — styles and assets, copied into `dist/` unchanged.
-- `tests/` — Node tests. `tests/helpers/sandbox-module.cjs` loads a `src/` module into a test's vm sandbox.
+- `src/` — strict TypeScript modules and the stylesheets Vite bundles and content-hashes. Each page links one stylesheet entry (`src/site/page.css`, `src/demo/page.css`) that imports its page styles and then the shared character editor styles (`src/shared/character.css`). The site's image manifest (`src/site/site-assets.json`) is imported by `src/site/assets.ts` and bundled with it. `src/site/main.ts` and `src/demo/main.ts` are the page entries. The site controller (`src/site/*.ts`, sharing state through `src/site/context.ts`) imports its boundary rules (`src/site/frontier.ts`) and the shared modules (`src/shared/`) directly; the demo controller (`src/demo/*.ts`, sharing state through `src/demo/context.ts`) does the same with its game rules (`src/demo/rules/`).
+- `public/` — static assets (images, fonts, favicon), copied into `dist/` unchanged and referenced by root-relative paths (`/assets/...` in CSS).
+- `tests/` — Node tests. `tests/helpers/sandbox-module.cjs` loads a `src/` module (and the JSON it imports) into a test's vm sandbox.
