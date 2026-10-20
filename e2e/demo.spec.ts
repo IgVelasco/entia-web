@@ -116,12 +116,16 @@ test.describe('offline demo', () => {
       await expect(page.locator('#pause')).toHaveAttribute('aria-pressed', 'false');
     });
 
-    // The controls list promises "Esc: cancel aiming, then pause", but in Chrome the same Escape
-    // that opens the pause dialog also closes it (its cancel handler resumes the game).
-    test.fixme('Escape pauses when no spell is prepared', async ({page}) => {
+    // The controls list promises "Esc: cancel aiming, then pause"; the Escape that opens the pause
+    // dialog must not also count as a request to close it.
+    test('Escape pauses when no spell is prepared, and Escape again resumes', async ({page}) => {
       await openDemo(page);
       await page.keyboard.press('Escape');
       await expect(page.locator('#help-dialog')).toBeVisible();
+      await expect(page.locator('#pause')).toHaveAttribute('aria-pressed', 'true');
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#help-dialog')).toBeHidden();
+      await expect(page.locator('#pause')).toHaveAttribute('aria-pressed', 'false');
     });
 
     test('the character chosen on the site appears in the demo', async ({page}) => {
