@@ -1,16 +1,15 @@
 /* Click orders share keyboard movement and collision rules; no second game loop. */
-(function(root){
-'use strict';
-const M=typeof module!=='undefined'?require('./tutorial.js'):root.EssenceDemo;
-const Physics=typeof module!=='undefined'?require('../../src/shared/physics.ts'):root.WorldPhysics;
+import * as Physics from '../../shared/physics.ts';
+import M from './tutorial.ts';
+import type {DemoState, Point} from './state.ts';
 const originalUpdate=M.update;
-function cancelWalk(s){s.navigation=null;}
-function walkTo(s,target,guide=null){
+function cancelWalk(s: DemoState){s.navigation=null;}
+function walkTo(s: DemoState,target?: Point|null,guide: string|null=null){
  cancelWalk(s);
  if(!target||!Number.isFinite(target.x)||!Number.isFinite(target.y)||s.armed||s.tutorial?.dialog||s.tutorial?.stage==='complete')return false;
- const p=s.player,start=p.step?.end||p;let points=[];
+ const p=s.player,start=p.step?.end||p;let points: Point[]=[];
  if(s.phase==='hallway'){
-  const end={x:Math.max(M.hallway.walk.minX,Math.min(s.tutorial.seen.length===3?M.hallway.walk.maxX:432,target.x)),y:Math.max(M.hallway.walk.minY,Math.min(M.hallway.walk.maxY,target.y))};
+  const end={x:Math.max(M.hallway.walk.minX,Math.min(s.tutorial!.seen.length===3?M.hallway.walk.maxX:432,target.x)),y:Math.max(M.hallway.walk.minY,Math.min(M.hallway.walk.maxY,target.y))};
   points=[{x:end.x,y:start.y},end].filter(q=>Math.hypot(q.x-start.x,q.y-start.y)>.1);
  }else{
   const physics=Physics.create({width:M.WIDTH,height:M.HEIGHT,minY:160,radius:M.RADIUS,obstacles:[...M.obstacles,...(s.bankUnlocked?[M.bankBounds(s)]:[])]});
@@ -30,7 +29,7 @@ function walkTo(s,target,guide=null){
  }
  s.navigation={points,guide,phase:s.phase,stalled:0};s.meditating=false;return true;
 }
-function finish(s){const guide=s.navigation?.guide;cancelWalk(s);if(guide&&s.phase==='hallway'){const g=M.guides.find(g=>g.id===guide);if(g&&Math.hypot(g.x-s.player.x,g.y-s.player.y)<100)M.talk(s,guide);}}
+function finish(s: DemoState){const guide=s.navigation?.guide;cancelWalk(s);if(guide&&s.phase==='hallway'){const g=M.guides.find(g=>g.id===guide);if(g&&Math.hypot(g.x-s.player.x,g.y-s.player.y)<100)M.talk(s,guide);}}
 M.update=function(s,dt,input={x:0,y:0}){
  if(input.x||input.y)cancelWalk(s);
  if(s.armed||s.player.hp<=0||s.tutorial?.dialog||s.navigation?.phase!==s.phase)cancelWalk(s);
@@ -40,6 +39,5 @@ M.update=function(s,dt,input={x:0,y:0}){
  originalUpdate(s,dt,input);
  if(nav&&s.navigation===nav){if(s.phase!==nav.phase||Math.hypot(p.x-x,p.y-y)>160*Math.max(0,Math.min(dt,.05))+.1){cancelWalk(s);return;}if(s.phase==='arena'&&!p.step&&nav.points.length&&Math.hypot(p.x-x,p.y-y)>.001&&Math.hypot((stepEnd||nav.points[0]).x-p.x,(stepEnd||nav.points[0]).y-p.y)>.1){cancelWalk(s);if(s.noticeId===noticeBefore)M.tell(s,'Route blocked. Click again to choose a new path.');return;}if(!p.immobilized){nav.stalled=Math.hypot(p.x-x,p.y-y)<.001?nav.stalled+Math.max(0,Math.min(dt,.05)):0;if(nav.stalled>.5){cancelWalk(s);if(s.noticeId===noticeBefore)M.tell(s,'Route blocked. Click again to choose a new path.');}}}
 };
-Object.assign(M,{walkTo,cancelWalk});
-if(typeof module!=='undefined')module.exports=M;
-})(typeof window!=='undefined'?window:globalThis);
+// The demo's complete rules: the model object with the tutorial and click-navigation layers applied.
+export default Object.assign(M,{walkTo,cancelWalk});

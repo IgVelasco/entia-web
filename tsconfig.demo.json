@@ -3,10 +3,8 @@
   "files": [
     "types/shared.d.ts",
     "src/shared/globals.ts",
+    "src/demo/globals.ts",
     "types/demo.d.ts",
-    "public/demo/model.js",
-    "public/demo/tutorial.js",
-    "public/demo/navigation.js",
     "public/demo/demo.js"
   ]
 }

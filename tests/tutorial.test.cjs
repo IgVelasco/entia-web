@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const M=require('../public/demo/tutorial.js');
+const M=require('../src/demo/rules/tutorial.ts').default;
 const advance=(s,n,input={x:0,y:0})=>{for(let i=0;i<n*50;i++)M.update(s,.02,input);};
 function arena(){const s=M.createTutorial();for(const g of M.guides){M.talk(s,g.id);while(s.tutorial.dialog)M.nextGuide(s);}assert(M.enterArena(s));return s;}
 test('fresh tutorial begins in a safe bounded hall with three distinct guides',()=>{const s=M.createTutorial();assert.equal(s.phase,'hallway');assert.equal(M.guides.length,3);assert(!M.enterArena(s));s.armed=true;assert(!M.cast(s,{x:100,y:100}));assert(!M.melee(s));assert.equal(s.kills,0);assert.equal(s.player.hp,100);});

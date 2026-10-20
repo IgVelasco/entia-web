@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const M=require('../public/demo/navigation.js');
+const M=require('../src/demo/rules/navigation.ts').default;
 const advance=(s,seconds,input={x:0,y:0})=>{for(let i=0;i<seconds*50;i++)M.update(s,.02,input);};
 function arena(){const s=M.create();s.enemies=[];return s;}
 test('walking toward each unseen guide prompts automatically, but idle proximity does not',()=>{const s=M.createTutorial();advance(s,2);assert.equal(s.tutorial.dialog,null);advance(s,1,{x:1,y:0});assert.equal(s.tutorial.dialog.id,'warden');while(s.tutorial.dialog)M.nextGuide(s);advance(s,.4,{x:-1,y:0});advance(s,.4,{x:1,y:0});assert.equal(s.tutorial.dialog,null);advance(s,1,{x:1,y:0});assert.equal(s.tutorial.dialog.id,'arcanist');});
