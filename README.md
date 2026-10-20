@@ -10,7 +10,7 @@ The Nix site (`index.html`) and its embedded offline demo (`demo/index.html`), b
 4. For a production-like check, run `npm run build` and then `npm run preview`, which serves `dist/`.
 5. The e2e suite runs in Google Chrome. If it isn't installed, run `npx playwright install chrome` once.
 
-Before opening a pull request, run `npm run typecheck`, `npm run lint`, `npm test`, `npm run build` and `npm run test:e2e`. CI runs the same checks on every pull request.
+Before opening a pull request, run `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm test`, `npm run build` and `npm run test:e2e`. CI runs the same checks on every pull request.
 
 ## Node
 
@@ -40,6 +40,7 @@ Until then, type-aware lint rules reason with TypeScript 6, so a lint fix (espec
 - `npm run test:e2e` — Playwright suite in the installed Google Chrome against a fresh build (`e2e/`).
 - `npm run typecheck` — type-checks `src/` and the e2e suite.
 - `npm run lint` — ESLint with typescript-eslint's type-aware recommended rules.
+- `npm run format` — formats the repo with Prettier (`.prettierrc.json`); `npm run format:check` reports unformatted files without changing them, and CI runs it.
 
 ## Layout
 
