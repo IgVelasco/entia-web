@@ -4,12 +4,7 @@
     "w": 96,
     "h": 160
   },
-  "directions": [
-    "north",
-    "east",
-    "south",
-    "west"
-  ],
+  "directions": ["north", "east", "south", "west"],
   "columns": 8,
   "frames": "Idle, seven walking poses",
   "bodyHeight": 88,

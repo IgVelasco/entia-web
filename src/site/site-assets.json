@@ -46,20 +46,9 @@
   "house_art": {
     "source_ppt": 60,
     "world_tile": 32,
-    "canvas": [
-      480,
-      683
-    ],
-    "door_source_x": [
-      270,
-      390
-    ],
-    "steps_source_rect": [
-      270,
-      639,
-      120,
-      44
-    ],
+    "canvas": [480, 683],
+    "door_source_x": [270, 390],
+    "steps_source_rect": [270, 639, 120, 44],
     "note": "Generated redesigned art; website entrance collisions, not imported RAO map collision data.",
     "lintel_source_y": 503,
     "roof_fade_seconds": 0.22,
@@ -69,12 +58,7 @@
     "frame_width": 96,
     "frame_height": 160,
     "columns": 1,
-    "direction_rows": [
-      "north",
-      "east",
-      "south",
-      "west"
-    ],
+    "direction_rows": ["north", "east", "south", "west"],
     "walk_animation_included": false,
     "registration_revision": 3,
     "neck_socket": {
@@ -87,12 +71,7 @@
     "frame_width": 96,
     "frame_height": 160,
     "columns": 8,
-    "direction_rows": [
-      "north",
-      "east",
-      "south",
-      "west"
-    ],
+    "direction_rows": ["north", "east", "south", "west"],
     "source_ppt": 60,
     "body_family": 156,
     "walk_cycle_tiles": 2,
@@ -103,12 +82,7 @@
     "frame_width": 96,
     "frame_height": 160,
     "columns": 1,
-    "direction_rows": [
-      "north",
-      "east",
-      "south",
-      "west"
-    ],
+    "direction_rows": ["north", "east", "south", "west"],
     "source_ppt": 60,
     "animation": "idle",
     "head": "User-finished bearded head, preserved without resizing or recolouring",

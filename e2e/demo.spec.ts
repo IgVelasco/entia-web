@@ -1,4 +1,4 @@
-import {test, expect, openDemo, openSite, type Page} from './fixtures.ts';
+import { test, expect, openDemo, openSite, type Page } from './fixtures.ts';
 
 const guides = ['The Warden', 'The Arcanist', 'The Keeper'];
 
@@ -35,7 +35,7 @@ async function enterArena(page: Page) {
 }
 
 test.describe('offline demo', () => {
-  test('boots in the tutorial hallway with full resources', async ({page}) => {
+  test('boots in the tutorial hallway with full resources', async ({ page }) => {
     await openDemo(page);
     await expect(page.locator('#game')).toBeVisible();
     await expect(page.locator('#chapter')).toHaveText('THE VEIL / FIRST STEPS');
@@ -46,10 +46,10 @@ test.describe('offline demo', () => {
     await expect(page.locator('#journey-0')).toHaveAttribute('data-state', 'current');
     await expect(page.locator('#prepare-spell')).toBeDisabled();
     await expect(page.locator('#help-dialog')).toBeHidden();
-    await expect(page.getByRole('button', {name: 'Change character: Avharot'})).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Change character: Avharot' })).toBeVisible();
   });
 
-  test('E talks to the nearby guide, and finishing the dialog counts the guide as met', async ({page}) => {
+  test('E talks to the nearby guide, and finishing the dialog counts the guide as met', async ({ page }) => {
     await openDemo(page);
     await expect(page.locator('#interact')).toHaveText('Talk to The Warden · E');
     await expect(page.locator('#game')).toBeFocused();
@@ -59,9 +59,9 @@ test.describe('offline demo', () => {
   });
 
   test.describe('with reduced motion', () => {
-    test.use({reducedMotion: 'reduce'});
+    test.use({ reducedMotion: 'reduce' });
 
-    test('walking into each guide opens their lesson, then the arena opens', async ({page}) => {
+    test('walking into each guide opens their lesson, then the arena opens', async ({ page }) => {
       await openDemo(page);
       await enterArena(page);
       await expect(page.locator('#objective-label')).toHaveText('FIGHT TWO RIVALS');
@@ -72,7 +72,7 @@ test.describe('offline demo', () => {
       await expect(page.locator('#prepare-spell')).toBeEnabled();
     });
 
-    test('the hallway exit stays closed until every guide is met', async ({page}) => {
+    test('the hallway exit stays closed until every guide is met', async ({ page }) => {
       await openDemo(page);
       await page.keyboard.press('e');
       await readGuide(page, 'The Warden');
@@ -83,7 +83,7 @@ test.describe('offline demo', () => {
       await expect(page.locator('#chapter')).toHaveText('THE VEIL / FIRST STEPS');
     });
 
-    test('C prepares a spell, Escape cancels it, and Prepare toggles aiming', async ({page}) => {
+    test('C prepares a spell, Escape cancels it, and Prepare toggles aiming', async ({ page }) => {
       await openDemo(page);
       await enterArena(page);
       const prepare = page.locator('#prepare-spell');
@@ -105,20 +105,20 @@ test.describe('offline demo', () => {
       await expect(prepare).toHaveAttribute('aria-pressed', 'false');
     });
 
-    test('P pauses with the controls dialog and Resume continues', async ({page}) => {
+    test('P pauses with the controls dialog and Resume continues', async ({ page }) => {
       await openDemo(page);
       await page.keyboard.press('p');
       await expect(page.locator('#help-dialog')).toBeVisible();
       await expect(page.locator('#help-title')).toHaveText('Paused');
       await expect(page.locator('#pause')).toHaveAttribute('aria-pressed', 'true');
-      await page.getByRole('button', {name: 'Resume'}).click();
+      await page.getByRole('button', { name: 'Resume' }).click();
       await expect(page.locator('#help-dialog')).toBeHidden();
       await expect(page.locator('#pause')).toHaveAttribute('aria-pressed', 'false');
     });
 
     // The controls list promises "Esc: cancel aiming, then pause"; the Escape that opens the pause
     // dialog must not also count as a request to close it.
-    test('Escape pauses when no spell is prepared, and Escape again resumes', async ({page}) => {
+    test('Escape pauses when no spell is prepared, and Escape again resumes', async ({ page }) => {
       await openDemo(page);
       await page.keyboard.press('Escape');
       await expect(page.locator('#help-dialog')).toBeVisible();
@@ -128,18 +128,18 @@ test.describe('offline demo', () => {
       await expect(page.locator('#pause')).toHaveAttribute('aria-pressed', 'false');
     });
 
-    test('the character chosen on the site appears in the demo', async ({page}) => {
+    test('the character chosen on the site appears in the demo', async ({ page }) => {
       await openSite(page);
-      await page.getByRole('button', {name: 'Change character: Avharot'}).click();
+      await page.getByRole('button', { name: 'Change character: Avharot' }).click();
       await page.getByLabel('Character name').fill('Lyra');
-      await page.getByRole('button', {name: 'Use this character'}).click();
+      await page.getByRole('button', { name: 'Use this character' }).click();
       await openDemo(page);
-      await expect(page.getByRole('button', {name: 'Change character: Lyra'})).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Change character: Lyra' })).toBeVisible();
     });
 
-    test('Home leaves the standalone demo for Nix', async ({page}) => {
+    test('Home leaves the standalone demo for Nix', async ({ page }) => {
       await openDemo(page);
-      await page.getByRole('button', {name: 'Home', exact: true}).click();
+      await page.getByRole('button', { name: 'Home', exact: true }).click();
       await expect(page).toHaveURL(/\/#home$/);
       await expect(page.locator('#loading')).toBeHidden();
       await expect(page.locator('#location-name')).toHaveText('Home');

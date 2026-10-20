@@ -1,56 +1,565 @@
-const test=require('node:test'),assert=require('node:assert/strict'),M=require('../src/demo/rules/model.ts').default,P=require('../src/shared/physics.ts');
-const cast=(s,target)=>{s.armed=true;return M.cast(s,target);};
-const tick=(s,seconds,input)=>{for(let i=0;i<Math.ceil(seconds/.02);i++)M.update(s,.02,input);};
-const collectAll=s=>{s.time+=.6;let amount=0;for(const d of [...s.drops]){s.player.x=d.x;s.player.y=d.y;amount+=M.pickup(s);}return amount;};
-const quiet=s=>{s.enemies.forEach(e=>{e.hp=0;e.respawn=1e6;});};
-test('demo starts after the home portal, banking initially locked',()=>{const s=M.create();s.armed=true;assert.equal(s.phase,'arena');assert.equal(s.bankUnlocked,false);assert.equal(M.nearBank(s),false);});
-test('trunks, arch pillars and borders are solid; central opening is free',()=>{for(const o of M.obstacles)assert(!M.walkable(o.x+o.w/2,o.y+o.h/2));assert(!M.walkable(5,400));assert(M.walkable(165,470));});
-test('large movement cannot tunnel through portal pillars or actors',()=>{const o=M.obstacles[0],a={x:o.x-20,y:o.y+30};M.move(a,160,0);assert(a.x<=o.x-10);assert(M.walkable(a.x,a.y));const b={x:500,y:550},c={x:540,y:550};M.move(b,100,0,[c]);assert(b.x<=520);});
+const test = require('node:test'),
+  assert = require('node:assert/strict'),
+  M = require('../src/demo/rules/model.ts').default,
+  P = require('../src/shared/physics.ts');
+const cast = (s, target) => {
+  s.armed = true;
+  return M.cast(s, target);
+};
+const tick = (s, seconds, input) => {
+  for (let i = 0; i < Math.ceil(seconds / 0.02); i++) M.update(s, 0.02, input);
+};
+const collectAll = (s) => {
+  s.time += 0.6;
+  let amount = 0;
+  for (const d of [...s.drops]) {
+    s.player.x = d.x;
+    s.player.y = d.y;
+    amount += M.pickup(s);
+  }
+  return amount;
+};
+const quiet = (s) => {
+  s.enemies.forEach((e) => {
+    e.hp = 0;
+    e.respawn = 1e6;
+  });
+};
+test('demo starts after the home portal, banking initially locked', () => {
+  const s = M.create();
+  s.armed = true;
+  assert.equal(s.phase, 'arena');
+  assert.equal(s.bankUnlocked, false);
+  assert.equal(M.nearBank(s), false);
+});
+test('trunks, arch pillars and borders are solid; central opening is free', () => {
+  for (const o of M.obstacles) assert(!M.walkable(o.x + o.w / 2, o.y + o.h / 2));
+  assert(!M.walkable(5, 400));
+  assert(M.walkable(165, 470));
+});
+test('large movement cannot tunnel through portal pillars or actors', () => {
+  const o = M.obstacles[0],
+    a = { x: o.x - 20, y: o.y + 30 };
+  M.move(a, 160, 0);
+  assert(a.x <= o.x - 10);
+  assert(M.walkable(a.x, a.y));
+  const b = { x: 500, y: 550 },
+    c = { x: 540, y: 550 };
+  M.move(b, 100, 0, [c]);
+  assert(b.x <= 520);
+});
 
-test('player and bots use one axis per simulation frame',()=>{const s=M.create();s.armed=true;for(let i=0;i<500;i++){const before=[s.player,...s.enemies].map(a=>({x:a.x,y:a.y}));M.update(s,.02,{x:1,y:1});[s.player,...s.enemies].forEach((a,j)=>{if(s.flash<.9)assert(a.x===before[j].x||a.y===before[j].y);});}});
-test('pointer targeting does not substitute nearest enemy',()=>{const s=M.create();s.armed=true;s.player.x=400;s.player.y=360;assert(!cast(s));assert(cast(s,{x:430,y:430}));tick(s,.35);assert.equal(s.enemies[0].hp,2);assert.equal(s.fx[0].x,430);});
-test('spells obey range and scenery line of sight',()=>{const s=M.create();s.armed=true;s.player.x=70;s.player.y=430;assert(!cast(s,{x:150,y:430}));assert(!cast(s,{x:900,y:700}));});
-test('kill creates a ground drop without direct credit; pickup is exactly once',()=>{const s=M.create();s.armed=true;s.player.x=400;s.player.y=360;s.enemies[0].hp=1;s.enemies[0].wind=2;assert(cast(s,{x:496,y:368,enemyId:'Wanderer'}));tick(s,.36);assert.equal(s.kills,1);assert.equal(s.carried,0);assert.equal(s.drops.length,2);assert.equal(s.bankUnlocked,false);quiet(s);s.player.x=496;s.player.y=368;tick(s,.6);collectAll(s);assert.equal(s.carried,15);assert.equal(s.drops.length,0);assert(s.bankUnlocked);tick(s,1);assert.equal(s.carried,15);});
-test('bank unlocks after pickup and drains automatically after a short dwell',()=>{const s=M.create();quiet(s);s.player.x=176;s.player.y=752;M.drop(s,176,752,25,'rival');tick(s,.6);collectAll(s);s.player.x=176;s.player.y=752;assert(s.bankUnlocked);tick(s,.8);assert.equal(s.secured,0);tick(s,.5);assert(s.secured>0&&s.carried>0);assert.equal(s.carried+s.secured,25);tick(s,3);assert.equal(s.secured,25);assert.equal(s.carried,0);tick(s,2);assert.equal(s.secured,25);});
+test('player and bots use one axis per simulation frame', () => {
+  const s = M.create();
+  s.armed = true;
+  for (let i = 0; i < 500; i++) {
+    const before = [s.player, ...s.enemies].map((a) => ({ x: a.x, y: a.y }));
+    M.update(s, 0.02, { x: 1, y: 1 });
+    [s.player, ...s.enemies].forEach((a, j) => {
+      if (s.flash < 0.9) assert(a.x === before[j].x || a.y === before[j].y);
+    });
+  }
+});
+test('pointer targeting does not substitute nearest enemy', () => {
+  const s = M.create();
+  s.armed = true;
+  s.player.x = 400;
+  s.player.y = 360;
+  assert(!cast(s));
+  assert(cast(s, { x: 430, y: 430 }));
+  tick(s, 0.35);
+  assert.equal(s.enemies[0].hp, 2);
+  assert.equal(s.fx[0].x, 430);
+});
+test('spells obey range and scenery line of sight', () => {
+  const s = M.create();
+  s.armed = true;
+  s.player.x = 70;
+  s.player.y = 430;
+  assert(!cast(s, { x: 150, y: 430 }));
+  assert(!cast(s, { x: 900, y: 700 }));
+});
+test('kill creates a ground drop without direct credit; pickup is exactly once', () => {
+  const s = M.create();
+  s.armed = true;
+  s.player.x = 400;
+  s.player.y = 360;
+  s.enemies[0].hp = 1;
+  s.enemies[0].wind = 2;
+  assert(cast(s, { x: 496, y: 368, enemyId: 'Wanderer' }));
+  tick(s, 0.36);
+  assert.equal(s.kills, 1);
+  assert.equal(s.carried, 0);
+  assert.equal(s.drops.length, 2);
+  assert.equal(s.bankUnlocked, false);
+  quiet(s);
+  s.player.x = 496;
+  s.player.y = 368;
+  tick(s, 0.6);
+  collectAll(s);
+  assert.equal(s.carried, 15);
+  assert.equal(s.drops.length, 0);
+  assert(s.bankUnlocked);
+  tick(s, 1);
+  assert.equal(s.carried, 15);
+});
+test('bank unlocks after pickup and drains automatically after a short dwell', () => {
+  const s = M.create();
+  quiet(s);
+  s.player.x = 176;
+  s.player.y = 752;
+  M.drop(s, 176, 752, 25, 'rival');
+  tick(s, 0.6);
+  collectAll(s);
+  s.player.x = 176;
+  s.player.y = 752;
+  assert(s.bankUnlocked);
+  tick(s, 0.8);
+  assert.equal(s.secured, 0);
+  tick(s, 0.5);
+  assert(s.secured > 0 && s.carried > 0);
+  assert.equal(s.carried + s.secured, 25);
+  tick(s, 3);
+  assert.equal(s.secured, 25);
+  assert.equal(s.carried, 0);
+  tick(s, 2);
+  assert.equal(s.secured, 25);
+});
 
-test('leaving the bank stops the stream and preserves both balances',()=>{const s=M.create();quiet(s);s.bankUnlocked=true;s.player.x=176;s.player.y=752;s.carried=40;tick(s,1.5);const secured=s.secured,carried=s.carried;assert(secured>0&&carried>0);s.player.x=600;tick(s,2);assert.equal(s.secured,secured);assert.equal(s.carried,carried);assert.equal(s.bank,0);assert.equal(s.streamParticles.length,0);});
+test('leaving the bank stops the stream and preserves both balances', () => {
+  const s = M.create();
+  quiet(s);
+  s.bankUnlocked = true;
+  s.player.x = 176;
+  s.player.y = 752;
+  s.carried = 40;
+  tick(s, 1.5);
+  const secured = s.secured,
+    carried = s.carried;
+  assert(secured > 0 && carried > 0);
+  s.player.x = 600;
+  tick(s, 2);
+  assert.equal(s.secured, secured);
+  assert.equal(s.carried, carried);
+  assert.equal(s.bank, 0);
+  assert.equal(s.streamParticles.length, 0);
+});
 
-test('death drops carried essence at death site, keeps secured and allows recovery',()=>{const s=M.create();s.armed=true;s.player.x=500;s.player.y=550;s.player.hp=0;s.carried=25;s.secured=40;quiet(s);M.update(s,.02);assert.equal(s.carried,0);assert.equal(s.secured,40);assert.equal(s.player.hp,100);assert.equal(s.drops[0].x,M.tileCenter(500));assert.equal(s.drops.length,3);assert.equal(s.drops.reduce((n,d)=>n+d.amount,0),25);s.player.x=500;s.player.y=550;tick(s,.6);collectAll(s);assert.equal(s.carried,25);assert.equal(s.drops.length,0);});
-test('bots launch visible spells; moving away from the marked tile avoids damage',()=>{const s=M.create();s.player.x=495;s.player.y=405;s.enemies[0].wind=.1;s.enemies[0].aim={x:495,y:405};tick(s,.5);assert(s.player.hp<100);assert(s.fx.some(f=>f.owner==='enemy'));const t=M.create();t.player.x=495;t.player.y=405;t.enemies[0].wind=.1;t.enemies[0].aim={x:495,y:405};tick(t,.5,{x:0,y:1});assert.equal(t.player.hp,100);});
+test('death drops carried essence at death site, keeps secured and allows recovery', () => {
+  const s = M.create();
+  s.armed = true;
+  s.player.x = 500;
+  s.player.y = 550;
+  s.player.hp = 0;
+  s.carried = 25;
+  s.secured = 40;
+  quiet(s);
+  M.update(s, 0.02);
+  assert.equal(s.carried, 0);
+  assert.equal(s.secured, 40);
+  assert.equal(s.player.hp, 100);
+  assert.equal(s.drops[0].x, M.tileCenter(500));
+  assert.equal(s.drops.length, 3);
+  assert.equal(
+    s.drops.reduce((n, d) => n + d.amount, 0),
+    25,
+  );
+  s.player.x = 500;
+  s.player.y = 550;
+  tick(s, 0.6);
+  collectAll(s);
+  assert.equal(s.carried, 25);
+  assert.equal(s.drops.length, 0);
+});
+test('bots launch visible spells; moving away from the marked tile avoids damage', () => {
+  const s = M.create();
+  s.player.x = 495;
+  s.player.y = 405;
+  s.enemies[0].wind = 0.1;
+  s.enemies[0].aim = { x: 495, y: 405 };
+  tick(s, 0.5);
+  assert(s.player.hp < 100);
+  assert(s.fx.some((f) => f.owner === 'enemy'));
+  const t = M.create();
+  t.player.x = 495;
+  t.player.y = 405;
+  t.enemies[0].wind = 0.1;
+  t.enemies[0].aim = { x: 495, y: 405 };
+  tick(t, 0.5, { x: 0, y: 1 });
+  assert.equal(t.player.hp, 100);
+});
 
-test('sixty secured wins and a new run clears counters',()=>{const s=M.create();quiet(s);s.bankUnlocked=true;s.player.x=176;s.player.y=752;s.carried=60;tick(s,7);assert(s.won);assert.equal(s.secured,60);assert.equal(M.create().secured,0);});
+test('sixty secured wins and a new run clears counters', () => {
+  const s = M.create();
+  quiet(s);
+  s.bankUnlocked = true;
+  s.player.x = 176;
+  s.player.y = 752;
+  s.carried = 60;
+  tick(s, 7);
+  assert(s.won);
+  assert.equal(s.secured, 60);
+  assert.equal(M.create().secured, 0);
+});
 
-test('cardinal pathfinding routes around solid obstacles without clipping',()=>{const w=P.create({width:500,height:500,obstacles:[{x:230,y:100,w:40,h:260}]}),start={x:100,y:200},goal={x:400,y:200};const path=w.path(start,goal);assert(path.length);let prev=start;for(const p of path){assert(prev.x===p.x||prev.y===p.y);assert(w.clear(prev,p));prev=p;}assert.deepEqual(path.at(-1),goal);});
-test('deterministic long simulation keeps valid positions and nonnegative resources',()=>{const s=M.create();s.armed=true;for(let i=0;i<12000;i++){M.update(s,.02,{x:Math.sin(i/120),y:Math.cos(i/170)});if(i%45===0)cast(s,{x:s.player.x+80,y:s.player.y});assert(M.walkable(s.player.x,s.player.y));assert(s.player.hp>0);assert(s.carried>=0&&s.secured>=0);}});
+test('cardinal pathfinding routes around solid obstacles without clipping', () => {
+  const w = P.create({ width: 500, height: 500, obstacles: [{ x: 230, y: 100, w: 40, h: 260 }] }),
+    start = { x: 100, y: 200 },
+    goal = { x: 400, y: 200 };
+  const path = w.path(start, goal);
+  assert(path.length);
+  let prev = start;
+  for (const p of path) {
+    assert(prev.x === p.x || prev.y === p.y);
+    assert(w.clear(prev, p));
+    prev = p;
+  }
+  assert.deepEqual(path.at(-1), goal);
+});
+test('deterministic long simulation keeps valid positions and nonnegative resources', () => {
+  const s = M.create();
+  s.armed = true;
+  for (let i = 0; i < 12000; i++) {
+    M.update(s, 0.02, { x: Math.sin(i / 120), y: Math.cos(i / 170) });
+    if (i % 45 === 0) cast(s, { x: s.player.x + 80, y: s.player.y });
+    assert(M.walkable(s.player.x, s.player.y));
+    assert(s.player.hp > 0);
+    assert(s.carried >= 0 && s.secured >= 0);
+  }
+});
 
-test('all bots approach and take only two or three targeted hits',()=>{const s=M.create();s.armed=true;assert(s.enemies.every(e=>e.kind==='ranged'&&e.maxHp<=3));const e=s.enemies[0];s.player.x=300;s.player.y=360;const before=Math.hypot(e.x-s.player.x,e.y-s.player.y);tick(s,.2);assert(Math.hypot(e.x-s.player.x,e.y-s.player.y)<before);cast(s,{x:e.x,y:e.y,enemyId:e.name});assert.equal(e.hp,1);s.cooldown=0;cast(s,{x:e.x,y:e.y,enemyId:e.name});assert.equal(e.hp,0);assert.equal(s.carried,0);assert.equal(s.drops.length,2);});
+test('all bots approach and take only two or three targeted hits', () => {
+  const s = M.create();
+  s.armed = true;
+  assert(s.enemies.every((e) => e.kind === 'ranged' && e.maxHp <= 3));
+  const e = s.enemies[0];
+  s.player.x = 300;
+  s.player.y = 360;
+  const before = Math.hypot(e.x - s.player.x, e.y - s.player.y);
+  tick(s, 0.2);
+  assert(Math.hypot(e.x - s.player.x, e.y - s.player.y) < before);
+  cast(s, { x: e.x, y: e.y, enemyId: e.name });
+  assert.equal(e.hp, 1);
+  s.cooldown = 0;
+  cast(s, { x: e.x, y: e.y, enemyId: e.name });
+  assert.equal(e.hp, 0);
+  assert.equal(s.carried, 0);
+  assert.equal(s.drops.length, 2);
+});
 
-test('a released movement tap completes exactly one 32-unit cardinal tile',()=>{const s=M.create();quiet(s);const x=s.player.x,y=s.player.y;M.update(s,.02,{x:1,y:0});tick(s,.2);assert.equal(s.player.x,x+32);assert.equal(s.player.y,y);assert.equal(s.player.step,null);});
+test('a released movement tap completes exactly one 32-unit cardinal tile', () => {
+  const s = M.create();
+  quiet(s);
+  const x = s.player.x,
+    y = s.player.y;
+  M.update(s, 0.02, { x: 1, y: 0 });
+  tick(s, 0.2);
+  assert.equal(s.player.x, x + 32);
+  assert.equal(s.player.y, y);
+  assert.equal(s.player.step, null);
+});
 
-test('pickup is deliberate and melee only hits the facing neighbour',()=>{const s=M.create();quiet(s);M.drop(s,s.player.x,s.player.y,15,'rival');tick(s,.6);assert.equal(s.carried,0);assert.equal(M.pickup(s),10);assert.equal(M.pickup(s),0);assert.equal(collectAll(s),5);const e=s.enemies[0];e.hp=2;e.x=s.player.x+32;e.y=s.player.y;s.player.dir=3;M.melee(s);assert.equal(e.hp,2);s.meleeCooldown=0;s.player.dir=1;M.melee(s);assert.equal(e.hp,1);});
-test('meditation recovers mana and movement cancels it',()=>{const s=M.create();quiet(s);s.player.x=500;s.player.y=550;s.player.mana=10;M.meditate(s);tick(s,1);assert(s.player.mana>10);M.update(s,.02,{x:1,y:0});assert(!s.meditating);});
+test('pickup is deliberate and melee only hits the facing neighbour', () => {
+  const s = M.create();
+  quiet(s);
+  M.drop(s, s.player.x, s.player.y, 15, 'rival');
+  tick(s, 0.6);
+  assert.equal(s.carried, 0);
+  assert.equal(M.pickup(s), 10);
+  assert.equal(M.pickup(s), 0);
+  assert.equal(collectAll(s), 5);
+  const e = s.enemies[0];
+  e.hp = 2;
+  e.x = s.player.x + 32;
+  e.y = s.player.y;
+  s.player.dir = 3;
+  M.melee(s);
+  assert.equal(e.hp, 2);
+  s.meleeCooldown = 0;
+  s.player.dir = 1;
+  M.melee(s);
+  assert.equal(e.hp, 1);
+});
+test('meditation recovers mana and movement cancels it', () => {
+  const s = M.create();
+  quiet(s);
+  s.player.x = 500;
+  s.player.y = 550;
+  s.player.mana = 10;
+  M.meditate(s);
+  tick(s, 1);
+  assert(s.player.mana > 10);
+  M.update(s, 0.02, { x: 1, y: 0 });
+  assert(!s.meditating);
+});
 
-test('unarmed clicks cannot cast, armed clicks consume mana once',()=>{const s=M.create();s.player.x=400;s.player.y=360;const target={x:496,y:368,enemyId:'Wanderer'};assert(!M.cast(s,target));assert.equal(s.player.mana,100);s.armed=true;assert(M.cast(s,target));assert.equal(s.player.mana,85);assert(!M.cast(s,target));assert.equal(s.player.mana,85);s.cooldown=0;s.player.mana=10;s.armed=true;assert(!M.cast(s,target));});
+test('unarmed clicks cannot cast, armed clicks consume mana once', () => {
+  const s = M.create();
+  s.player.x = 400;
+  s.player.y = 360;
+  const target = { x: 496, y: 368, enemyId: 'Wanderer' };
+  assert(!M.cast(s, target));
+  assert.equal(s.player.mana, 100);
+  s.armed = true;
+  assert(M.cast(s, target));
+  assert.equal(s.player.mana, 85);
+  assert(!M.cast(s, target));
+  assert.equal(s.player.mana, 85);
+  s.cooldown = 0;
+  s.player.mana = 10;
+  s.armed = true;
+  assert(!M.cast(s, target));
+});
 
-test('each cast attempt disarms, including cooldown and mana rejection',()=>{const s=M.create();s.player.x=400;s.player.y=360;const target={x:496,y:368,enemyId:'Wanderer'};s.armed=true;assert(M.cast(s,target));assert(!s.armed);s.armed=true;assert(!M.cast(s,target));assert(!s.armed);s.cooldown=0;s.player.mana=0;s.armed=true;assert(!M.cast(s,target));assert(!s.armed);});
+test('each cast attempt disarms, including cooldown and mana rejection', () => {
+  const s = M.create();
+  s.player.x = 400;
+  s.player.y = 360;
+  const target = { x: 496, y: 368, enemyId: 'Wanderer' };
+  s.armed = true;
+  assert(M.cast(s, target));
+  assert(!s.armed);
+  s.armed = true;
+  assert(!M.cast(s, target));
+  assert(!s.armed);
+  s.cooldown = 0;
+  s.player.mana = 0;
+  s.armed = true;
+  assert(!M.cast(s, target));
+  assert(!s.armed);
+});
 
-test('distant proximity never transfers and pausing simulation conserves value',()=>{const s=M.create();quiet(s);s.bankUnlocked=true;s.player.x=600;s.carried=25;tick(s,3);assert.equal(s.secured,0);assert.equal(s.carried,25);s.player.x=176;s.player.y=752;tick(s,1.3);assert.equal(s.carried+s.secured,25);assert(s.streamParticles.length>0);});
+test('distant proximity never transfers and pausing simulation conserves value', () => {
+  const s = M.create();
+  quiet(s);
+  s.bankUnlocked = true;
+  s.player.x = 600;
+  s.carried = 25;
+  tick(s, 3);
+  assert.equal(s.secured, 0);
+  assert.equal(s.carried, 25);
+  s.player.x = 176;
+  s.player.y = 752;
+  tick(s, 1.3);
+  assert.equal(s.carried + s.secured, 25);
+  assert(s.streamParticles.length > 0);
+});
 
-test('demo is tree-free and actors, props and drops use a shared tile grid',()=>{const s=M.create();assert.equal(M.scenery.length,0);for(const p of [s.player,...s.enemies,M.gateway,M.banker]){assert.equal(p.x%M.TILE,16);assert.equal(p.y%M.TILE,16);}M.drop(s,501.3,549.8,10,'rival');assert.equal(s.drops[0].x%32,16);assert.equal(s.drops[0].y%32,16);assert(M.walkable(s.drops[0].x,s.drops[0].y));M.drop(s,502,550,5,'player');assert.equal(s.drops.length,2);assert.deepEqual(s.drops.map(d=>d.amount),[10,5]);});
+test('demo is tree-free and actors, props and drops use a shared tile grid', () => {
+  const s = M.create();
+  assert.equal(M.scenery.length, 0);
+  for (const p of [s.player, ...s.enemies, M.gateway, M.banker]) {
+    assert.equal(p.x % M.TILE, 16);
+    assert.equal(p.y % M.TILE, 16);
+  }
+  M.drop(s, 501.3, 549.8, 10, 'rival');
+  assert.equal(s.drops[0].x % 32, 16);
+  assert.equal(s.drops[0].y % 32, 16);
+  assert(M.walkable(s.drops[0].x, s.drops[0].y));
+  M.drop(s, 502, 550, 5, 'player');
+  assert.equal(s.drops.length, 2);
+  assert.deepEqual(
+    s.drops.map((d) => d.amount),
+    [10, 5],
+  );
+});
 
-test('held auto-pot uses a shared 260ms cadence and suppresses release',()=>{const s=M.create();quiet(s);s.player.x=500;s.player.y=550;M.pressPotion(s,'f1','life');tick(s,1);assert.equal(s.lifePotions,96);M.releasePotion(s,'f1');assert.equal(s.lifePotions,96);assert.equal(s.player.hp,100);});
-test('most recently pressed potion wins the shared cadence',()=>{const s=M.create();quiet(s);M.pressPotion(s,'f1','life');tick(s,.02);assert.equal(s.lifePotions,99);M.pressPotion(s,'f2','mana');tick(s,.26);assert.equal(s.manaPotions,99);assert.equal(s.lifePotions,99);M.releasePotion(s,'f2');tick(s,.26);assert.equal(s.lifePotions,98);assert.equal(s.manaPotions,99);});
-test('disabled auto-pot uses once on release and does not trigger on low health',()=>{const s=M.create();quiet(s);s.autopotEnabled=false;s.player.x=500;s.player.y=550;s.player.hp=1;M.pressPotion(s,'f1','life');tick(s,1);assert.equal(s.lifePotions,100);assert.equal(s.player.hp,1);M.releasePotion(s,'f1');assert.equal(s.lifePotions,99);assert.equal(s.player.hp,41);M.releasePotion(s,'f1');assert.equal(s.lifePotions,99);});
-test('both attack and cast impose a 310ms potion lockout',()=>{for(const kind of ['attack','cast']){const s=M.create();quiet(s);s.player.x=500;s.player.y=550;if(kind==='attack')M.melee(s);else{ s.armed=true;M.cast(s,{x:550,y:550});}M.pressPotion(s,'f1','life');tick(s,.3);assert.equal(s.lifePotions,100);tick(s,.02);assert.equal(s.lifePotions,99);}});
-test('potions consume at full, obey stock and cooldown, and cannot revive death',()=>{const s=M.create();assert(M.usePotion(s,'life'));assert.equal(s.player.hp,100);assert.equal(s.lifePotions,99);assert(!M.usePotion(s,'mana'));s.potionCooldown=0;s.lifePotions=0;assert(!M.usePotion(s,'life'));s.lifePotions=10;s.player.hp=0;assert(!M.usePotion(s,'life'));});
-test('clearing held inputs causes no release dose',()=>{const s=M.create();s.autopotEnabled=false;M.pressPotion(s,'f1','life');M.clearPotionKeys(s);M.releasePotion(s,'f1');assert.equal(s.lifePotions,100);});
+test('held auto-pot uses a shared 260ms cadence and suppresses release', () => {
+  const s = M.create();
+  quiet(s);
+  s.player.x = 500;
+  s.player.y = 550;
+  M.pressPotion(s, 'f1', 'life');
+  tick(s, 1);
+  assert.equal(s.lifePotions, 96);
+  M.releasePotion(s, 'f1');
+  assert.equal(s.lifePotions, 96);
+  assert.equal(s.player.hp, 100);
+});
+test('most recently pressed potion wins the shared cadence', () => {
+  const s = M.create();
+  quiet(s);
+  M.pressPotion(s, 'f1', 'life');
+  tick(s, 0.02);
+  assert.equal(s.lifePotions, 99);
+  M.pressPotion(s, 'f2', 'mana');
+  tick(s, 0.26);
+  assert.equal(s.manaPotions, 99);
+  assert.equal(s.lifePotions, 99);
+  M.releasePotion(s, 'f2');
+  tick(s, 0.26);
+  assert.equal(s.lifePotions, 98);
+  assert.equal(s.manaPotions, 99);
+});
+test('disabled auto-pot uses once on release and does not trigger on low health', () => {
+  const s = M.create();
+  quiet(s);
+  s.autopotEnabled = false;
+  s.player.x = 500;
+  s.player.y = 550;
+  s.player.hp = 1;
+  M.pressPotion(s, 'f1', 'life');
+  tick(s, 1);
+  assert.equal(s.lifePotions, 100);
+  assert.equal(s.player.hp, 1);
+  M.releasePotion(s, 'f1');
+  assert.equal(s.lifePotions, 99);
+  assert.equal(s.player.hp, 41);
+  M.releasePotion(s, 'f1');
+  assert.equal(s.lifePotions, 99);
+});
+test('both attack and cast impose a 310ms potion lockout', () => {
+  for (const kind of ['attack', 'cast']) {
+    const s = M.create();
+    quiet(s);
+    s.player.x = 500;
+    s.player.y = 550;
+    if (kind === 'attack') M.melee(s);
+    else {
+      s.armed = true;
+      M.cast(s, { x: 550, y: 550 });
+    }
+    M.pressPotion(s, 'f1', 'life');
+    tick(s, 0.3);
+    assert.equal(s.lifePotions, 100);
+    tick(s, 0.02);
+    assert.equal(s.lifePotions, 99);
+  }
+});
+test('potions consume at full, obey stock and cooldown, and cannot revive death', () => {
+  const s = M.create();
+  assert(M.usePotion(s, 'life'));
+  assert.equal(s.player.hp, 100);
+  assert.equal(s.lifePotions, 99);
+  assert(!M.usePotion(s, 'mana'));
+  s.potionCooldown = 0;
+  s.lifePotions = 0;
+  assert(!M.usePotion(s, 'life'));
+  s.lifePotions = 10;
+  s.player.hp = 0;
+  assert(!M.usePotion(s, 'life'));
+});
+test('clearing held inputs causes no release dose', () => {
+  const s = M.create();
+  s.autopotEnabled = false;
+  M.pressPotion(s, 'f1', 'life');
+  M.clearPotionKeys(s);
+  M.releasePotion(s, 'f1');
+  assert.equal(s.lifePotions, 100);
+});
 
-test('pickup highlight uses exact readiness and pickup distance',()=>{const s=M.create();M.drop(s,s.player.x,s.player.y,8,'rival');const d=s.drops[0];assert.equal(M.canPickup(s,d),false);s.time=.5;assert.equal(M.canPickup(s,d),true);s.player.x=d.x+22;assert.equal(M.canPickup(s,d),true);s.player.x+=.01;assert.equal(M.canPickup(s,d),false);});
+test('pickup highlight uses exact readiness and pickup distance', () => {
+  const s = M.create();
+  M.drop(s, s.player.x, s.player.y, 8, 'rival');
+  const d = s.drops[0];
+  assert.equal(M.canPickup(s, d), false);
+  s.time = 0.5;
+  assert.equal(M.canPickup(s, d), true);
+  s.player.x = d.x + 22;
+  assert.equal(M.canPickup(s, d), true);
+  s.player.x += 0.01;
+  assert.equal(M.canPickup(s, d), false);
+});
 
-test('20 essence splits across two distinct free tiles with ten per pile',()=>{const s=M.create();assert.equal(M.drop(s,500,500,20,'rival'),20);assert.deepEqual(s.drops.map(d=>d.amount),[10,10]);assert.equal(new Set(s.drops.map(d=>d.x+','+d.y)).size,2);for(const d of s.drops)assert(M.walkable(d.x,d.y));});
-test('death in safe refuge cannot be healed away before dropping carried value',()=>{const s=M.create();quiet(s);s.player.hp=0;s.player.x=176;s.player.y=560;s.carried=20;M.update(s,.02);assert.equal(s.carried,0);assert.equal(s.drops.reduce((n,d)=>n+d.amount,0),20);assert.equal(s.player.hp,100);});
-test('bots steal ground essence and drop their full carried value on defeat',()=>{const s=M.create();s.player.x=176;s.player.y=560;const e=s.enemies[0];s.enemies.slice(1).forEach(b=>{b.hp=0;b.respawn=1e6;});M.drop(s,e.x,e.y,20,'player');const initial=e.essence;tick(s,4);assert.equal(s.drops.length,0);assert.equal(e.essence,initial+20);s.player.x=e.x-32;s.player.y=e.y;s.player.dir=1;e.hp=1;M.melee(s);assert.equal(e.hp,0);assert.equal(s.drops.reduce((n,d)=>n+d.amount,0),initial+20);assert(s.drops.every(d=>d.amount<=10));});
-test('inmovilizar stops bot movement, permits cleanse, and rejects refresh without mana',()=>{const s=M.create();s.player.x=400;s.player.y=368;s.selectedSpell='inmovilizar';const e=s.enemies[0];cast(s,{x:e.x,y:e.y,enemyId:e.name});const x=e.x,y=e.y;tick(s,.4);assert.equal(e.x,x);assert.equal(e.y,y);assert(e.immobilized>0);s.cooldown=0;const mana=s.player.mana;assert(!cast(s,{x:e.x,y:e.y,enemyId:e.name}));assert.equal(s.player.mana,mana);tick(s,.6);assert.equal(e.immobilized,0);assert(e.cleanseCooldown>0);});
-test('self-targeted remover works while immobilized without changing held movement',()=>{const s=M.create();quiet(s);s.player.x=400;s.player.y=368;s.player.immobilized=3;s.selectedSpell='remover';M.update(s,.02,{x:1,y:0});assert.equal(s.player.x,400);assert(cast(s,{x:400,y:368,self:true}));assert.equal(s.player.immobilized,0);M.update(s,.02,{x:1,y:0});assert(s.player.x>400);});
+test('20 essence splits across two distinct free tiles with ten per pile', () => {
+  const s = M.create();
+  assert.equal(M.drop(s, 500, 500, 20, 'rival'), 20);
+  assert.deepEqual(
+    s.drops.map((d) => d.amount),
+    [10, 10],
+  );
+  assert.equal(new Set(s.drops.map((d) => d.x + ',' + d.y)).size, 2);
+  for (const d of s.drops) assert(M.walkable(d.x, d.y));
+});
+test('death in safe refuge cannot be healed away before dropping carried value', () => {
+  const s = M.create();
+  quiet(s);
+  s.player.hp = 0;
+  s.player.x = 176;
+  s.player.y = 560;
+  s.carried = 20;
+  M.update(s, 0.02);
+  assert.equal(s.carried, 0);
+  assert.equal(
+    s.drops.reduce((n, d) => n + d.amount, 0),
+    20,
+  );
+  assert.equal(s.player.hp, 100);
+});
+test('bots steal ground essence and drop their full carried value on defeat', () => {
+  const s = M.create();
+  s.player.x = 176;
+  s.player.y = 560;
+  const e = s.enemies[0];
+  s.enemies.slice(1).forEach((b) => {
+    b.hp = 0;
+    b.respawn = 1e6;
+  });
+  M.drop(s, e.x, e.y, 20, 'player');
+  const initial = e.essence;
+  tick(s, 4);
+  assert.equal(s.drops.length, 0);
+  assert.equal(e.essence, initial + 20);
+  s.player.x = e.x - 32;
+  s.player.y = e.y;
+  s.player.dir = 1;
+  e.hp = 1;
+  M.melee(s);
+  assert.equal(e.hp, 0);
+  assert.equal(
+    s.drops.reduce((n, d) => n + d.amount, 0),
+    initial + 20,
+  );
+  assert(s.drops.every((d) => d.amount <= 10));
+});
+test('inmovilizar stops bot movement, permits cleanse, and rejects refresh without mana', () => {
+  const s = M.create();
+  s.player.x = 400;
+  s.player.y = 368;
+  s.selectedSpell = 'inmovilizar';
+  const e = s.enemies[0];
+  cast(s, { x: e.x, y: e.y, enemyId: e.name });
+  const x = e.x,
+    y = e.y;
+  tick(s, 0.4);
+  assert.equal(e.x, x);
+  assert.equal(e.y, y);
+  assert(e.immobilized > 0);
+  s.cooldown = 0;
+  const mana = s.player.mana;
+  assert(!cast(s, { x: e.x, y: e.y, enemyId: e.name }));
+  assert.equal(s.player.mana, mana);
+  tick(s, 0.6);
+  assert.equal(e.immobilized, 0);
+  assert(e.cleanseCooldown > 0);
+});
+test('self-targeted remover works while immobilized without changing held movement', () => {
+  const s = M.create();
+  quiet(s);
+  s.player.x = 400;
+  s.player.y = 368;
+  s.player.immobilized = 3;
+  s.selectedSpell = 'remover';
+  M.update(s, 0.02, { x: 1, y: 0 });
+  assert.equal(s.player.x, 400);
+  assert(cast(s, { x: 400, y: 368, self: true }));
+  assert.equal(s.player.immobilized, 0);
+  M.update(s, 0.02, { x: 1, y: 0 });
+  assert(s.player.x > 400);
+});
 
-test('damage records red-number payloads for player and enemy hits and expires',()=>{const s=M.create();s.player.x=400;s.player.y=368;const e=s.enemies[0];cast(s,{x:e.x,y:e.y,enemyId:e.name});assert.equal(s.damageTexts[0].amount,1);s.fx.push({x:s.player.x,y:s.player.y,age:.3,hit:false,owner:'enemy'});M.update(s,.02);assert(s.damageTexts.some(d=>d.amount===12));quiet(s);s.fx=[];tick(s,1.1);assert.equal(s.damageTexts.length,0);});
+test('damage records red-number payloads for player and enemy hits and expires', () => {
+  const s = M.create();
+  s.player.x = 400;
+  s.player.y = 368;
+  const e = s.enemies[0];
+  cast(s, { x: e.x, y: e.y, enemyId: e.name });
+  assert.equal(s.damageTexts[0].amount, 1);
+  s.fx.push({ x: s.player.x, y: s.player.y, age: 0.3, hit: false, owner: 'enemy' });
+  M.update(s, 0.02);
+  assert(s.damageTexts.some((d) => d.amount === 12));
+  quiet(s);
+  s.fx = [];
+  tick(s, 1.1);
+  assert.equal(s.damageTexts.length, 0);
+});

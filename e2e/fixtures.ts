@@ -1,18 +1,21 @@
-import {test as base, expect, type Page} from '@playwright/test';
+import { test as base, expect, type Page } from '@playwright/test';
 
 // Every test fails if any frame of the page logs a console error or throws.
-export const test = base.extend<{browserErrors: string[]}>({
-  browserErrors: [async ({page}, use) => {
-    const errors: string[] = [];
-    page.on('console', message => {
-      if (message.type() === 'error') errors.push(`console: ${message.text()} (${message.location().url})`);
-    });
-    page.on('pageerror', error => errors.push(`pageerror: ${error.message}`));
-    await use(errors);
-    expect(errors, 'browser errors').toEqual([]);
-  }, {auto: true}]
+export const test = base.extend<{ browserErrors: string[] }>({
+  browserErrors: [
+    async ({ page }, use) => {
+      const errors: string[] = [];
+      page.on('console', (message) => {
+        if (message.type() === 'error') errors.push(`console: ${message.text()} (${message.location().url})`);
+      });
+      page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
+      await use(errors);
+      expect(errors, 'browser errors').toEqual([]);
+    },
+    { auto: true },
+  ],
 });
-export {expect, type Page};
+export { expect, type Page };
 
 export const CHARACTER_KEY = 'entia-character-v1';
 
@@ -30,5 +33,5 @@ export async function openDemo(page: Page) {
 
 // The inline style transform is how the page places a label over the canvas.
 export function transformOf(page: Page, selector: string) {
-  return page.locator(selector).evaluate(element => (element as HTMLElement).style.transform);
+  return page.locator(selector).evaluate((element) => (element as HTMLElement).style.transform);
 }
