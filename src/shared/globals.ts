@@ -1,5 +1,5 @@
-// The page scripts in public/ are still classic scripts that read these modules as globals.
-// Each page entry imports this before those deferred scripts run.
+// The site's page scripts in public/ are still classic scripts that read these modules as globals.
+// The site entry imports this before those deferred scripts run.
 import * as character from './character.ts';
 import * as physics from './physics.ts';
 
