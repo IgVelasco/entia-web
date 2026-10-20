@@ -6,6 +6,22 @@ The Nix site (`index.html`) and its embedded offline demo (`demo/index.html`), b
 
 Use Node 22 (`.nvmrc` pins 22.22.3; run `nvm use`). Node 24's V8 intermittently segfaults in garbage collection while running the vm-sandbox tests (`tests/navigation.test.cjs`), reproduced on 24.5.0 and 24.15.0.
 
+## TypeScript and ESLint
+
+Type-checking uses TypeScript 7 (`tsc`), but typescript-eslint does not support TypeScript 7 yet and needs the TypeScript 6 API. `package.json` follows the [TypeScript 7 announcement's side-by-side setup](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#running-side-by-side-with-typescript-6.0):
+
+- `"@typescript/native": "npm:typescript@7.0.2"` provides the `tsc` command (TypeScript 7).
+- `"typescript": "npm:@typescript/typescript6@6.0.2"` makes `require('typescript')` resolve to the TypeScript 6 API (6.0.3, pinned by the lockfile), which typescript-eslint loads. Its own command is `tsc6`.
+
+Until then, type-aware lint rules reason with TypeScript 6, so a lint fix (especially `eslint --fix` for `no-unnecessary-type-assertion`) can remove something TypeScript 7 still needs. Always run `npm run typecheck` after lint fixes.
+
+**Undo this once typescript-eslint supports TypeScript 7** (tracked in [typescript-eslint#10940](https://github.com/typescript-eslint/typescript-eslint/issues/10940); the parser's `typescript` peer range, currently `>=4.8.4 <6.1.0`, is the signal):
+
+1. Upgrade `typescript-eslint` to the release that supports TypeScript 7.
+2. Replace both aliases with a plain `"typescript": "<7.x version>"`, then remove `@typescript/native`.
+3. Run `npm install`, then check `npx tsc --version` and `node -p "require('typescript').version"` both print 7.x.
+4. Run `npm run typecheck` and `npm run lint`, then remove the comment at the top of `eslint.config.js` and this section.
+
 ## Commands
 
 - `npm run dev` — local dev server.
@@ -13,6 +29,7 @@ Use Node 22 (`.nvmrc` pins 22.22.3; run `nvm use`). Node 24's V8 intermittently 
 - `npm test` — Node test suite.
 - `npm run test:e2e` — Playwright suite in the installed Google Chrome against a fresh build (`e2e/`).
 - `npm run typecheck` — type-checks `src/` and the e2e suite.
+- `npm run lint` — ESLint with typescript-eslint's type-aware recommended rules.
 
 ## Layout
 
