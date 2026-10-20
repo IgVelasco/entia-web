@@ -24,7 +24,8 @@ bindKeyboard();
 bindInputRelease();
 bindHistory();
 bindLifecycle();
-setMotionState();resize();load();
+// load() shows its own retry button on failure, so its promise is deliberately not awaited.
+setMotionState();resize();void load();
 bindPageShow();
 EntiaCharacter.mount({assets:'assets/',onChange:value=>{hero.body=value.body;setGameText($('#player-label span'),value.name);requestDraw();},onOpen:()=>{if(site.frontierState.open)dismissFrontier({focus:false});clearMovementInput();site.route=null;setAim(false);},onClose:()=>requestDraw()});
 bindSurfaceRecovery();

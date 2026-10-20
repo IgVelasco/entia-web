@@ -1,7 +1,7 @@
 // Device-local character appearance shared by Nix and the offline demo.
 export interface CharacterChoice { name: string; body: string }
 export interface CharacterLook { id: string; name: string; detail: string }
-export interface EditorOptions { assets: string; onChange(value: CharacterChoice): void; onOpen(): void; onClose(): void }
+export interface EditorOptions { assets: string; onChange: (value: CharacterChoice) => void; onOpen: () => void; onClose: () => void }
 
 const KEY='entia-character-v1';
 export const looks: CharacterLook[]=[{id:'hero',name:'Moonwarden',detail:'Midnight armour · crescent cape · ember staff'},{id:'mage',name:'Crimson sentinel',detail:'Bronze armour · crimson mantle · ember staff'}];

@@ -13,7 +13,8 @@ bindTouchControls();
 bindActionButtons();
 bindPointer();
 bindLifecycle();
-resize();load();
+// load() shows its own retry screen on failure, so its promise is deliberately not awaited.
+resize();void load();
 bindHud();
 bindEmbed();
 bindGestureGuards();

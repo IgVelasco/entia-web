@@ -41,9 +41,9 @@ export function bindHud(){
  for(const kind of ['life','mana']){const button=$('#macro-'+kind),key='pointer-'+kind;button.addEventListener('pointerdown',e=>{e.preventDefault();if(demo.paused||!demo.ready)return;focusGame();button.setPointerCapture(e.pointerId);M.pressPotion(demo.state,key,kind);});button.addEventListener('pointerup',e=>{e.preventDefault();M.releasePotion(demo.state,key);});button.addEventListener('pointercancel',()=>M.clearPotionKeys(demo.state));button.addEventListener('lostpointercapture',()=>{demo.state.heldPotions=demo.state.heldPotions.filter(p=>p.key!==key);});button.addEventListener('click',e=>{if(e.detail===0&&!demo.paused)M.usePotion(demo.state,kind);});}
 }
 export function setHudDrawer(open: boolean){if(open)clear();demo.hudDrawerOpen=open;$('#hud-scrim').hidden=!open;document.body.classList.toggle('hud-open',open);$('#toggle-hud').setAttribute('aria-expanded',String(open));}
-export function selectSpell(id: string){if(!M.spells[id])return;demo.state.selectedSpell=id;demo.state.armed=false;for(const button of (document.querySelectorAll('[data-spell]') as NodeListOf<HTMLButtonElement>))button.setAttribute('aria-selected',String(button.dataset.spell===id));$('#mobile-spell').value=id;ui();}
+export function selectSpell(id: string){if(!M.spells[id])return;demo.state.selectedSpell=id;demo.state.armed=false;for(const button of document.querySelectorAll<HTMLButtonElement>('[data-spell]'))button.setAttribute('aria-selected',String(button.dataset.spell===id));$('#mobile-spell').value=id;ui();}
 export function bindSpells(){
- for(const button of (document.querySelectorAll('[data-spell]') as NodeListOf<HTMLButtonElement>)){button.onclick=()=>selectSpell(button.dataset.spell!);button.ondblclick=()=>{selectSpell(button.dataset.spell!);prepareSpell();};}
+ for(const button of document.querySelectorAll<HTMLButtonElement>('[data-spell]')){button.onclick=()=>selectSpell(button.dataset.spell!);button.ondblclick=()=>{selectSpell(button.dataset.spell!);prepareSpell();};}
  $('#mobile-spell').addEventListener('change',e=>{selectSpell((e.target as HTMLSelectElement).value);prepareSpell();});
  bindTap($('#mobile-strike'),()=>{if(demo.ready&&!demo.paused&&demo.presentationNow>=demo.beatUntil)M.melee(demo.state);});
 }

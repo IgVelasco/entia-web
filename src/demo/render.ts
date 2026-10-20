@@ -68,8 +68,8 @@ function drawHallway(){
  text(unlocked?'ENTER THE ARENA →':'THE VEIL',h.exitX,568,unlocked?'#c5e4b1':'#9d916e',11);
 
 }
-function drawEssence(c: CanvasRenderingContext2D,x: number,y: number,w: number,h: number){const im=demo.images.essence;c.drawImage(im,...(im.width===32?[0,0,32,64]:[300,230,480,1010]) as [number,number,number,number],x,y,w,h);}
-function drawBank(c: CanvasRenderingContext2D,x: number,y: number,w: number,h: number){const im=demo.images.bank;c.drawImage(im,...(im.width===216?[0,0,216,112]:[230,255,1075,555]) as [number,number,number,number],x,y,w,h);}
+function drawEssence(c: CanvasRenderingContext2D,x: number,y: number,w: number,h: number){const im=demo.images.essence;c.drawImage(im,...((im.width===32?[0,0,32,64]:[300,230,480,1010]) satisfies [number,number,number,number]),x,y,w,h);}
+function drawBank(c: CanvasRenderingContext2D,x: number,y: number,w: number,h: number){const im=demo.images.bank;c.drawImage(im,...((im.width===216?[0,0,216,112]:[230,255,1075,555]) satisfies [number,number,number,number]),x,y,w,h);}
 function renderBank(){const b=M.bankAt(demo.state),age=demo.revealStart<0?2:Math.max(0,demo.state.time-demo.revealStart),t=reduced.matches?1:Math.min(1,age/1.1),ease=1-Math.pow(1-t,3);ellipse(b.x,b.y+3,53*ease,16*ease,'#a6cda345');ctx.save();ctx.globalAlpha=ease;ctx.translate(b.x,b.y);ctx.scale(.8+.2*ease,.8+.2*ease);drawBank(ctx,-54,-46+(1-ease)*20,108,56);ctx.restore();if(t<1){for(let i=0;i<10;i++){const a=i*Math.PI/5,travel=18+52*t;ctx.fillStyle='#d6dfa7';ctx.globalAlpha=1-t;ctx.fillRect(b.x+Math.cos(a)*travel,b.y-15+Math.sin(a)*travel*.55-t*15,2,3);}ctx.globalAlpha=1;}text('ESSENCE BANK',b.x,b.y+28,'#cbd7b1',11);}
 function drawDestination(){const q=demo.state.navigation?.points.at(-1);if(q){ellipse(q.x,q.y,12,5,'#cfbd85',true);ctx.fillStyle='#cfbd85';ctx.fillRect(q.x-1,q.y-1,3,3);}}
 function hallWall(x: number,y: number,w: number,h: number){

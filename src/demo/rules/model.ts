@@ -42,7 +42,7 @@ function cancelDeposit(s: DemoState){s.bank=0;s.bankAmount=0;s.bankFraction=0;}
 
 function cardinal(x: number,y: number): Point{return Math.abs(x)>=Math.abs(y)?{x:Math.sign(x),y:0}:{x:0,y:Math.sign(y)};}
 function heading(x: number,y: number){return Math.abs(x)>Math.abs(y)?(x>0?1:3):(y>0?2:0);}
-function walkable(x: number,y: number,r=RADIUS){return physics.free(x,y);}
+function walkable(x: number,y: number){return physics.free(x,y);}
 function lineClear(a: Point,b: Point){return physics.clear(a,b);}
 function move(actor: Body,dx: number,dy: number,others: Body[]=[]){return physics.move(actor,dx,dy,others);}
 function cast(s: DemoState,target?: CastTarget|null){

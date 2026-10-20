@@ -1,3 +1,4 @@
+import type {DemoMessage,HostMessage} from '../shared/frame-messages.ts';
 import {resize,worldToScreen} from './camera.ts';
 import {setContent} from './content.ts';
 import {$,canvas,ground,motionOff,site} from './context.ts';
@@ -23,7 +24,7 @@ function ensureDemoFrame(){
  const url=location.origin+'/demo/?embedded=1';if(frame.contentWindow?.location?.replace)frame.contentWindow.location.replace(url);else frame.src=url;$('#demo-loading').hidden=false;
  site.demoLoadTimer=setTimeout(()=>{if(!site.demoLoaded)$('#demo-load-message').textContent='The demo is taking longer to load. You can return to Nix while it finishes.';},20000);
 }
-function activateDemoFrame(type: string){if(!site.demoOpen||!site.demoLoaded)return;const frame=$('#demo-frame');if(!matchMedia('(pointer: coarse)').matches)frame.focus({preventScroll:true});frame.contentWindow?.postMessage({type,presentationScale:site.scale},location.origin);}
+function activateDemoFrame(type: HostMessage['type']){if(!site.demoOpen||!site.demoLoaded)return;const frame=$('#demo-frame');if(!matchMedia('(pointer: coarse)').matches)frame.focus({preventScroll:true});frame.contentWindow?.postMessage({type,presentationScale:site.scale},location.origin);}
 export function showDemo(push=true){
  if(site.demoOpen)return;if(site.frontierState.open)dismissFrontier({focus:false});const resumed=site.demoEverOpened;site.demoEverOpened=true;
  site.demoCloseEpoch++;$('#demo-host').classList.remove('closing');site.demoOpen=true;site.enteringPortal=false;canvas.width=1;canvas.height=1;ground.width=1;ground.height=1;site.groundReady=false;ensureDemoFrame();clearMovementInput();site.route=null;if(site.frameRequest)cancelAnimationFrame(site.frameRequest);site.frameRequest=0;
@@ -44,9 +45,10 @@ export function closeDemo(changeHistory=true){
 export function bindPortal(){
  window.addEventListener('message',event=>{
   if(event.origin!==location.origin||event.source!==$('#demo-frame').contentWindow)return;
-  if(event.data?.type==='entia-demo-ready'){site.demoLoaded=true;clearTimeout(site.demoLoadTimer);$('#demo-loading').hidden=true;if(site.demoOpen)activateDemoFrame('entia-demo-activate');if(!site.demoOpen&&!site.enteringPortal)$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-pause'},location.origin);}
-  else if(event.data?.type==='entia-demo-exit')closeDemo(true);
-  else if(event.data?.type==='entia-demo-error'){site.demoFailed=true;$('#demo-load-message').textContent='The demo artwork could not load. Return to Nix and try again.';}
+  const data=event.data as DemoMessage|null|undefined;
+  if(data?.type==='entia-demo-ready'){site.demoLoaded=true;clearTimeout(site.demoLoadTimer);$('#demo-loading').hidden=true;if(site.demoOpen)activateDemoFrame('entia-demo-activate');if(!site.demoOpen&&!site.enteringPortal)$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-pause'},location.origin);}
+  else if(data?.type==='entia-demo-exit')closeDemo(true);
+  else if(data?.type==='entia-demo-error'){site.demoFailed=true;$('#demo-load-message').textContent='The demo artwork could not load. Return to Nix and try again.';}
  });
  $('#demo-loading-back').onclick=()=>closeDemo(true);
 }

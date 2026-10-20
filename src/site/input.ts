@@ -6,7 +6,7 @@ import {dismissFrontier,frontierBlocked,skipFrontierWalk,tryFrontier} from './es
 import {requestDraw,setMotionState} from './loop.ts';
 import {beginManualMovement,checkWalkingProgress,clearMovementInput,heldDirections,isWalkable,moveHero,movementKeys,startKeyboardStep,walkingPath} from './movement.ts';
 import {walkToPortal} from './portal.ts';
-import {go,toast} from './routing.ts';
+import {go} from './routing.ts';
 import {apocalipsis} from './spell.ts';
 import {hero,homePortal,keepers,spots} from './town.ts';
 
@@ -54,7 +54,7 @@ export function setAim(value: boolean,{focus=false}={}) {
   requestDraw();
 }
 export function bindPointer(){
- canvas.addEventListener('pointermove',event=>{canvas.style.cursor=site.aiming?'crosshair':'pointer';});
+ canvas.addEventListener('pointermove',()=>{canvas.style.cursor=site.aiming?'crosshair':'pointer';});
  canvas.addEventListener('click',event=>{
    if(!site.ready||site.enteringPortal||site.frontierState.open)return;
    const bounds=canvas.getBoundingClientRect(),x=(event.clientX-bounds.left-site.ox)/site.scale,y=(event.clientY-bounds.top-site.oy)/site.scale;
