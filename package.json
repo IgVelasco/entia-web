@@ -2,6 +2,9 @@
   "name": "entia",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22.18.0 <23"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
