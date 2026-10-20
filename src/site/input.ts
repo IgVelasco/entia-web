@@ -63,7 +63,6 @@ export function bindPointer(){
    const keeper=keepers.find(k=>Math.hypot(k.x-x,(k.y-25)-y)<46);
    if(keeper){go(keeper.place,{cast:true});return;}
 
-   if(site.aiming){toast('Click Home, Game, Rankings or Download.');return;}
    if(!isWalkable(x,y)&&tryFrontier(hero,{x,y},'attempt'))return;
    if(isWalkable(x,y)){
      resetJoystick();heldDirections.clear();beginManualMovement();

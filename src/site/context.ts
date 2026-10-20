@@ -34,9 +34,9 @@ export interface SiteContext {
   joystickPointer: number | null; joystickDirection: number | null; mobileExploring: boolean; mobilePanX: number; mobilePanY: number;
   // The boundary encounter, its wizard and escort sequence, and the terrain patterns beyond the town.
   frontierState: FrontierState; frontierWizard: FrontierWizard | null; frontierSequence: FrontierSequence | null; worldPatterns: WorldPatterns | null;
-  // The embedded demo's lifecycle: portal transition, open view, iframe loading and Back/Forward ownership.
-  enteringPortal: boolean; demoOpen: boolean; demoFrameStarted: boolean; demoCloseEpoch: number; demoEverOpened: boolean; demoLoaded: boolean; demoFailed: boolean; demoExitPending: boolean; demoHistoryOwned: boolean; portalReentryBlocked: boolean;
-  demoReturnHash: string; demoLoadTimer: number;
+  // The embedded demo's lifecycle: portal transition, open view and iframe loading.
+  enteringPortal: boolean; demoOpen: boolean; demoFrameStarted: boolean; demoCloseEpoch: number; demoEverOpened: boolean; demoLoaded: boolean; demoFailed: boolean; portalReentryBlocked: boolean;
+  demoLoadTimer: number;
   // The cached town ground canvas holds current pixels.
   groundReady: boolean;
 }
@@ -58,7 +58,7 @@ export const W = 1440, H = 900, TOWN_TILE=32;
 export const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
 export const touchPreference = matchMedia('(pointer: coarse)');
 export const compactMode=()=>site.width<=900||touchPreference.matches;
-export const site: SiteContext={width:0,height:0,dpr:1,scale:1,ox:0,oy:0,zoom:1,time:0,last:0,frameRequest:0,paused:false,ready:false,images:{},current:'home',route:null,spell:null,rings:[],aiming:false,atPlace:'home',hovered:null,toastTimer:undefined,replyTimer:undefined,nearbyPlace:null,zoneContent:null,joystickPointer:null,joystickDirection:null,mobileExploring:false,mobilePanX:0,mobilePanY:0,frontierState:WorldFrontier.initialState(),frontierWizard:null,frontierSequence:null,worldPatterns:null,enteringPortal:false,demoOpen:false,demoFrameStarted:false,demoCloseEpoch:0,demoEverOpened:false,demoLoaded:false,demoFailed:false,demoExitPending:false,demoHistoryOwned:false,portalReentryBlocked:false,demoReturnHash:"#home",demoLoadTimer:0,groundReady:false};
+export const site: SiteContext={width:0,height:0,dpr:1,scale:1,ox:0,oy:0,zoom:1,time:0,last:0,frameRequest:0,paused:false,ready:false,images:{},current:'home',route:null,spell:null,rings:[],aiming:false,atPlace:'home',hovered:null,toastTimer:undefined,replyTimer:undefined,nearbyPlace:null,zoneContent:null,joystickPointer:null,joystickDirection:null,mobileExploring:false,mobilePanX:0,mobilePanY:0,frontierState:WorldFrontier.initialState(),frontierWizard:null,frontierSequence:null,worldPatterns:null,enteringPortal:false,demoOpen:false,demoFrameStarted:false,demoCloseEpoch:0,demoEverOpened:false,demoLoaded:false,demoFailed:false,portalReentryBlocked:false,demoLoadTimer:0,groundReady:false};
 export const ground = document.createElement('canvas');
 ground.width = W; ground.height = H;
 export const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));

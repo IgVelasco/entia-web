@@ -14,7 +14,7 @@ function next(s: DemoState){const t=s.tutorial;if(!t?.dialog)return false;if(++t
 // The portal is a vertical line, so every hall row exits at the same x.
 function hallExitX(_y: number){return hallway.exitX;}
 function enterArena(s: DemoState){if(s.tutorial!.seen.length!==guides.length)return false;s.phase='arena';s.tutorial!.stage='fight';s.player.x=304;s.player.y=432;s.player.step=null;s.flash=.7;M.tell(s,'Defeat two rivals and collect their essence. A nearby bank will reveal itself.');return true;}
-const originalUpdate=M.update,originalPickup=M.pickup,originalCast=M.cast,originalMelee=M.melee,originalInteract=M.interact;
+const originalUpdate=M.update,originalPickup=M.pickup,originalCast=M.cast,originalMelee=M.melee;
 M.pickup=function(s,radius){const n=originalPickup(s,radius);if(s.tutorial&&!s.tutorial.bankRevealed){s.bankUnlocked=false;if(n)M.tell(s,'Essence collected. Defeat two rivals to reveal the bank nearby.');}return n;};
 M.cast=(s,target)=>s.phase==='hallway'||s.tutorial?.stage==='complete'?(s.armed=false,false):originalCast(s,target);
 M.melee=s=>s.phase==='hallway'||s.tutorial?.stage==='complete'?false:originalMelee(s);

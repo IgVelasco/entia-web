@@ -25,17 +25,17 @@ function ensureDemoFrame(){
 }
 function activateDemoFrame(type: string){if(!site.demoOpen||!site.demoLoaded)return;const frame=$('#demo-frame');if(!matchMedia('(pointer: coarse)').matches)frame.focus({preventScroll:true});frame.contentWindow?.postMessage({type,presentationScale:site.scale},location.origin);}
 export function showDemo(push=true){
- if(site.demoOpen)return;if(site.frontierState.open)dismissFrontier({focus:false});const resumed=site.demoEverOpened;site.demoEverOpened=true;site.demoReturnHash=location.hash==='#demo'?'#home':location.hash||'#home';
+ if(site.demoOpen)return;if(site.frontierState.open)dismissFrontier({focus:false});const resumed=site.demoEverOpened;site.demoEverOpened=true;
  site.demoCloseEpoch++;$('#demo-host').classList.remove('closing');site.demoOpen=true;site.enteringPortal=false;canvas.width=1;canvas.height=1;ground.width=1;ground.height=1;site.groundReady=false;ensureDemoFrame();clearMovementInput();site.route=null;if(site.frameRequest)cancelAnimationFrame(site.frameRequest);site.frameRequest=0;
  $('#portal-transition')?.remove();$('#world').classList.remove('entering-portal');$('#app').inert=true;document.body.classList.add('demo-open');$('#demo-host').hidden=false;
- if(push&&location.hash!=='#demo'){window.history.pushState({entiaDemo:true},'','#demo');site.demoHistoryOwned=true;}
+ if(push&&location.hash!=='#demo'){window.history.pushState({entiaDemo:true},'','#demo');}
  if(site.demoLoaded)activateDemoFrame(resumed?'entia-demo-resume':'entia-demo-activate');
 }
 export function closeDemo(changeHistory=true){
  if(!site.demoOpen)return;
  // Closing the view never depends on joint iframe/browser history advancing.
  const epoch=++site.demoCloseEpoch;$('#demo-frame').contentWindow?.postMessage({type:'entia-demo-pause'},location.origin);
- site.demoOpen=false;site.demoExitPending=false;site.enteringPortal=false;site.portalReentryBlocked=true;$('#app').inert=false;document.body.classList.remove('demo-open');
+ site.demoOpen=false;site.enteringPortal=false;site.portalReentryBlocked=true;$('#app').inert=false;document.body.classList.remove('demo-open');
  if(changeHistory){site.current='home';site.atPlace=null;setContent('home');updateKeeperStates();$('#location-state').textContent='Back in Nix';if(location.hash==='#demo')window.history.replaceState(null,'','#home');}
  const host=$('#demo-host');host.classList.add('closing');
  if(motionOff())host.hidden=true;else setTimeout(()=>{if(epoch===site.demoCloseEpoch&&!site.demoOpen){host.hidden=true;host.classList.remove('closing');}},420);
