@@ -13,7 +13,7 @@ export interface Spell {
   name: string;
   mana: number;
 }
-// Where a cast lands; enemyId and self say which character the pointer was on.
+// Raw clicked world position. Legacy actor hints are ignored; the occupied tile resolves the target.
 export interface CastTarget extends Point {
   enemyId?: string;
   self?: boolean;
@@ -97,7 +97,7 @@ export interface Guide extends Dialog, Point {
   gait: number;
 }
 export interface TutorialState {
-  stage: 'hallway' | 'fight' | 'deposit' | 'complete';
+  stage: 'hallway' | 'setup' | 'fight' | 'deposit' | 'complete';
   seen: string[];
   dialog: Dialog | null;
   page: number;
@@ -151,6 +151,7 @@ export interface DemoState {
   flash: number;
   won: boolean;
   enemies: Enemy[];
+  movementBlock: string;
   // Where the tutorial revealed the bank; the fixed banker position otherwise.
   bankPosition?: Point;
   // Present only in a tutorial run (createTutorial).

@@ -1,6 +1,7 @@
 // The offline demo controller's shared state: page handles and every value the controller modules read and change.
 import M from './rules/navigation.ts';
 import type { DemoState, Point, TutorialState } from './rules/state.ts';
+import { emptyBindings, type MacroBindings } from './rules/macros.ts';
 
 // One pointer's held movement direction; order makes the most recent press win.
 export interface HeldDirection {
@@ -12,6 +13,7 @@ export interface DemoContext {
   // Inside Nix's same-origin iframe (?embedded=1): the parent hosts, suspends and resumes the demo.
   embedded: boolean;
   state: DemoState;
+  macroBindings: MacroBindings;
   // Decoded artwork by asset name; bank and essence may be pre-cropped bitmaps.
   images: Record<string, HTMLImageElement | ImageBitmap>;
   ready: boolean;
@@ -85,6 +87,9 @@ interface DemoElements {
   '#macro-mana': HTMLButtonElement;
   '#macro-spell': HTMLButtonElement;
   '#mobile-strike': HTMLButtonElement;
+  '#setup-next': HTMLButtonElement;
+  '#setup-back': HTMLButtonElement;
+  '#setup-start': HTMLButtonElement;
 }
 
 let embedded = false;
@@ -102,6 +107,7 @@ export const canvas = document.querySelector('#game') as HTMLCanvasElement,
 export const demo: DemoContext = {
   embedded,
   state: M.createTutorial(),
+  macroBindings: emptyBindings(),
   images: {},
   ready: false,
   paused: false,

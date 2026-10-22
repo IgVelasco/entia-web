@@ -11,6 +11,7 @@ function arena() {
     while (s.tutorial.dialog) M.nextGuide(s);
   }
   assert(M.enterArena(s));
+  assert(M.startFight(s));
   return s;
 }
 test('fresh tutorial begins in a safe bounded hall with three distinct guides', () => {
@@ -51,8 +52,29 @@ test('complete hallway is traversable with cardinal input and automatically ente
   }
   assert.equal(s.phase, 'arena');
   assert.equal(s.tutorial.seen.length, 3);
-  assert.equal(s.tutorial.stage, 'fight');
+  assert.equal(s.tutorial.stage, 'setup');
   assert.equal(s.player.x, 304);
+});
+
+test('preparation freezes movement, enemies, timers and resources until explicitly starting', () => {
+  const s = M.createTutorial();
+  s.tutorial.seen = M.guides.map((g) => g.id);
+  assert(M.enterArena(s));
+  s.player.hp = 80;
+  const before = JSON.stringify(s);
+  advance(s, 10, { x: 1 });
+  assert.equal(JSON.stringify(s), before);
+  s.armed = true;
+  assert(!M.cast(s, { x: 496, y: 368 }));
+  assert(!M.melee(s));
+  assert(!M.usePotion(s, 'life'));
+  assert.equal(s.lifePotions, 100);
+  assert.equal(s.player.hp, 80);
+  assert(M.startFight(s));
+  assert.equal(s.tutorial.stage, 'fight');
+  assert(!M.startFight(s));
+  advance(s, 0.1, { x: 1 });
+  assert(s.player.x > 304);
 });
 test('first pickup does not reveal tutorial bank through either input path', () => {
   for (const mode of ['pickup', 'interact']) {

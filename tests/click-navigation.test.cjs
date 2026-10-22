@@ -124,11 +124,11 @@ test('death and modal conversation clear old walking orders', () => {
   M.update(h, 0.02);
   assert.equal(h.navigation, null);
 });
-test('a blocked incoming edge does not discard a cell reachable from another direction', () => {
+test('an actor in the adjacent row does not block an otherwise clear incoming edge', () => {
   const s = arena();
   s.enemies = [{ x: 320, y: 448, hp: 1 }];
   assert(M.walkTo(s, { x: 336, y: 432 }));
-  assert(s.navigation.points.some((p) => p.y < 432));
+  assert(s.navigation.points.every((p) => p.y === 432));
   assert.deepEqual(s.navigation.points.at(-1), { x: 336, y: 432 });
 });
 test('lethal hit during a click route preserves the death and drop notice', () => {

@@ -32,7 +32,8 @@ function app({ embedded = false, width = 1100, height = 800, coarse = false, tut
     listeners = {},
     windowEvents = {},
     frames = [],
-    draws = [];
+    draws = [],
+    geometry = [];
   const make = () => ({
     open: false,
     showModal() {
@@ -60,6 +61,7 @@ function app({ embedded = false, width = 1100, height = 800, coarse = false, tut
       new Proxy(
         {
           drawImage: (...args) => draws.push(args),
+          ellipse: (...args) => geometry.push(args),
           createPattern: () => ({}),
           createRadialGradient: () => ({ addColorStop() {} }),
         },
@@ -120,7 +122,7 @@ function app({ embedded = false, width = 1100, height = 800, coarse = false, tut
   load('demo/main.ts');
   Object.assign(context, controllerGlobals(load));
   if (!tutorial) vm.runInContext('demo.state=M.create();demo.hostSuspended=false', context);
-  return { context, get, listeners, windowEvents, frames, draws, posted, parentWindow };
+  return { context, get, listeners, windowEvents, frames, draws, geometry, posted, parentWindow };
 }
 test('initial instructions pause gameplay; resume, right HUD and camera work', async () => {
   const a = app();
@@ -158,6 +160,39 @@ test('controller uses latest held direction and pointer-specific casts', async (
   );
   assert.equal(run('demo.state.fx[0].x'), 404);
   assert.equal(run('demo.state.fx[0].y'), 432);
+});
+
+test('pointer coordinates stay free over sprites and no aiming or NPC impact areas are drawn', async () => {
+  const a = app();
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  a.get('#resume').onclick();
+  run(
+    'Render.draw();demo.pointer={x:demo.width/2+(496-demo.state.player.x)*demo.scale,y:demo.height/2+(330-demo.state.player.y)*demo.scale};demo.state.armed=true',
+  );
+  assert.equal(run('Input.aimPoint().x'), 496);
+  assert.equal(run('Input.aimPoint().y'), 330);
+  assert.equal(run('Input.aimPoint().enemyId'), undefined);
+  run('demo.state.enemies[0].wind=1;demo.state.enemies[0].aim={x:750,y:700};Render.draw()');
+  assert(!a.geometry.some((args) => args[0] === 750 && args[1] === 700));
+  assert(!a.geometry.some((args) => args[0] === 496 && args[1] === 330));
+});
+
+test('a configured potion macro works on its own key without a hardcoded F1 fallback', async () => {
+  const a = app();
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  const event = (key) => ({ key, preventDefault() {}, target: { closest: () => false } });
+  a.get('#resume').onclick();
+  run('demo.macroBindings.life="f3"');
+  a.listeners.keydown(event('F1'));
+  assert.equal(run('demo.state.heldPotions.length'), 0);
+  a.listeners.keydown(event('F3'));
+  run('M.update(demo.state,.02)');
+  assert.equal(run('demo.state.lifePotions'), 99);
+  a.listeners.keyup(event('F3'));
+  assert.equal(run('demo.state.heldPotions.length'), 0);
+  assert.equal(run('demo.state.lifePotions'), 99);
 });
 test('holding space does not repeat casts', async () => {
   const a = app();
@@ -719,7 +754,7 @@ test('tutorial HUD and final NPC completion are usable on phone', async () => {
   await new Promise((r) => setImmediate(r));
   const run = (s) => vm.runInContext(s, a.context);
   run(
-    'for(const g of M.guides){M.talk(demo.state,g.id);while(demo.state.tutorial.dialog)M.nextGuide(demo.state);}M.enterArena(demo.state);demo.state.kills=2;M.update(demo.state,.02);Hud.ui()',
+    'for(const g of M.guides){M.talk(demo.state,g.id);while(demo.state.tutorial.dialog)M.nextGuide(demo.state);}M.enterArena(demo.state);M.startFight(demo.state);demo.state.kills=2;M.update(demo.state,.02);Hud.ui()',
   );
   assert.match(a.get('#objective-label').textContent, /BANK/);
   run(
@@ -801,7 +836,7 @@ test('arena entrance motion pauses simulation briefly and releases without a tim
     return x;
   };
   run(
-    'Motion.syncMotion(0);for(const g of M.guides){M.talk(demo.state,g.id);while(demo.state.tutorial.dialog)M.nextGuide(demo.state);}M.enterArena(demo.state);Motion.syncMotion(100)',
+    'Motion.syncMotion(0);for(const g of M.guides){M.talk(demo.state,g.id);while(demo.state.tutorial.dialog)M.nextGuide(demo.state);}M.enterArena(demo.state);M.startFight(demo.state);Motion.syncMotion(100)',
   );
   assert.equal(run('demo.beatUntil'), 950);
   const before = run('demo.state.time');

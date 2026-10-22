@@ -48,6 +48,46 @@ test.describe('Nix site on a phone', () => {
 });
 
 test.describe('offline demo on a phone', () => {
+  test('safe preparation keeps each highlighted section above the lesson and offers window-only play', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await openDemo(page);
+    for (let i = 0; i < 4; i++) {
+      const stick = await page.locator('#joystick').boundingBox();
+      if (!stick) throw new Error('thumbstick has no box');
+      const x = stick.x + stick.width / 2,
+        y = stick.y + stick.height / 2;
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.mouse.move(x + 30, y);
+      if (i < 3) {
+        await expect(page.locator('#guide-dialog')).toBeVisible();
+        await page.mouse.up();
+        await page.locator('#guide-next').tap();
+        await page.locator('#guide-next').tap();
+      } else {
+        await expect(page.locator('#controls-lesson')).toBeVisible();
+        await page.mouse.up();
+      }
+    }
+    for (const section of ['.spells-window', '.inventory-window', '.macrobar']) {
+      const target = page.locator(`${section}.lesson-target`);
+      await expect(target).toBeVisible();
+      const box = await target.boundingBox(),
+        lesson = await page.locator('.lesson-card').boundingBox();
+      if (!box || !lesson) throw new Error('preparation panel has no box');
+      expect(box.y).toBeGreaterThanOrEqual(60);
+      expect(box.y + box.height).toBeLessThanOrEqual(lesson.y);
+      await page.locator('#setup-next').tap();
+    }
+    await page.locator('#setup-windows').tap();
+    await expect(page.locator('#setup-summary')).toContainText('No hay teclas');
+    await page.locator('#setup-start').tap();
+    await expect(page.locator('#controls-lesson')).toBeHidden();
+    await expect(page.locator('#cast')).toBeEnabled();
+  });
+
   test('holding the thumbstick right walks to the first guide', async ({ page }) => {
     await openDemo(page);
     await expect(page.locator('.mobile-controls')).toBeVisible();

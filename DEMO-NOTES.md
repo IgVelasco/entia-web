@@ -1,10 +1,18 @@
+# Free aiming, tile occupancy and control workshop — 22 October 2026
+
+- Actors reserve only their destination tile during a step; sprites and swept circles do not block adjacent tiles. NPCs finish a step before preparing another cast, and immobilization pauses rather than discards the current endpoint. The HUD distinguishes paralysis (with time remaining) from an occupied tile or obstacle.
+- Spells use the raw clicked world position and resolve hits from the occupied tile. Hovering over a sprite never snaps the cursor. Player aim rings and NPC target-area indicators have been removed; original spell artwork remains.
+- After the three guides, a safe four-step workshop highlights the actual spell window, inventory and macro bar. Simulation and potion spending stay frozen until the player explicitly enters combat.
+- Five optional macros can be assigned individually, with duplicate/reserved-key validation, clearing and an optional example. No macro is assigned implicitly. A window-only route explains selecting a spell, Lanzar and clicking, plus selecting and using potions.
+- Regression checks cover moving actor occupancy, adjacent rows, interrupted steps, free aiming, absent target rings, custom potion keys and the entire workshop-to-combat browser flow.
+
 # Original spell artwork — 22 October 2026
 
 - The tutorial uses the client's original particle 127 (GRH 20133) for Apocalipsis, including the swapped color channels, four-corner tint, five additive sprites, 60 moves/s, 6 degrees per move and 50-move lifetime. The tint is baked once into the cropped source texture; playback requires only sprite transforms and compositing.
 - Inmovilizar uses FX 12: all 15 original 128px frames at 12 FPS with the catalog's 50px offset, -8px presentation nudge and 0.7 intensity. Enemy Inmovilizar now uses this artwork too, instead of displaying Apocalipsis for every incoming spell.
 - Effects track the moving target; death clears effects attached to the player. Reduced motion displays a still original sprite with the same bounded lifetime instead of substituting a circle.
 - Remover has no Particle or FXgrh in Hechizos.dat. Its invented ring has been removed; the original magic words accompany removal of paralysis. All three spells show their authored magic words over the caster.
-- Source sprite regions and frame order are recorded in `src/demo/spell-art.json`. Only the two needed transparent PNGs ship (under 48 KiB total); the full client atlases are not copied. Existing targeting/windup indicators remain tactical UI, and the existing melee/meditation visuals are unchanged.
+- Source sprite regions and frame order are recorded in `src/demo/spell-art.json`. Only the two needed transparent PNGs ship (under 48 KiB total); the full client atlases are not copied. The existing melee/meditation visuals are unchanged.
 
 # Godot gameplay adaptation — 21 October 2026
 

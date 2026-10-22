@@ -3,6 +3,8 @@ import { $, canvas, demo } from './context.ts';
 import { returnToNix } from './embed.ts';
 import { focusGame, selectSpell, setHudDrawer, syncGuide, togglePause, ui, useSelected } from './hud.ts';
 import { schedule } from './loop.ts';
+import { handleSetupKey } from './setup.ts';
+import { macroForKey } from './rules/macros.ts';
 
 declare global {
   // Chromium's non-standard InputDeviceCapabilities; clicks synthesized from touches are ignored.
@@ -16,6 +18,7 @@ export function input() {
     demo.returning ||
     demo.presentationNow < demo.beatUntil ||
     demo.hudDrawerOpen ||
+    demo.state.tutorial?.stage === 'setup' ||
     $('#help-dialog').open ||
     $('#character-dialog').open ||
     !!demo.state.tutorial?.dialog
@@ -40,23 +43,12 @@ export function input() {
 }
 export function aimPoint() {
   if (!demo.pointer) return null;
-  const point = {
+  return {
     x: demo.state.player.x + (demo.pointer.x - demo.width / 2) / demo.scale,
     y:
       (demo.state.phase === 'hallway' ? M.hallway.cameraY : demo.state.player.y) +
       (demo.pointer.y - demo.height / 2) / demo.scale,
   };
-  const hit = demo.state.enemies
-    .filter((e) => e.hp > 0 && Math.abs(e.x - point.x) < 28 && point.y >= e.y - 88 && point.y <= e.y + 8)
-    .sort((a, b) => b.y - a.y)[0];
-  if (
-    demo.state.selectedSpell === 'remover' &&
-    Math.abs(point.x - demo.state.player.x) < 28 &&
-    point.y >= demo.state.player.y - 88 &&
-    point.y <= demo.state.player.y + 8
-  )
-    return { x: demo.state.player.x, y: demo.state.player.y, self: true };
-  return hit ? { x: hit.x, y: hit.y, enemyId: hit.name } : point;
 }
 export function prepareSpell() {
   if (
@@ -64,6 +56,7 @@ export function prepareSpell() {
     demo.paused ||
     demo.presentationNow < demo.beatUntil ||
     demo.state.phase === 'hallway' ||
+    demo.state.tutorial?.stage === 'setup' ||
     demo.state.tutorial?.stage === 'complete'
   )
     return;
@@ -113,6 +106,10 @@ export function clear() {
 const accepted = ['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright'];
 export function bindKeyboard() {
   document.addEventListener('keydown', (e) => {
+    if (demo.state.tutorial?.stage === 'setup' && !demo.paused) {
+      handleSetupKey(e);
+      return;
+    }
     if (
       demo.returning ||
       demo.presentationNow < demo.beatUntil ||
@@ -138,9 +135,14 @@ export function bindKeyboard() {
       return;
     }
     if ((e.target as Element).closest('input,select,textarea')) return;
-    if ((key === 'f1' || key === 'f2') && !e.repeat && demo.ready && !demo.paused) {
+    const macro = macroForKey(demo.macroBindings, key);
+    if (macro && !e.repeat && demo.ready && !demo.paused && !demo.hudDrawerOpen) {
       e.preventDefault();
-      M.pressPotion(demo.state, key, key === 'f1' ? 'life' : 'mana');
+      if (macro === 'life' || macro === 'mana') M.pressPotion(demo.state, key, macro);
+      else {
+        selectSpell(macro);
+        prepareSpell();
+      }
       return;
     }
     if ((e.target as Element).closest('button,a')) return;
@@ -151,15 +153,6 @@ export function bindKeyboard() {
         demo.keys.add(key);
         demo.keyboardOrder.set(key, ++demo.movementOrder);
       }
-    }
-    if (['1', '2', '3'].includes(key) && !e.repeat && demo.ready && !demo.paused) {
-      e.preventDefault();
-      selectSpell(['apocalipsis', 'inmovilizar', 'remover'][Number(key) - 1]);
-      prepareSpell();
-    }
-    if (key === 'c' && !e.repeat && demo.ready && !demo.paused) {
-      e.preventDefault();
-      prepareSpell();
     }
     if ([' ', 'e', 'q', 'u'].includes(key) && !e.repeat && demo.ready && !demo.paused && !demo.hudDrawerOpen) {
       e.preventDefault();
@@ -174,7 +167,7 @@ export function bindKeyboard() {
     const key = e.key.toLowerCase();
     demo.keys.delete(key);
     demo.keyboardOrder.delete(key);
-    if (key === 'f1' || key === 'f2') {
+    if (demo.state.heldPotions.some((potion) => potion.key === key)) {
       e.preventDefault();
       M.releasePotion(demo.state, key);
     }
@@ -380,7 +373,8 @@ export function worldClick(e: MouseEvent) {
     demo.hudDrawerOpen ||
     $('#help-dialog').open ||
     $('#character-dialog').open ||
-    demo.state.tutorial?.dialog
+    demo.state.tutorial?.dialog ||
+    demo.state.tutorial?.stage === 'setup'
   )
     return;
   focusGame();

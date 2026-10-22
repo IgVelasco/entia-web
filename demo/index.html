@@ -24,7 +24,7 @@
           <canvas
             id="game"
             tabindex="0"
-            aria-label="Move with WASD or arrows. 1, 2, 3 or C prepares a spell, then click a rival. Keep moving while casting. E picks up essence or talks. Space strikes on release. N meditates. Walk into the portal to return Home. P opens pause and controls."
+            aria-label="WASD o flechas para moverte. Seleccioná un hechizo y apretá Lanzar, luego hacé clic en un casillero. Los macros se configuran antes de pelear. E recoge o habla. Espacio golpea al soltar. N medita y P pausa."
           ></canvas>
           <nav id="tutorial-journey" aria-label="Tutorial progress">
             <span id="journey-0"><b>01</b> Learn</span><i></i><span id="journey-1"><b>02</b> Fight</span><i></i
@@ -62,20 +62,26 @@
           <p id="deposit-status" role="status">Bank unlocks after your first pickup</p>
           <div class="deck-top">
             <div class="macrobar" aria-label="Demo macro shortcuts">
-              <button id="macro-life" aria-label="Hold F1 or this button for life potions">
-                <kbd>F1</kbd><img src="../assets/potion-life.png" alt="" /><span id="life-stock">100</span></button
-              ><button id="macro-mana" aria-label="Hold F2 or this button for mana potions">
-                <kbd>F2</kbd><img src="../assets/potion-mana.png" alt="" /><span id="mana-stock">100</span></button
-              ><button id="macro-spell" aria-label="Prepare Apocalipsis with C">
-                <kbd>C</kbd><img src="../assets/hud/scroll.png" alt="" /></button
-              ><span></span><span></span><span></span>
+              <button id="macro-life" aria-label="Mantener para usar pociones de vida">
+                <kbd>—</kbd><img src="../assets/potion-life.png" alt="" /><span id="life-stock">100</span></button
+              ><button id="macro-mana" aria-label="Mantener para usar pociones de maná">
+                <kbd>—</kbd><img src="../assets/potion-mana.png" alt="" /><span id="mana-stock">100</span></button
+              ><button id="macro-spell" aria-label="Preparar Apocalipsis">
+                <kbd>—</kbd><img src="../assets/hud/scroll.png" alt="" /></button
+              ><button id="macro-inmovilizar" aria-label="Preparar Inmovilizar">
+                <kbd>—</kbd><img src="../assets/hud/scroll.png" alt="" />
+              </button>
+              <button id="macro-remover" aria-label="Preparar Remover parálisis">
+                <kbd>—</kbd><img src="../assets/hud/scroll.png" alt="" /></button
+              ><span></span>
             </div>
             <div class="interact-area" hidden>
               <button id="interact">Interact <kbd>E</kbd></button>
               <div id="bank-progress" hidden><span></span></div>
             </div>
           </div>
-          <div id="target-help">Prepare a spell with C, then click your target</div>
+          <div id="target-help">Seleccioná un hechizo y apretá Lanzar</div>
+          <p id="movement-status" role="status" hidden></p>
           <div class="mobile-controls" aria-label="Touch controls">
             <div class="dpad">
               <button id="joystick" aria-label="Movement joystick: drag in one of four directions">
@@ -97,7 +103,7 @@
                 <option value="inmovilizar">Inmovilizar</option>
                 <option value="remover">Remover parálisis</option></select
               ><button id="mobile-strike">Strike</button
-              ><button id="cast" aria-pressed="false">Prepare <span>✧</span></button>
+              ><button id="cast" aria-pressed="false">Lanzar <span>✧</span></button>
             </div>
           </div>
         </div>
@@ -143,19 +149,18 @@
             ><span class="item-slot empty"></span>
           </div>
           <div class="inventory-footer">
-            <span id="item-description">Life potion</span><button id="use-selected">Use · U</button>
+            <span id="item-description">Life potion</span><button id="use-selected">Usar · U</button>
           </div>
         </section>
         <section class="rao-window spells-window" aria-labelledby="spells-heading">
           <h2 id="spells-heading">Spells</h2>
           <div class="spell-list" role="listbox" aria-label="Available spells">
-            <button id="selected-spell" data-spell="apocalipsis" role="option" aria-selected="true">
-              Apocalipsis · 1</button
-            ><button data-spell="inmovilizar" role="option" aria-selected="false">Inmovilizar · 2</button
-            ><button data-spell="remover" role="option" aria-selected="false">Remover parálisis · 3</button>
+            <button id="selected-spell" data-spell="apocalipsis" role="option" aria-selected="true">Apocalipsis</button
+            ><button data-spell="inmovilizar" role="option" aria-selected="false">Inmovilizar</button
+            ><button data-spell="remover" role="option" aria-selected="false">Remover parálisis</button>
           </div>
           <small id="spell-status">15 mana · targeted spell</small
-          ><button id="prepare-spell" aria-pressed="false">Cast</button>
+          ><button id="prepare-spell" aria-pressed="false">Lanzar</button>
         </section>
         <section class="rao-window resource-window" aria-label="Resources">
           <div class="resource-line">
@@ -189,6 +194,51 @@
         </div>
       </aside>
     </main>
+    <section id="controls-lesson" role="dialog" aria-modal="true" aria-labelledby="setup-title" hidden>
+      <div id="lesson-scrim"></div>
+      <div class="lesson-card">
+        <div class="lesson-content">
+          <span class="kicker" id="setup-progress">Preparación segura</span>
+          <h2 id="setup-title">Prepará tus controles</h2>
+          <p id="setup-description"></p>
+          <div id="setup-bindings" hidden>
+            <div class="macro-assignment">
+              <span>Apocalipsis</span
+              ><button data-bind="apocalipsis" aria-label="Asignar tecla a Apocalipsis">Asignar</button
+              ><button data-clear-macro="apocalipsis" aria-label="Quitar tecla de Apocalipsis">×</button>
+            </div>
+            <div class="macro-assignment">
+              <span>Inmovilizar</span
+              ><button data-bind="inmovilizar" aria-label="Asignar tecla a Inmovilizar">Asignar</button
+              ><button data-clear-macro="inmovilizar" aria-label="Quitar tecla de Inmovilizar">×</button>
+            </div>
+            <div class="macro-assignment">
+              <span>Remover parálisis</span
+              ><button data-bind="remover" aria-label="Asignar tecla a Remover parálisis">Asignar</button
+              ><button data-clear-macro="remover" aria-label="Quitar tecla de Remover parálisis">×</button>
+            </div>
+            <div class="macro-assignment">
+              <span>Poción de vida</span
+              ><button data-bind="life" aria-label="Asignar tecla a poción de vida">Asignar</button
+              ><button data-clear-macro="life" aria-label="Quitar tecla de poción de vida">×</button>
+            </div>
+            <div class="macro-assignment">
+              <span>Poción de maná</span
+              ><button data-bind="mana" aria-label="Asignar tecla a poción de maná">Asignar</button
+              ><button data-clear-macro="mana" aria-label="Quitar tecla de poción de maná">×</button>
+            </div>
+            <button id="setup-example">Usar ejemplo: C / V / R / F1 / F2</button>
+          </div>
+          <p id="setup-summary" hidden></p>
+        </div>
+        <p id="setup-error" role="status" aria-live="polite"></p>
+        <div class="lesson-actions">
+          <button id="setup-back">Atrás</button><button id="setup-next" class="primary">Siguiente</button
+          ><button id="setup-start" class="primary" hidden>Entrar en la arena</button>
+        </div>
+        <button id="setup-windows" class="quiet">Jugar desde las ventanas, sin macros</button>
+      </div>
+    </section>
     <dialog id="guide-dialog" aria-labelledby="guide-title">
       <div id="guide-portrait-wrap">
         <canvas id="guide-portrait" width="96" height="112" aria-hidden="true"></canvas>
@@ -216,10 +266,11 @@
         <div>
           <b>1. Fight</b>
           <p>
-            Click the floor to walk. Press C or Prepare to aim, then click a rival to cast instead of walking. Escape or
-            Prepare again cancels aiming. Prepare again for each cast. Keep moving while aiming and casting. Inmovilizar
+            Click the floor to walk. Select a spell and press Lanzar to aim, then click its target tile. Escape or
+            Cancelar cancels aiming. Prepare again for each cast. Keep moving while aiming and casting. Inmovilizar
             stops movement; Remover parálisis targets a character, including yourself. Bots can remove immobilization
-            too. Move away from enemy spell markers. Walk into the return portal to go back to Nix.
+            too. Aim stays free and spells have no target-area indicators. Walk into the return portal to go back to
+            Nix.
           </p>
         </div>
         <div>
@@ -238,17 +289,16 @@
         </div>
       </div>
       <p class="small-note">
-        Auto-pot repeats a potion while its assigned macro is held. This demo assigns F1 to life and F2 to mana; you can
-        also hold the hotbar buttons. With Auto-pot off, releasing uses one. Holding still consumes potions at full
-        resources. This practice run supplies 100 of each; these are demo assignments, not your character’s saved
-        macros.
+        Auto-pot repeats a potion while its assigned macro is held. Assign your own keys in the safe workshop before
+        combat, or choose to play entirely from the windows. You can also hold the hotbar buttons. With Auto-pot off,
+        releasing uses one. Holding still consumes potions at full resources. This practice run supplies 100 of each.
       </p>
       <details open>
         <summary>Controls</summary>
         <dl class="key-list">
           <div>
-            <dt>Hold F1 / F2</dt>
-            <dd>Life / mana potion</dd>
+            <dt>Assigned potion macro</dt>
+            <dd>Hold for repeated use; release for one use with Auto-pot off</dd>
           </div>
           <div>
             <dt>U / double-click</dt>
@@ -263,11 +313,11 @@
             <dd>Move; cancel a walking route</dd>
           </div>
           <div>
-            <dt>1 / 2 / 3</dt>
-            <dd>Ready damage / immobilize / remove paralysis</dd>
+            <dt>Assigned spell macro</dt>
+            <dd>Ready its spell for free aiming</dd>
           </div>
           <div>
-            <dt>C, then click</dt>
+            <dt>Lanzar, then click</dt>
             <dd>Prepare & cast while moving; recovery keeps aiming ready</dd>
           </div>
           <div>
@@ -297,7 +347,7 @@
         </dl>
       </details>
       <p class="small-note">
-        On a phone, tap the floor or use the thumbstick to move. Prepare changes the next tap to a cast; tap Prepare
+        On a phone, tap the floor or use the thumbstick to move. Lanzar changes the next tap to a cast; tap Cancelar
         again to cancel. Use the contextual button to talk or pick up. Open Inventory for your inventory and resources.
       </p>
       <p class="small-note">

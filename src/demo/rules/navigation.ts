@@ -2,6 +2,7 @@
 import * as Physics from '../../shared/physics.ts';
 import M from './tutorial.ts';
 import type { DemoState, Point } from './state.ts';
+import { occupiedPosition, sameTile } from './occupancy.ts';
 const originalUpdate = M.update;
 function cancelWalk(s: DemoState) {
   s.navigation = null;
@@ -13,6 +14,7 @@ function walkTo(s: DemoState, target?: Point | null, guide: string | null = null
     !Number.isFinite(target.x) ||
     !Number.isFinite(target.y) ||
     s.armed ||
+    s.tutorial?.stage === 'setup' ||
     s.tutorial?.dialog ||
     s.tutorial?.stage === 'complete'
   )
@@ -34,11 +36,11 @@ function walkTo(s: DemoState, target?: Point | null, guide: string | null = null
       radius: M.RADIUS,
       obstacles: [...M.obstacles, ...(s.bankUnlocked ? [M.bankBounds(s)] : [])],
     });
-    const others = s.enemies.filter((e) => e.hp > 0),
+    const occupied = (point: Point) => s.enemies.some((e) => e.hp > 0 && sameTile(occupiedPosition(e), point)),
       tx = Math.round((target.x - start.x) / 32),
       ty = Math.round((target.y - start.y) / 32);
     const end = { x: start.x + tx * 32, y: start.y + ty * 32 };
-    if (!physics.free(end.x, end.y, others, p)) {
+    if (!physics.free(end.x, end.y) || occupied(end)) {
       M.tell(s, 'That spot is blocked. Click open ground.');
       return false;
     }
@@ -73,7 +75,7 @@ function walkTo(s: DemoState, target?: Point | null, guide: string | null = null
           key = x + ',' + y;
         if (seen.has(key)) continue;
         const b = { x: start.x + x * 32, y: start.y + y * 32 };
-        if (physics.clear(a, b, others, p)) {
+        if (!occupied(b) && physics.clear(a, b)) {
           seen.add(key);
           queue.push({ x, y, prev: i });
         }

@@ -1,0 +1,202 @@
+#controls-lesson {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+#lesson-scrim,
+.lesson-card {
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+}
+#lesson-scrim {
+  position: fixed;
+  inset: 0;
+  background: #020c09b8;
+  z-index: 40;
+}
+.lesson-card {
+  position: fixed;
+  z-index: 60;
+  top: 100px;
+  left: 24px;
+  width: min(450px, calc(100vw - 48px));
+  max-height: calc(100dvh - 120px);
+  padding: 24px;
+  border: 1px solid #c1a76b;
+  border-radius: 12px;
+  background: #12251e;
+  box-shadow: 0 16px 70px #000a;
+}
+.lesson-content {
+  min-height: 0;
+  overflow: auto;
+  padding: 3px;
+}
+.lesson-actions,
+#setup-windows,
+#setup-error {
+  flex-shrink: 0;
+}
+.lesson-card h2 {
+  color: #ecd293;
+  font:
+    26px/1.2 Georgia,
+    serif;
+  margin: 14px 0;
+}
+.lesson-card p {
+  line-height: 1.6;
+  color: #d2d9cf;
+  font-size: 14px;
+}
+.lesson-actions {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0 12px;
+}
+.lesson-actions button {
+  flex: 1;
+}
+#setup-windows {
+  width: 100%;
+  white-space: normal;
+}
+#setup-error {
+  color: #f4c281;
+  min-height: 24px;
+}
+#setup-error:empty {
+  display: none;
+}
+#setup-summary {
+  padding: 12px;
+  background: #263c2e;
+  border-radius: 6px;
+}
+.macro-assignment {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(86px, 140px) 32px;
+  align-items: center;
+  gap: 8px;
+  margin: 7px 0;
+  font-size: 13px;
+}
+.macro-assignment button {
+  padding: 9px 5px;
+}
+.macro-assignment button[aria-pressed='true'] {
+  background: #6c5932;
+  outline: 2px solid #e3c574;
+}
+#setup-example {
+  width: 100%;
+  margin-top: 10px;
+  white-space: normal;
+}
+body[data-controls-lesson] aside {
+  position: relative;
+  z-index: 50;
+  pointer-events: none;
+}
+body[data-controls-lesson] aside > * {
+  opacity: 0.25;
+}
+body[data-controls-lesson] .lesson-target {
+  position: relative;
+  z-index: 50;
+  opacity: 1;
+  outline: 3px solid #edcc7f;
+  outline-offset: 5px;
+  box-shadow: 0 0 30px #edcc7f55;
+  pointer-events: none;
+}
+body[data-controls-lesson='macros'] #control-deck {
+  z-index: 50;
+  isolation: auto;
+}
+body[data-controls-lesson] #control-deck * {
+  pointer-events: none;
+}
+body[data-controls-lesson] #control-deck .macrobar.lesson-target {
+  position: fixed;
+  top: 100px;
+  left: 500px;
+  right: 16px;
+  bottom: auto;
+  justify-content: center;
+  width: max-content;
+  padding: 12px;
+  background: #12251e;
+}
+body[data-controls-lesson] .spells-window.lesson-target {
+  min-height: 210px;
+}
+#movement-status {
+  margin: 0;
+  padding: 7px 12px;
+  color: #f3cd92;
+  font-size: 13px;
+  background: #2b2118;
+  text-align: center;
+}
+@media (max-width: 760px) {
+  .lesson-card {
+    top: auto;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    left: 12px;
+    width: calc(100vw - 24px);
+    max-height: min(57dvh, calc(100dvh - 316px));
+    padding: 18px;
+  }
+  .lesson-card h2 {
+    font-size: 23px;
+    margin: 10px 0;
+  }
+  .lesson-card p {
+    margin: 10px 0;
+  }
+  body[data-controls-lesson] aside {
+    position: static;
+    transform: none;
+    visibility: visible;
+    pointer-events: none;
+  }
+  body[data-controls-lesson] aside > * {
+    display: none;
+  }
+  body[data-controls-lesson] .lesson-target {
+    display: flex;
+    position: fixed;
+    top: 78px;
+    left: 16px;
+    right: 16px;
+    width: auto;
+    height: 25dvh;
+    min-height: 140px;
+    max-height: 210px;
+    margin: 0;
+  }
+  body[data-controls-lesson] .spells-window.lesson-target {
+    flex-direction: column;
+  }
+  body[data-controls-lesson] .inventory-window.lesson-target {
+    height: 27dvh;
+  }
+  body[data-controls-lesson] #control-deck .macrobar.lesson-target {
+    align-items: center;
+    justify-content: center;
+    height: 96px;
+    min-height: 0;
+    bottom: auto;
+    padding: 12px;
+    background: #12251e;
+    top: 78px;
+    left: 16px;
+    right: 16px;
+    width: auto;
+  }
+  body[data-controls-lesson] .macrobar.lesson-target > span {
+    display: none;
+  }
+}

@@ -2,7 +2,6 @@ import * as Character from '../shared/character.ts';
 import * as Physics from '../shared/physics.ts';
 import M from './rules/navigation.ts';
 import { $, canvas, ctx, demo, floor, reduced } from './context.ts';
-import { aimPoint } from './input.ts';
 import { drawSpellEffect } from './spell-effects.ts';
 import { schedule } from './loop.ts';
 import type { Drop, Point, SceneryItem } from './rules/state.ts';
@@ -175,7 +174,9 @@ export function draw() {
       })),
       { type: 'portal', y: M.gateway.y },
       ...(demo.state.bankUnlocked ? [{ type: 'bank', y: M.bankAt(demo.state).y }] : []),
-      ...(demo.state.phase === 'arena' && demo.state.tutorial?.stage !== 'complete'
+      ...(demo.state.phase === 'arena' &&
+      demo.state.tutorial?.stage !== 'complete' &&
+      demo.state.tutorial?.stage !== 'setup'
         ? demo.state.enemies.filter((e) => e.hp > 0)
         : []),
       ...(demo.state.tutorial?.stage === 'complete'
@@ -192,7 +193,11 @@ export function draw() {
       renderBank();
     } else actor(a, a.body, a.player);
   }
-  if (demo.state.phase === 'arena' && demo.state.tutorial?.stage !== 'complete')
+  if (
+    demo.state.phase === 'arena' &&
+    demo.state.tutorial?.stage !== 'complete' &&
+    demo.state.tutorial?.stage !== 'setup'
+  )
     for (const e of demo.state.enemies) {
       if (e.hp <= 0) continue;
       text(e.name, e.x, e.y - 98, '#d9c79c', 12);
@@ -207,22 +212,6 @@ export function draw() {
   resourceBar(p, p.mana, 100, 22, true);
   const playerName = Character.get().name;
   if (playerName) text(playerName, p.x, p.y - 102, '#ded2a1', 12);
-  const aim = aimPoint();
-  if (aim && demo.state.armed) {
-    const valid = Math.hypot(aim.x - p.x, aim.y - p.y) <= 270 && M.lineClear(p, aim);
-    ellipse(aim.x, aim.y, 34, 17, valid ? '#e4d490' : '#dd8068', true);
-    ctx.strokeStyle = valid ? '#e4d490' : '#dd8068';
-    ctx.beginPath();
-    ctx.moveTo(aim.x - 10, aim.y);
-    ctx.lineTo(aim.x + 10, aim.y);
-    ctx.moveTo(aim.x, aim.y - 9);
-    ctx.lineTo(aim.x, aim.y + 9);
-    ctx.stroke();
-  }
-  for (const e of demo.state.enemies)
-    if (e.wind > 0 && e.kind === 'ranged' && e.aim) {
-      ellipse(e.aim.x, e.aim.y, 42, 20, '#f1a373', true);
-    }
   if (p.immobilized > 0) text('IMMOVILIZED', p.x, p.y - 130, '#b4c9ed', 11);
   for (const e of demo.state.enemies)
     if (e.hp > 0 && e.immobilized > 0) text('IMMOVILIZED', e.x, e.y - 115, '#b4c9ed', 10);

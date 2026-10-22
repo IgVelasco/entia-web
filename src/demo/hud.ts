@@ -6,9 +6,12 @@ import { bindTap, clear, interact, prepareSpell } from './input.ts';
 import { schedule } from './loop.ts';
 import { animateGuide, motion, resetMotion } from './motion.ts';
 import type { TutorialState } from './rules/state.ts';
+import { syncSetup } from './setup.ts';
+import { macroActions, macroLabels, keyLabel } from './rules/macros.ts';
 
 export function ui() {
   syncGuide();
+  syncSetup();
   // Counts are written as numbers; the DOM stringifies them.
   const p = demo.state.player;
   $('#health-fill').style.width = p.hp + '%';
@@ -16,6 +19,11 @@ export function ui() {
   $('#mana-fill').style.width = p.mana + '%';
   $('#mana').textContent = Math.floor(p.mana) + ' / 100';
   $('#mobile-vitals').textContent = 'Life ' + Math.ceil(p.hp) + ' · Mana ' + Math.floor(p.mana);
+  $('#movement-status').textContent =
+    p.immobilized > 0
+      ? `Inmovilizado · ${Math.ceil(p.immobilized)} s · Usá Remover parálisis o esperá.`
+      : demo.state.movementBlock;
+  $('#movement-status').hidden = !p.immobilized && !demo.state.movementBlock;
   $('#carried').textContent = String(demo.state.carried);
   $('#autopot').checked = demo.state.autopotEnabled;
   $('#life-stock').textContent = String(demo.state.lifePotions);
@@ -76,7 +84,8 @@ export function ui() {
   $('#meditate').setAttribute('aria-pressed', String(demo.state.meditating));
   $('#meditate').textContent = demo.state.meditating ? 'Meditating… N to stop' : 'Meditate · N';
   $('#prepare-spell').disabled = demo.paused;
-  $('#prepare-spell').textContent = demo.state.armed ? 'Cancel aim' : 'Prepare';
+  $('#prepare-spell').textContent = demo.state.armed ? 'Cancelar' : 'Lanzar';
+  $('#cast').textContent = demo.state.armed ? 'Cancelar' : 'Lanzar';
   $('#prepare-spell').setAttribute('aria-pressed', String(demo.state.armed));
   $('#cast').setAttribute('aria-pressed', String(demo.state.armed));
   $('#target-help').dataset.armed = String(demo.state.armed);
@@ -85,7 +94,22 @@ export function ui() {
       ' ready · ' +
       (demo.state.selectedSpell === 'remover' ? 'click yourself or a character' : 'click a rival') +
       ' · Esc cancels'
-    : 'WASD to move · 1–3 to aim · E to pick up';
+    : 'WASD para moverte · seleccioná un hechizo y apretá Lanzar · E recoge';
+  for (const action of macroActions) {
+    const id = action === 'apocalipsis' ? 'spell' : action;
+    $('#macro-' + id + ' kbd').textContent = demo.macroBindings[action] ? keyLabel(demo.macroBindings[action]) : '—';
+    $('#macro-' + id).setAttribute(
+      'aria-label',
+      macroLabels[action] +
+        (demo.macroBindings[action] ? ' · ' + keyLabel(demo.macroBindings[action]) : ' · sin tecla'),
+    );
+  }
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-spell]'))
+    button.textContent =
+      M.spells[button.dataset.spell!].name +
+      (demo.macroBindings[button.dataset.spell! as keyof typeof demo.macroBindings]
+        ? ' · ' + keyLabel(demo.macroBindings[button.dataset.spell! as keyof typeof demo.macroBindings])
+        : '');
   const recovery = Math.max(demo.state.cooldown, demo.state.hitToCast);
   $('#spell-status').textContent =
     recovery > 0
@@ -222,7 +246,13 @@ export function bindHud() {
   });
   $('#selected-spell').onclick = () => focusGame();
   $('#selected-spell').ondblclick = prepareSpell;
-  bindTap($('#macro-spell'), prepareSpell);
+  for (const action of ['apocalipsis', 'inmovilizar', 'remover']) {
+    const id = action === 'apocalipsis' ? 'spell' : action;
+    bindTap($('#macro-' + id) as HTMLButtonElement, () => {
+      selectSpell(action);
+      prepareSpell();
+    });
+  }
   for (const kind of ['life', 'mana']) {
     const button = $('#macro-' + kind),
       key = 'pointer-' + kind;
@@ -287,6 +317,7 @@ export function focusGame() {
     document.hidden ||
     demo.hudDrawerOpen ||
     demo.state.tutorial?.dialog ||
+    demo.state.tutorial?.stage === 'setup' ||
     $('#help-dialog').open ||
     $('#character-dialog').open
   )
@@ -332,12 +363,14 @@ function tutorialUI() {
   const t = demo.state.tutorial;
   if (!t) return;
   const hall = demo.state.phase === 'hallway',
+    setup = t.stage === 'setup',
     done = t.stage === 'complete';
   $('#chapter').textContent = hall
     ? 'THE VEIL / FIRST STEPS'
     : done
       ? 'THE VEIL / TUTORIAL FINISHED'
       : 'THE VEIL / ARENA';
+  if (setup) $('#chapter').textContent = 'THE VEIL / PREPARACIÓN';
   $('#objective-label').textContent = hall
     ? 'MEET YOUR GUIDES'
     : done
@@ -358,7 +391,7 @@ function tutorialUI() {
       ? 'The full-match rules are provisional. Replay, review them or return to Nix.'
       : t.bankRevealed
         ? 'Pick up crystals with E. Follow BANK and stay nearby until your carried essence is secured.'
-        : 'Ready a spell with 1–3, aim and click. Keep moving. E picks up crystals.';
+        : 'Elegí un hechizo y apretá Lanzar, o usá tu macro. Apuntá al casillero. E recoge cristales.';
   $('#deposit-status').textContent = hall
     ? 'Safe hallway · learn at your pace'
     : done
@@ -390,6 +423,14 @@ function tutorialUI() {
   }
   $('#cast').disabled = demo.paused || hall || done;
   $('#prepare-spell').disabled = demo.paused || hall || done;
+  if (setup) {
+    $('#cast').disabled = true;
+    $('#prepare-spell').disabled = true;
+    $('#objective-label').textContent = 'PREPARÁ TUS CONTROLES';
+    $('#objective').textContent = 'Sala segura';
+    $('#hint').textContent = 'Conocé las ventanas y elegí si querés usar macros antes de combatir.';
+    $('#deposit-status').textContent = 'Combate detenido · no se gasta vida, maná ni pociones';
+  }
   if (t.bankRevealed && !done) {
     const b = M.bankAt(demo.state),
       dx = b.x - demo.state.player.x,
@@ -439,7 +480,8 @@ function paintPortrait(id: string) {
   if (demo.images[body]) c.drawImage(demo.images[body], 0, 320, 96, 160, 0, -20, 96, 160);
 }
 function updateJourney(t: TutorialState) {
-  const index = t.stage === 'hallway' ? 0 : t.stage === 'fight' ? 1 : t.stage === 'deposit' ? 2 : 3;
+  const index =
+    t.stage === 'hallway' || t.stage === 'setup' ? 0 : t.stage === 'fight' ? 1 : t.stage === 'deposit' ? 2 : 3;
   for (let i = 0; i < 4; i++) {
     const step = $('#journey-' + i);
     step.dataset.state = i < index ? 'done' : i === index ? 'current' : 'waiting';

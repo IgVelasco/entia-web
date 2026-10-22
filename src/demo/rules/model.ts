@@ -2,6 +2,7 @@
 import * as Physics from '../../shared/physics.ts';
 import type { Body } from '../../shared/physics.ts';
 import { cardinal, walk } from './movement.ts';
+import { blockingActor, occupiedPosition, sameTile } from './occupancy.ts';
 import type { CastTarget, DemoState, Drop, Enemy, Input, Player, Point, Rect, SceneryItem, Spell } from './state.ts';
 const WIDTH = 1200,
   HEIGHT = 880,
@@ -27,6 +28,7 @@ function create(): DemoState {
     phase: 'arena',
     selectedSpell: 'apocalipsis',
     damageTexts: [],
+    movementBlock: '',
     player: { x: 304, y: 432, dir: 1, gait: 0, hp: 100, mana: 100, immobilized: 0 },
     carried: 0,
     secured: 0,
@@ -56,7 +58,7 @@ function create(): DemoState {
     fx: [],
     drops: [],
     nextDrop: 1,
-    notice: 'Ready Apocalipsis with 1, then click a rival. Keep moving; E picks up dropped essence.',
+    notice: 'Seleccioná Apocalipsis y apretá Lanzar. Apuntá al casillero; E recoge esencia.',
     noticeId: 1,
     flash: 1,
     won: false,
@@ -271,10 +273,8 @@ function cast(s: DemoState, target?: CastTarget | null) {
   const p = s.player,
     d = Math.hypot(target.x - p.x, target.y - p.y),
     spell = spells[s.selectedSpell] || spells.apocalipsis;
-  const enemy = s.enemies.find(
-      (e) => e.name === target.enemyId && e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) < 1,
-    ),
-    self = target.self === true && d < 1;
+  const enemy = s.enemies.find((e) => e.hp > 0 && sameTile(occupiedPosition(e), target)),
+    self = sameTile(occupiedPosition(p), target);
   if (p.mana < spell.mana) {
     tell(s, 'Not enough mana. Rest in the sanctuary to recover.');
     return false;
@@ -314,7 +314,6 @@ function cast(s: DemoState, target?: CastTarget | null) {
   if (s.selectedSpell === 'inmovilizar') {
     enemy!.immobilized = 3;
     enemy!.cleanseReaction = 0.9;
-    enemy!.step = null;
     s.fx.push({ x: enemy!.x, y: enemy!.y, age: 0, hit: true, owner: 'bind', targetId: enemy!.name });
     tell(s, `${enemy!.name} is immobilized. It can still cast and may remove the effect.`);
   } else if (s.selectedSpell === 'remover') {
@@ -376,10 +375,10 @@ function melee(s: DemoState) {
 function meditate(s: DemoState) {
   s.meditating = !s.meditating;
   s.armed = false;
-  s.player.step = null;
   tell(s, s.meditating ? 'Meditating. Stay still to recover mana.' : 'Meditation stopped.');
 }
 function usePotion(s: DemoState, kind: string) {
+  if (s.tutorial?.stage === 'setup') return false;
   const life = kind === 'life';
   if (!life && kind !== 'mana') return false;
   const stock = life ? 'lifePotions' : 'manaPotions',
@@ -410,15 +409,15 @@ function botStep(s: DemoState, e: Enemy, target: Point, dt: number) {
   const b = bankBounds(s),
     bankBlocked = (x: number, y: number) =>
       s.bankUnlocked && x + RADIUS > b.x && x - RADIUS < b.x + b.w && y + RADIUS > b.y && y - RADIUS < b.y + b.h;
-  const others = [s.player, ...s.enemies.filter((a) => a.hp > 0)];
   if (!e.step) {
     if (Math.hypot(target.x - e.x, target.y - e.y) < 4) return;
     let v = cardinal(target.x - e.x, target.y - e.y),
       end = { x: e.x + v.x * 32, y: e.y + v.y * 32 };
-    if (bankBlocked(end.x, end.y) || !physics.clear(e, end, others, e)) {
+    if (bankBlocked(end.x, end.y) || blockingActor(s, e, end) || !physics.clear(e, end)) {
       v = { x: v.x ? 0 : Math.sign(target.x - e.x), y: v.y ? 0 : Math.sign(target.y - e.y) };
+      if (!v.x && !v.y) return;
       end = { x: e.x + v.x * 32, y: e.y + v.y * 32 };
-      if (bankBlocked(end.x, end.y) || !physics.clear(e, end, others, e)) return;
+      if (bankBlocked(end.x, end.y) || blockingActor(s, e, end) || !physics.clear(e, end)) return;
     }
     e.step = { ...v, end, remaining: 32 };
     e.dir = heading(v.x, v.y);
@@ -427,7 +426,7 @@ function botStep(s: DemoState, e: Enemy, target: Point, dt: number) {
     distance = Math.min(step.remaining, e.speed * dt),
     moved = bankBlocked(e.x + step.x * distance, e.y + step.y * distance)
       ? 0
-      : move(e, step.x * distance, step.y * distance, others);
+      : move(e, step.x * distance, step.y * distance);
   e.moving = moved > 0.01;
   step.remaining -= moved;
   if (moved < distance - 0.001) e.step = null;
@@ -454,6 +453,7 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
     return;
   }
   p.immobilized = Math.max(0, p.immobilized - dt);
+  s.movementBlock = '';
   p.moving = false;
   // Banking uses the same solid footprint as other props once it appears.
   const activeObstacles = s.bankUnlocked ? [bankBounds(s)] : [];
@@ -462,14 +462,22 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
       (o) => x + RADIUS > o.x && x - RADIUS < o.x + o.w && y + RADIUS > o.y && y - RADIUS < o.y + o.h,
     );
   if (!p.immobilized) {
-    const others = s.enemies.filter((e) => e.hp > 0);
     walk(
       p,
       dt,
       input,
       {
-        clear: (start, end) => !insideBank(end.x, end.y) && physics.clear(start, end, others, p),
-        move: (dx, dy) => (insideBank(p.x + dx, p.y + dy) ? 0 : move(p, dx, dy, others)),
+        clear: (start, end) => {
+          const actor = blockingActor(s, p, end);
+          if (actor) {
+            s.movementBlock = `Casillero ocupado por ${'name' in actor ? actor.name : 'otro personaje'}.`;
+            return false;
+          }
+          const free = !insideBank(end.x, end.y) && physics.clear(start, end);
+          if (!free) s.movementBlock = 'Hay un obstáculo en ese casillero.';
+          return free;
+        },
+        move: (dx, dy) => (insideBank(p.x + dx, p.y + dy) ? 0 : move(p, dx, dy)),
       },
       s.navigation?.points,
     );
@@ -479,8 +487,8 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
     else s.pendingMelee = Math.max(0, s.pendingMelee - dt);
   }
 
-  if (p.moving) s.meditating = false;
-  if (s.meditating) p.mana = Math.min(100, p.mana + 18 * dt);
+  if (p.moving && (input.x || input.y || s.navigation)) s.meditating = false;
+  if (s.meditating && !p.moving) p.mana = Math.min(100, p.mana + 18 * dt);
   const safe = p.x < 270;
   if (safe) {
     p.hp = Math.min(100, p.hp + 12 * dt);
@@ -494,7 +502,6 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
         f.targetId = 'player';
         if (f.spell === 'inmovilizar') {
           p.immobilized = 2.5;
-          p.step = null;
           tell(s, 'Immobilized! Prepare Remover parálisis and click yourself.');
         } else damage(s, p, 12);
         s.flash = 0.2;
@@ -570,6 +577,10 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
         tell(s, `${e.name} used Remover parálisis.`);
       }
     }
+    if (e.step && !e.immobilized) {
+      botStep(s, e, e.step.end, dt);
+      continue;
+    }
     const loot = s.drops
       .filter((d) => s.time >= d.readyAt + 1 && d.x >= 270 && Math.hypot(d.x - e.x, d.y - e.y) < 240)
       .sort((a, b) => Math.hypot(a.x - e.x, a.y - e.y) - Math.hypot(b.x - e.x, b.y - e.y))[0];
@@ -606,7 +617,6 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
         e.attackCount = (e.attackCount || 0) + 1;
         e.attackSpell = e.attackCount % 4 === 0 ? 'inmovilizar' : 'apocalipsis';
         e.aim = { x: p.x, y: p.y };
-        e.step = null;
       } else if (d > 115) botStep(s, e, p, dt);
     } else if (Math.hypot(e.x - e.homeX, e.y - e.homeY) > 5) botStep(s, e, { x: e.homeX, y: e.homeY }, dt);
   }

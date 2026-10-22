@@ -27,11 +27,20 @@ async function meetAllGuides(page: Page) {
   }
 }
 
-async function enterArena(page: Page) {
+async function enterPreparation(page: Page) {
   await meetAllGuides(page);
   await page.keyboard.down('d');
-  await expect(page.locator('#chapter')).toHaveText('THE VEIL / ARENA');
+  await expect(page.locator('#controls-lesson')).toBeVisible();
   await page.keyboard.up('d');
+}
+async function enterArena(page: Page) {
+  await enterPreparation(page);
+  await page.locator('#setup-next').click();
+  await page.locator('#setup-next').click();
+  await page.locator('#setup-example').click();
+  await page.locator('#setup-next').click();
+  await page.locator('#setup-start').click();
+  await expect(page.locator('#chapter')).toHaveText('THE VEIL / ARENA');
 }
 
 test.describe('offline demo', () => {
@@ -74,6 +83,58 @@ test.describe('offline demo', () => {
   test.describe('with reduced motion', () => {
     test.use({ reducedMotion: 'reduce' });
 
+    test('safe workshop highlights sections, validates keys and starts combat only after review', async ({ page }) => {
+      await openDemo(page);
+      await enterPreparation(page);
+      await expect(page.locator('#setup-title')).toHaveText('1. Elegí un hechizo');
+      await expect(page.locator('.spells-window')).toHaveClass(/lesson-target/);
+      await expect(page.locator('body')).toHaveAttribute('data-tutorial-stage', 'setup');
+      await page.keyboard.press('d');
+      await expect(page.locator('#health')).toHaveText('100 / 100');
+      await expect(page.locator('#prepare-spell')).toBeDisabled();
+      await page.locator('#setup-next').click();
+      await expect(page.locator('.inventory-window')).toHaveClass(/lesson-target/);
+      await page.locator('#setup-next').click();
+      await expect(page.locator('.macrobar')).toHaveClass(/lesson-target/);
+      await page.getByRole('button', { name: 'Asignar tecla a Apocalipsis', exact: true }).click();
+      await page.keyboard.press('t');
+      await expect(page.locator('[data-bind="apocalipsis"]')).toHaveText('T');
+      await page.getByRole('button', { name: 'Asignar tecla a poción de vida', exact: true }).click();
+      await page.keyboard.press('t');
+      await expect(page.locator('#setup-error')).toContainText('ya está asignada');
+      await page.keyboard.press('w');
+      await expect(page.locator('#setup-error')).toContainText('reservada');
+      await page.keyboard.press('F3');
+      await expect(page.locator('[data-bind="life"]')).toHaveText('F3');
+      await page.locator('#setup-next').click();
+      await expect(page.locator('#setup-summary')).toContainText('Apocalipsis: T');
+      await expect(page.locator('body')).toHaveAttribute('data-tutorial-stage', 'setup');
+      await page.locator('#setup-start').click();
+      await expect(page.locator('#controls-lesson')).toBeHidden();
+      await page.keyboard.press('t');
+      await expect(page.locator('#prepare-spell')).toHaveAttribute('aria-pressed', 'true');
+      await page.keyboard.press('Escape');
+      await page.keyboard.press('F3');
+      await expect(page.locator('#life-stock')).toHaveText('99');
+    });
+
+    test('window-only play leaves macros empty and still launches spells from their window', async ({ page }) => {
+      await openDemo(page);
+      await enterPreparation(page);
+      await page.locator('#setup-windows').click();
+      await expect(page.locator('#setup-summary')).toContainText('No hay teclas');
+      await expect(page.locator('body')).toHaveAttribute('data-tutorial-stage', 'setup');
+      await page.locator('#setup-start').click();
+      await page.keyboard.press('c');
+      await expect(page.locator('#prepare-spell')).toHaveAttribute('aria-pressed', 'false');
+      await page.locator('#prepare-spell').click();
+      await expect(page.locator('#prepare-spell')).toHaveAttribute('aria-pressed', 'true');
+      await page.keyboard.press('Escape');
+      await page.getByRole('option', { name: 'Inmovilizar', exact: true }).click();
+      await page.locator('#prepare-spell').click();
+      await expect(page.locator('#target-help')).toContainText('Inmovilizar ready');
+    });
+
     test('walking into each guide opens their lesson, then the arena opens', async ({ page }) => {
       await openDemo(page);
       await enterArena(page);
@@ -102,13 +163,13 @@ test.describe('offline demo', () => {
       const prepare = page.locator('#prepare-spell');
       await page.keyboard.press('c');
       await expect(prepare).toHaveAttribute('aria-pressed', 'true');
-      await expect(prepare).toHaveText('Cancel aim');
+      await expect(prepare).toHaveText('Cancelar');
       await expect(page.locator('#target-help')).toHaveAttribute('data-armed', 'true');
       await expect(page.locator('#target-help')).toHaveText('Apocalipsis ready · click a rival · Esc cancels');
 
       await page.keyboard.press('Escape');
       await expect(prepare).toHaveAttribute('aria-pressed', 'false');
-      await expect(prepare).toHaveText('Prepare');
+      await expect(prepare).toHaveText('Lanzar');
       await expect(page.locator('#target-help')).toHaveAttribute('data-armed', 'false');
       await expect(page.locator('#help-dialog')).toBeHidden();
 
@@ -125,11 +186,11 @@ test.describe('offline demo', () => {
       const bounds = await canvas.boundingBox();
       if (!bounds) throw new Error('Missing game canvas');
       const position = { x: bounds.width / 2 + 60, y: bounds.height / 2 };
-      await page.keyboard.press('1');
+      await page.keyboard.press('c');
       await canvas.click({ position });
       await expect(page.locator('#mana')).toHaveText('85 / 100');
       await expect(page.locator('#prepare-spell')).toHaveAttribute('aria-pressed', 'false');
-      await page.keyboard.press('1');
+      await page.keyboard.press('c');
       await canvas.click({ position });
       await expect(page.locator('#mana')).toHaveText('85 / 100');
       await expect(page.locator('#prepare-spell')).toHaveAttribute('aria-pressed', 'true');
