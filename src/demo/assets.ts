@@ -3,6 +3,7 @@ import { notifyParent } from './embed.ts';
 import { focusGame, showHelp } from './hud.ts';
 import { schedule } from './loop.ts';
 import { buildFloor, drawInventoryIcon, resize } from './render.ts';
+import spellArt from './spell-art.json';
 
 const assets = {
   'npc-movement': 'npc/movement-idle-v4.png',
@@ -20,13 +21,14 @@ const assets = {
   portal: 'portal.png',
   bank: 'banking-coffer.png',
   essence: 'essence-pickup.png',
-  spell: 'apocalipsis_60.png',
+  spellApocalipsis: spellArt.apocalipsis.asset,
+  spellBind: spellArt.inmovilizar.asset,
 };
 function loadImage(name: string, file: string) {
   return new Promise<void>((resolve, reject) => {
     let shared;
     try {
-      shared = demo.embedded && window.parent.EntiaArtwork?.[name === 'spell' ? 'apocalipsis' : name];
+      shared = demo.embedded && window.parent.EntiaArtwork?.[name];
     } catch {}
     if (shared) {
       demo.images[name] = shared;

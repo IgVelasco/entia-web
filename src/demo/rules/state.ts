@@ -70,6 +70,7 @@ export interface Effect extends Point {
   hit: boolean;
   owner: string;
   spell?: string;
+  targetId?: string;
 }
 export interface DamageText extends Point {
   amount: number;

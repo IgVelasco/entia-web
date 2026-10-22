@@ -58,9 +58,10 @@ test.describe('offline demo on a phone', () => {
       y = stick.y + stick.height / 2;
     await page.mouse.move(x, y);
     await page.mouse.down();
-    await page.mouse.move(x + 30, y, { steps: 3 });
     await expect(page.locator('#joystick')).toHaveAttribute('data-active', 'true');
+    await page.mouse.move(x + 30, y, { steps: 3 });
     await expect(page.locator('#guide-dialog')).toBeVisible();
+    await expect(page.locator('#joystick')).toHaveAttribute('data-active', 'false');
     await page.mouse.up();
     await expect(page.locator('#guide-name')).toHaveText('The Warden');
   });

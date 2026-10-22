@@ -35,6 +35,17 @@ async function enterArena(page: Page) {
 }
 
 test.describe('offline demo', () => {
+  test('loads the original particle and immobilization artwork', async ({ page }) => {
+    const loaded: string[] = [];
+    page.on('response', (response) => {
+      if (response.ok()) loaded.push(new URL(response.url()).pathname);
+    });
+    await openDemo(page);
+    expect(loaded).toContain('/assets/spells/apocalipsis-particle-127.png');
+    expect(loaded).toContain('/assets/spells/inmovilizar-fx-12.png');
+    expect(loaded).not.toContain('/assets/apocalipsis_60.png');
+  });
+
   test('boots in the tutorial hallway with full resources', async ({ page }) => {
     await openDemo(page);
     await expect(page.locator('#game')).toBeVisible();

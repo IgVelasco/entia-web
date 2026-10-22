@@ -202,6 +202,7 @@ function respawnPlayer(s: DemoState) {
   s.armed = false;
   s.meditating = false;
   s.pendingMelee = 0;
+  s.fx = s.fx.filter((effect) => effect.targetId !== 'player');
   p.x = 176;
   p.y = 560;
   s.flash = 1;
@@ -314,21 +315,26 @@ function cast(s: DemoState, target?: CastTarget | null) {
     enemy!.immobilized = 3;
     enemy!.cleanseReaction = 0.9;
     enemy!.step = null;
-    s.fx.push({ x: enemy!.x, y: enemy!.y, age: 0, hit: true, owner: 'bind' });
+    s.fx.push({ x: enemy!.x, y: enemy!.y, age: 0, hit: true, owner: 'bind', targetId: enemy!.name });
     tell(s, `${enemy!.name} is immobilized. It can still cast and may remove the effect.`);
   } else if (s.selectedSpell === 'remover') {
     const who = self ? p : enemy!;
     who.immobilized = 0;
-    s.fx.push({ x: who.x, y: who.y, age: 0, hit: true, owner: 'cleanse' });
+    s.fx.push({ x: who.x, y: who.y, age: 0, hit: true, owner: 'cleanse', targetId: self ? 'player' : enemy!.name });
     tell(s, self ? 'Movement restored.' : 'Paralysis removed.');
   } else {
-    s.fx.push({ x: target.x, y: target.y, age: 0, hit: true, owner: 'player' });
+    s.fx.push({ x: target.x, y: target.y, age: 0, hit: true, owner: 'player', targetId: enemy?.name });
     if (enemy) {
       damage(s, enemy, 1);
       if (enemy.hp === 0) defeatEnemy(s, enemy);
     } else tell(s, 'No rival under the pointer. Aim at a character and click.');
   }
+  recordSpellWords(s, s.selectedSpell, 'player', p);
   return true;
+}
+function recordSpellWords(s: DemoState, spell: string, targetId: string, point: Point) {
+  s.fx = s.fx.filter((effect) => effect.owner !== 'words' || effect.targetId !== targetId);
+  s.fx.push({ ...point, owner: 'words', spell, targetId, age: 0, hit: true });
 }
 function melee(s: DemoState) {
   if (s.player.hp <= 0) return false;
@@ -485,6 +491,7 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
     if (f.owner === 'enemy' && !f.hit && f.age >= 0.3) {
       f.hit = true;
       if (!safe && Math.hypot(p.x - f.x, p.y - f.y) < 35) {
+        f.targetId = 'player';
         if (f.spell === 'inmovilizar') {
           p.immobilized = 2.5;
           p.step = null;
@@ -559,6 +566,7 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
         e.immobilized = 0;
         e.cleanseCooldown = 5;
         s.fx.push({ x: e.x, y: e.y, age: 0, hit: true, owner: 'cleanse' });
+        recordSpellWords(s, 'remover', e.name, e);
         tell(s, `${e.name} used Remover parálisis.`);
       }
     }
@@ -587,6 +595,7 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
             owner: 'enemy',
             spell: e.attackSpell || 'apocalipsis',
           });
+          recordSpellWords(s, e.attackSpell || 'apocalipsis', e.name, e);
         }
       }
       continue;

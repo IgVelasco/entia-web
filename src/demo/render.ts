@@ -3,6 +3,7 @@ import * as Physics from '../shared/physics.ts';
 import M from './rules/navigation.ts';
 import { $, canvas, ctx, demo, floor, reduced } from './context.ts';
 import { aimPoint } from './input.ts';
+import { drawSpellEffect } from './spell-effects.ts';
 import { schedule } from './loop.ts';
 import type { Drop, Point, SceneryItem } from './rules/state.ts';
 
@@ -198,31 +199,9 @@ export function draw() {
       resourceBar(e, e.hp, e.maxHp);
     }
   for (const f of demo.state.fx) {
-    const frame = Math.min(31, Math.floor(f.age * 16));
-    if (f.owner === 'bind' || f.owner === 'cleanse') {
-      if (f.age < 1.25) {
-        ctx.strokeStyle = f.owner === 'bind' ? '#adbaf0' : '#d7dfbd';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(f.x, f.y - 25, 22 + f.age * 8, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-    } else if (f.owner === 'melee') {
+    if (f.owner === 'melee') {
       if (f.age < 0.25) ellipse(f.x, f.y, 20 + f.age * 30, 8 + f.age * 15, '#e8d5a7', true);
-    } else if (reduced.matches) {
-      ellipse(f.x, f.y, 35, 20, '#e8d5a7', true);
-    } else
-      ctx.drawImage(
-        demo.images.spell,
-        (frame % 4) * 273,
-        Math.floor(frame / 4) * 243,
-        273,
-        243,
-        f.x - 73,
-        f.y - 90,
-        146,
-        130,
-      );
+    } else drawSpellEffect(ctx, demo.images, f, demo.state, reduced.matches);
   }
   resourceBar(p, p.hp, 100);
   resourceBar(p, p.mana, 100, 22, true);

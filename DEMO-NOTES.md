@@ -1,3 +1,11 @@
+# Original spell artwork — 22 October 2026
+
+- The tutorial uses the client's original particle 127 (GRH 20133) for Apocalipsis, including the swapped color channels, four-corner tint, five additive sprites, 60 moves/s, 6 degrees per move and 50-move lifetime. The tint is baked once into the cropped source texture; playback requires only sprite transforms and compositing.
+- Inmovilizar uses FX 12: all 15 original 128px frames at 12 FPS with the catalog's 50px offset, -8px presentation nudge and 0.7 intensity. Enemy Inmovilizar now uses this artwork too, instead of displaying Apocalipsis for every incoming spell.
+- Effects track the moving target; death clears effects attached to the player. Reduced motion displays a still original sprite with the same bounded lifetime instead of substituting a circle.
+- Remover has no Particle or FXgrh in Hechizos.dat. Its invented ring has been removed; the original magic words accompany removal of paralysis. All three spells show their authored magic words over the caster.
+- Source sprite regions and frame order are recorded in `src/demo/spell-art.json`. Only the two needed transparent PNGs ship (under 48 KiB total); the full client atlases are not copied. Existing targeting/windup indicators remain tactical UI, and the existing melee/meditation visuals are unchanged.
+
 # Godot gameplay adaptation — 21 October 2026
 
 - The hallway and arena share the same cardinal footstep controller: 32 pixels in 200 ms, finishing a tile after release and turning at its boundary. Straight movement carries unused frame time into the next tile, eliminating cadence gaps at 30/60/144 FPS.
