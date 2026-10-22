@@ -86,6 +86,7 @@ test.describe('Nix site', () => {
         .toContain('/demo/?embedded=1');
       await expect(page.locator('#demo-loading')).toBeHidden();
       const demo = page.frameLocator('#demo-frame');
+      await demo.locator('#movement-click-yes').click();
       await expect(demo.locator('#chapter')).toHaveText('THE VEIL / FIRST STEPS');
       await expect(demo.locator('#objective')).toHaveText('0 / 3 guides met');
 
@@ -173,6 +174,7 @@ test.describe('Nix site', () => {
       await page.getByRole('button', { name: 'Use this character' }).click();
       await page.getByRole('button', { name: 'Walk into the portal' }).click();
       await expect(page.locator('#demo-loading')).toBeHidden();
+      await page.frameLocator('#demo-frame').locator('#movement-click-yes').click();
       await expect(
         page.frameLocator('#demo-frame').getByRole('button', { name: 'Change character: Lyra' }),
       ).toBeVisible();

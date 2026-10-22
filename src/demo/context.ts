@@ -3,7 +3,7 @@ import M from './rules/navigation.ts';
 import type { DemoState, Point, TutorialState } from './rules/state.ts';
 import type { MacroBindings } from './rules/macros.ts';
 import { loadBindings } from './binding-storage.ts';
-import { loadClickMovement } from './control-preferences.ts';
+import { loadClickMovementChoice } from './control-preferences.ts';
 
 // One pointer's held movement direction; order makes the most recent press win.
 export interface HeldDirection {
@@ -17,6 +17,7 @@ export interface DemoContext {
   state: DemoState;
   macroBindings: MacroBindings;
   clickMovement: boolean;
+  clickMovementChosen: boolean;
   // Decoded artwork by asset name; bank and essence may be pre-cropped bitmaps.
   images: Record<string, HTMLImageElement | ImageBitmap>;
   ready: boolean;
@@ -77,6 +78,7 @@ interface DemoElements {
   '#guide-dialog': HTMLDialogElement;
   '#bindings-dialog': HTMLDialogElement;
   '#combat-lesson': HTMLDialogElement;
+  '#movement-choice-dialog': HTMLDialogElement;
   '#autopot': HTMLInputElement;
   '#mobile-spell': HTMLSelectElement;
   '#inventory-crystal': HTMLCanvasElement;
@@ -109,11 +111,13 @@ export const canvas = document.querySelector('#game') as HTMLCanvasElement,
   ctx = canvas.getContext('2d')!,
   $ = <S extends string>(s: S) =>
     document.querySelector(s) as S extends keyof DemoElements ? DemoElements[S] : HTMLElement;
+const savedClickMovement = loadClickMovementChoice();
 export const demo: DemoContext = {
   embedded,
   state: M.createTutorial(),
   macroBindings: loadBindings(),
-  clickMovement: loadClickMovement(),
+  clickMovement: savedClickMovement ?? true,
+  clickMovementChosen: savedClickMovement !== null,
   images: {},
   ready: false,
   paused: false,
@@ -152,6 +156,7 @@ export const demo: DemoContext = {
   worldTouches: new Set(),
   camera: { x: 510, y: 490 },
 };
+export const needsMovementChoice = () => demo.state.tutorial?.stage === 'hallway' && !demo.clickMovementChosen;
 export const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 export const floor = document.createElement('canvas');
 floor.width = 1;

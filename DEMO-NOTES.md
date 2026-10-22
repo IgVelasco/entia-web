@@ -1,3 +1,9 @@
+# Movement choice before the guides — 22 October 2026
+
+- A first visit with no valid saved movement choice opens a blocking yes/no dialog as soon as the tutorial artwork is ready, before walking or meeting any guide. The simulation, movement keys and map clicks wait for the answer. This replaces the question formerly shown at the final preparation step; that step now only summarizes the current mode.
+- The first answer uses the existing persistent preference. Returning visits and replays apply it immediately without asking again. Teclas y macros still changes it at any time. Invalid or missing stored values ask again; unavailable storage keeps the current visit usable and reports that saving failed.
+- Verification covers unanswered-vs-saved decoding, input/simulation blocking, answering and replaying, both viewport layouts, reload persistence and walking to the first guide after choosing keyboard movement. Embedded activation/suspension retains the pending question correctly.
+
 # Optional click movement — 22 October 2026
 
 - The final preparation screen explicitly asks whether to walk with floor clicks/taps or only with keys/joystick. The same yes/no choice can be changed from Teclas y macros, including through the pause menu. Existing visits retain click movement by default until they choose otherwise.

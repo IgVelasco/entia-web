@@ -1,4 +1,4 @@
-import { $, demo } from './context.ts';
+import { $, demo, needsMovementChoice } from './context.ts';
 import M from './rules/navigation.ts';
 import { clear } from './input.ts';
 import { focusGame, setHudDrawer } from './hud.ts';
@@ -49,7 +49,7 @@ function persistBindings() {
 }
 
 function syncBindings() {
-  for (const prefix of ['setup', 'bindings']) {
+  for (const prefix of ['movement', 'bindings']) {
     $(`#${prefix}-click-yes`).setAttribute('aria-pressed', String(demo.clickMovement));
     $(`#${prefix}-click-no`).setAttribute('aria-pressed', String(!demo.clickMovement));
   }
@@ -94,6 +94,13 @@ function closeBindings() {
 
 export function syncSetup() {
   syncBindings();
+  const prompt = $('#movement-choice-dialog');
+  const askMovement = demo.ready && needsMovementChoice() && !demo.paused && !demo.hostSuspended;
+  if (askMovement && !prompt.open) {
+    clear();
+    prompt.showModal();
+    $('#movement-click-yes').focus();
+  } else if (!askMovement && prompt.open) prompt.close();
   const shown = demo.state.tutorial?.stage === 'setup' && !demo.hostSuspended;
   $('#controls-lesson').hidden = !shown || demo.paused;
   if (!shown || demo.paused) {
@@ -125,7 +132,7 @@ export function syncSetup() {
   $('#setup-progress').textContent = `Preparación segura · ${step + 1} de ${lessons.length}`;
   $('#setup-bindings').hidden = step !== 2;
   $('#setup-summary').hidden = step !== 3;
-  $('#setup-movement-choice').hidden = step !== 3;
+  $('#setup-movement-status').hidden = step !== 3;
   const assigned = macroActions.filter((action) => demo.macroBindings[action]);
   $('#setup-summary').textContent = assigned.length
     ? assigned.map((action) => `${macroLabels[action]}: ${keyLabel(demo.macroBindings[action])}`).join(' · ')
@@ -194,7 +201,8 @@ export function handleSetupKey(event: KeyboardEvent, editor = false) {
   syncSetup();
 }
 export function bindSetup() {
-  for (const prefix of ['setup', 'bindings'])
+  $('#movement-choice-dialog').addEventListener('cancel', (event) => event.preventDefault());
+  for (const prefix of ['movement', 'bindings'])
     for (const [suffix, enabled] of [
       ['yes', true],
       ['no', false],
@@ -202,10 +210,18 @@ export function bindSetup() {
       $(`#${prefix}-click-${suffix}`).onclick = () => {
         clear();
         demo.clickMovement = enabled;
+        demo.clickMovementChosen = true;
+        capturing = null;
+        conflict = null;
         error = saveClickMovement(enabled)
           ? ''
           : 'El navegador no permite guardar esta opción. Se aplicará durante esta sesión.';
         syncSetup();
+        if (prefix === 'movement') {
+          if (error) M.tell(demo.state, error);
+          demo.previous = performance.now();
+          focusGame();
+        }
         schedule();
       };
   for (const selector of ['#controls-options', '#setup-all-bindings', '#help-bindings'])

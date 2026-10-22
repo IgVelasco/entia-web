@@ -42,6 +42,7 @@ export function bindEmbed() {
       focusGame();
       schedule();
     } else if (data?.type === 'entia-demo-pause') {
+      if ($('#movement-choice-dialog').open) $('#movement-choice-dialog').close();
       demo.hostSuspended = true;
       demo.paused = true;
       cancelMotion();

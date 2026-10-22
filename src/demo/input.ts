@@ -1,5 +1,5 @@
 import M from './rules/navigation.ts';
-import { $, canvas, demo } from './context.ts';
+import { $, canvas, demo, needsMovementChoice } from './context.ts';
 import { returnToNix } from './embed.ts';
 import { focusGame, selectSpell, setHudDrawer, syncGuide, togglePause, ui, useSelected } from './hud.ts';
 import { schedule } from './loop.ts';
@@ -16,6 +16,7 @@ declare global {
 
 export function input() {
   if (
+    needsMovementChoice() ||
     demo.returning ||
     demo.presentationNow < demo.beatUntil ||
     demo.hudDrawerOpen ||
@@ -109,6 +110,7 @@ export function clear() {
 const accepted = ['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright'];
 export function bindKeyboard() {
   document.addEventListener('keydown', (e) => {
+    if (needsMovementChoice()) return;
     if ($('#bindings-dialog').open) {
       handleSetupKey(e, true);
       return;
@@ -365,6 +367,7 @@ export function bindPointer() {
   canvas.addEventListener('lostpointercapture', (e) => demo.worldTouches.delete(e.pointerId));
 }
 export function worldClick(e: MouseEvent) {
+  if (needsMovementChoice()) return;
   const bounds = canvas.getBoundingClientRect();
   if (e.button !== undefined && e.button !== 0) return;
   if (

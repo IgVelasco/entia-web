@@ -1,6 +1,6 @@
 import M from './rules/navigation.ts';
 import { load } from './assets.ts';
-import { $, canvas, demo } from './context.ts';
+import { $, canvas, demo, needsMovementChoice } from './context.ts';
 import { returnToNix } from './embed.ts';
 import { bindTap, clear, interact, prepareSpell } from './input.ts';
 import { schedule } from './loop.ts';
@@ -316,6 +316,7 @@ export function bindSpells() {
 }
 export function focusGame() {
   if (
+    needsMovementChoice() ||
     !demo.ready ||
     demo.paused ||
     demo.hostSuspended ||

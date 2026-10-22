@@ -1,5 +1,5 @@
 import M from './rules/navigation.ts';
-import { $, canvas, demo, floor } from './context.ts';
+import { $, canvas, demo, floor, needsMovementChoice } from './context.ts';
 import { returnToNix } from './embed.ts';
 import { togglePause, ui } from './hud.ts';
 import { clear, input } from './input.ts';
@@ -14,6 +14,7 @@ export function tick(now: number) {
   demo.previous = now;
   if (
     demo.ready &&
+    !needsMovementChoice() &&
     !demo.paused &&
     now >= demo.beatUntil &&
     !document.hidden &&
@@ -35,6 +36,7 @@ export function tick(now: number) {
   ui();
   if (
     demo.ready &&
+    !needsMovementChoice() &&
     !demo.paused &&
     (!demo.state.tutorial?.dialog || demo.guideHoldUntil > now) &&
     (!demo.state.tutorial?.coach?.current ||

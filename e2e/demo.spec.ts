@@ -49,6 +49,41 @@ test.describe('offline demo', () => {
     { width: 1280, height: 720 },
     { width: 390, height: 844 },
   ]) {
+    test(`first entry asks about movement before guides and remembers the answer at ${viewport.width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await page.goto('/demo/');
+      await expect(page.locator('#curtain')).toBeHidden();
+      const prompt = page.locator('#movement-choice-dialog');
+      await expect(prompt).toBeVisible();
+      await expect(page.locator('#guide-dialog')).toBeHidden();
+      await expect(page.locator('#objective')).toHaveText('0 / 3 guides met');
+      await page.keyboard.press('Escape');
+      await expect(prompt).toBeVisible();
+      await page.keyboard.press('d');
+      await expect(page.locator('#guide-dialog')).toBeHidden();
+      await page.locator('#movement-click-no').click();
+      await expect(prompt).toBeHidden();
+      await page.reload();
+      await expect(page.locator('#curtain')).toBeHidden();
+      await page.locator('#pause').click();
+      await page.locator('#help-bindings').click();
+      await expect(prompt).toBeHidden();
+      await expect(page.locator('#bindings-click-no')).toHaveAttribute('aria-pressed', 'true');
+      await page.locator('#bindings-close').click();
+      await page.locator('#resume').click();
+      await page.keyboard.down('d');
+      await expect(page.locator('#guide-dialog')).toBeVisible();
+      await page.keyboard.up('d');
+      await expect(page.locator('#guide-name')).toHaveText('The Warden');
+    });
+  }
+
+  for (const viewport of [
+    { width: 1280, height: 720 },
+    { width: 390, height: 844 },
+  ]) {
     test(`movement notices never resize the map or page at ${viewport.width}px`, async ({ page }) => {
       await page.setViewportSize(viewport);
       await openDemo(page);
@@ -288,11 +323,6 @@ test.describe('offline demo', () => {
       await expect(page.locator('#setup-bindings [data-bind="life"]')).toHaveText('F3');
       await page.locator('#setup-next').click();
       await expect(page.locator('#setup-summary')).toContainText('Apocalipsis: T');
-      await expect(page.locator('#setup-movement-choice')).toBeVisible();
-      await page.locator('#setup-click-no').click();
-      await expect(page.locator('#setup-movement-status')).toContainText('Desactivado');
-      await expect(page.locator('#setup-click-no')).toHaveAttribute('aria-pressed', 'true');
-      await page.locator('#setup-click-yes').click();
       await expect(page.locator('#setup-movement-status')).toContainText('Activado');
       await expect(page.locator('body')).toHaveAttribute('data-tutorial-stage', 'setup');
       await page.locator('#setup-experienced').click();

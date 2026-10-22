@@ -24,7 +24,14 @@ const controllerSource = () =>
   ['context', 'main', 'assets', 'embed', 'render', 'input', 'hud', 'motion', 'loop']
     .map((m) => fs.readFileSync(path.join(__dirname, `../src/demo/${m}.ts`), 'utf8'))
     .join('\n');
-function app({ embedded = false, width = 1100, height = 800, coarse = false, tutorial = false } = {}) {
+function app({
+  embedded = false,
+  width = 1100,
+  height = 800,
+  coarse = false,
+  tutorial = false,
+  movementChosen = true,
+} = {}) {
   const posted = [],
     parentWindow = embedded
       ? { location: { origin: 'https://entia.test' }, postMessage: (message) => posted.push(message) }
@@ -130,9 +137,53 @@ function app({ embedded = false, width = 1100, height = 800, coarse = false, tut
     load = (file) => loadSandboxModule(context, path.join(__dirname, '../src', file), modules);
   load('demo/main.ts');
   Object.assign(context, controllerGlobals(load));
+  context.demo.clickMovementChosen = movementChosen;
   if (!tutorial) vm.runInContext('demo.state=M.create();demo.hostSuspended=false', context);
   return { context, get, listeners, windowEvents, frames, draws, geometry, posted, parentWindow };
 }
+test('first movement choice blocks guides and walking until answered, then stays answered for this visit', async () => {
+  const a = app({ tutorial: true, movementChosen: false });
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  run('Loop.tick(20)');
+  assert(a.get('#movement-choice-dialog').open);
+  const before = run('JSON.stringify(demo.state)');
+  a.listeners.keydown({ key: 'd', target: { closest: () => false }, preventDefault() {} });
+  run('Loop.tick(500)');
+  assert.equal(run('JSON.stringify(demo.state)'), before);
+  assert.equal(run('demo.keys.size'), 0);
+  a.get('#movement-click-no').onclick();
+  assert(!a.get('#movement-choice-dialog').open);
+  assert.equal(run('demo.clickMovementChosen'), true);
+  assert.equal(run('demo.clickMovement'), false);
+  a.listeners.keydown({ key: 'd', target: { closest: () => false }, preventDefault() {} });
+  run('Loop.tick(520)');
+  assert.notEqual(run('JSON.stringify(demo.state)'), before);
+  run('demo.state=M.createTutorial();Loop.tick(540)');
+  assert(!a.get('#movement-choice-dialog').open);
+});
+
+test('an embedded unanswered prompt closes on suspension and returns on activation', async () => {
+  const a = app({ tutorial: true, embedded: true, movementChosen: false });
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  const host = (type) =>
+    a.windowEvents.message({ source: a.parentWindow, origin: 'https://entia.test', data: { type } });
+  run('Loop.tick(20)');
+  assert(!a.get('#movement-choice-dialog').open);
+  host('entia-demo-activate');
+  run('Loop.tick(40)');
+  assert(a.get('#movement-choice-dialog').open);
+  host('entia-demo-pause');
+  assert(!a.get('#movement-choice-dialog').open);
+  host('entia-demo-activate');
+  run('Loop.tick(60)');
+  assert(a.get('#movement-choice-dialog').open);
+  a.get('#movement-click-yes').onclick();
+  assert.equal(run('demo.clickMovement'), true);
+  assert.equal(run('demo.clickMovementChosen'), true);
+});
+
 test('initial instructions pause gameplay; resume, right HUD and camera work', async () => {
   const a = app();
   await new Promise((r) => setImmediate(r));
