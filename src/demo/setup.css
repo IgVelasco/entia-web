@@ -101,6 +101,29 @@
   border-left: 2px solid #b6a26d;
   padding-left: 12px;
 }
+.click-movement-choice {
+  min-width: 0;
+  margin: 14px 0;
+  padding: 12px;
+  border: 1px solid #817343;
+  border-radius: 6px;
+}
+.click-movement-choice legend {
+  color: #ecd293;
+  font-weight: 600;
+}
+.click-movement-choice button {
+  display: block;
+  width: 100%;
+  margin: 6px 0;
+  white-space: normal;
+  font-size: 13px;
+}
+.click-movement-choice button[aria-pressed='true'] {
+  background: #3b5135;
+  border-color: #f0cf7d;
+  box-shadow: inset 3px 0 #f0cf7d;
+}
 #bindings-error,
 #combat-facts {
   color: #f1d397;

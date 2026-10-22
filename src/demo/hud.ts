@@ -99,7 +99,8 @@ export function ui() {
       ' ready · ' +
       (demo.state.selectedSpell === 'remover' ? 'click your own tile' : 'click a rival') +
       ' · Esc cancels'
-    : 'WASD para moverte · seleccioná un hechizo y apretá Lanzar · E recoge';
+    : (demo.clickMovement ? 'Clic, teclas o joystick para caminar' : 'Solo teclas o joystick para caminar') +
+      ' · seleccioná un hechizo y apretá Lanzar';
   for (const action of macroActions) {
     const id = action === 'apocalipsis' ? 'spell' : action;
     $('#macro-' + id + ' kbd').textContent = demo.macroBindings[action] ? keyLabel(demo.macroBindings[action]) : '—';
@@ -393,7 +394,9 @@ function tutorialUI() {
         ? 'The bank is nearby'
         : Math.min(2, demo.state.kills) + ' / 2 rivals defeated';
   $('#hint').textContent = hall
-    ? 'Click the carpet or use movement keys. Each guide speaks as you reach them.'
+    ? (demo.clickMovement
+        ? 'Clic en la alfombra, WASD, flechas o joystick para caminar.'
+        : 'Usá WASD, flechas o joystick para caminar. El clic no te mueve.') + ' Cada guía habla cuando te acercás.'
     : done
       ? 'The full-match rules are provisional. Replay, review them or return to Nix.'
       : t.bankRevealed

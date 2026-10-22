@@ -1,3 +1,9 @@
+# Optional click movement — 22 October 2026
+
+- The final preparation screen explicitly asks whether to walk with floor clicks/taps or only with keys/joystick. The same yes/no choice can be changed from Teclas y macros, including through the pause menu. Existing visits retain click movement by default until they choose otherwise.
+- The choice saves separately from key bindings in this browser and survives reloads and subsequent visits. Disabling cancels an existing click route. It does not block free spell targeting, nearby guide interactions, keyboard movement or the joystick; clicking a distant guide no longer walks toward it when disabled. HUD instructions reflect the active mode.
+- Verification covers saved choices, malformed/unavailable storage, cancelled routes, keyboard and spell input while disabled, guide interaction, both choices in the safe workshop, and disabling/re-enabling after a browser reload.
+
 # Reversible coaching and visual targeting fixes — 22 October 2026
 
 - The experience option toggles both ways in preparation and pause. Re-enabling explanations resets their seen situations without restarting combat or changing saved bindings. The pause/workshop remains open while changing this option.

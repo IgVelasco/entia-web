@@ -3,6 +3,7 @@ import M from './rules/navigation.ts';
 import type { DemoState, Point, TutorialState } from './rules/state.ts';
 import type { MacroBindings } from './rules/macros.ts';
 import { loadBindings } from './binding-storage.ts';
+import { loadClickMovement } from './control-preferences.ts';
 
 // One pointer's held movement direction; order makes the most recent press win.
 export interface HeldDirection {
@@ -15,6 +16,7 @@ export interface DemoContext {
   embedded: boolean;
   state: DemoState;
   macroBindings: MacroBindings;
+  clickMovement: boolean;
   // Decoded artwork by asset name; bank and essence may be pre-cropped bitmaps.
   images: Record<string, HTMLImageElement | ImageBitmap>;
   ready: boolean;
@@ -111,6 +113,7 @@ export const demo: DemoContext = {
   embedded,
   state: M.createTutorial(),
   macroBindings: loadBindings(),
+  clickMovement: loadClickMovement(),
   images: {},
   ready: false,
   paused: false,

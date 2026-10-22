@@ -4,6 +4,7 @@ import { clear } from './input.ts';
 import { focusGame, setHudDrawer } from './hud.ts';
 import { schedule } from './loop.ts';
 import { saveBindings } from './binding-storage.ts';
+import { saveClickMovement } from './control-preferences.ts';
 import {
   assignMacro,
   bindingConflict,
@@ -48,6 +49,10 @@ function persistBindings() {
 }
 
 function syncBindings() {
+  for (const prefix of ['setup', 'bindings']) {
+    $(`#${prefix}-click-yes`).setAttribute('aria-pressed', String(demo.clickMovement));
+    $(`#${prefix}-click-no`).setAttribute('aria-pressed', String(!demo.clickMovement));
+  }
   const message = error || (capturing ? `Presioná una tecla para ${macroLabels[capturing]}. Escape cancela.` : '');
   for (const id of ['#setup-error', '#bindings-error']) $(id).textContent = message;
   for (const id of ['#setup-reassign', '#bindings-reassign']) {
@@ -120,10 +125,14 @@ export function syncSetup() {
   $('#setup-progress').textContent = `Preparación segura · ${step + 1} de ${lessons.length}`;
   $('#setup-bindings').hidden = step !== 2;
   $('#setup-summary').hidden = step !== 3;
+  $('#setup-movement-choice').hidden = step !== 3;
   const assigned = macroActions.filter((action) => demo.macroBindings[action]);
   $('#setup-summary').textContent = assigned.length
     ? assigned.map((action) => `${macroLabels[action]}: ${keyLabel(demo.macroBindings[action])}`).join(' · ')
     : 'Elegiste jugar desde las ventanas. No hay teclas de macro asignadas.';
+  $('#setup-movement-status').textContent = demo.clickMovement
+    ? 'Activado: clic o toque en el suelo para caminar. WASD, flechas y joystick también funcionan.'
+    : 'Desactivado: caminás con WASD, flechas o joystick. El clic sigue sirviendo para lanzar e interactuar.';
   $('#setup-back').disabled = step === 0;
   $('#setup-next').hidden = step === 3;
   $('#setup-start').hidden = step !== 3;
@@ -185,6 +194,20 @@ export function handleSetupKey(event: KeyboardEvent, editor = false) {
   syncSetup();
 }
 export function bindSetup() {
+  for (const prefix of ['setup', 'bindings'])
+    for (const [suffix, enabled] of [
+      ['yes', true],
+      ['no', false],
+    ] as const)
+      $(`#${prefix}-click-${suffix}`).onclick = () => {
+        clear();
+        demo.clickMovement = enabled;
+        error = saveClickMovement(enabled)
+          ? ''
+          : 'El navegador no permite guardar esta opción. Se aplicará durante esta sesión.';
+        syncSetup();
+        schedule();
+      };
   for (const selector of ['#controls-options', '#setup-all-bindings', '#help-bindings'])
     $(selector).onclick = openBindings;
   $('#bindings-close').onclick = closeBindings;

@@ -172,6 +172,55 @@ test('controller uses latest held direction and pointer-specific casts', async (
   assert.equal(run('demo.state.player.mana'), 100);
 });
 
+test('disabling click movement cancels routes but preserves keyboard walking and free spell clicks', async () => {
+  const a = app();
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  a.get('#resume').onclick();
+  run('M.walkTo(demo.state,{x:432,y:432});Render.draw()');
+  a.get('#bindings-click-no').onclick();
+  assert.equal(run('demo.clickMovement'), false);
+  assert.equal(run('demo.state.navigation'), null);
+  assert.equal(a.get('#bindings-click-no').getAttribute('aria-pressed'), 'true');
+  const click = { button: 0, clientX: 650, clientY: 400 };
+  run('Render.draw()');
+  a.get('#game').click(click);
+  assert.equal(run('demo.state.navigation'), null);
+  const x = run('demo.state.player.x');
+  run('M.update(demo.state,.02,{x:1});Render.draw()');
+  assert(run('demo.state.player.x') > x);
+  run('demo.state.armed=true');
+  a.get('#game').click({
+    button: 0,
+    clientX: run('demo.width/2+(demo.state.enemies[0].x-demo.state.player.x)*demo.scale'),
+    clientY: run('demo.height/2+(demo.state.enemies[0].y-demo.state.player.y)*demo.scale'),
+  });
+  assert.equal(run('demo.state.enemies[0].hp'), 1);
+  assert.equal(run('demo.state.player.mana'), 85);
+  a.get('#bindings-click-yes').onclick();
+  a.get('#game').click(click);
+  assert(run('demo.state.navigation'));
+});
+
+test('click movement disabled still allows talking to a nearby guide without approaching a distant one', async () => {
+  const a = app({ tutorial: true });
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  a.get('#bindings-click-no').onclick();
+  run('Render.draw()');
+  const clickGuide = (index) =>
+    a.get('#game').click({
+      button: 0,
+      clientX: run(`demo.width/2+(M.guides[${index}].x-demo.state.player.x)*demo.scale`),
+      clientY: run(`demo.height/2+(M.guides[${index}].y-M.hallway.cameraY)*demo.scale`),
+    });
+  clickGuide(1);
+  assert.equal(run('demo.state.navigation'), null);
+  assert.equal(run('demo.state.tutorial.dialog'), null);
+  clickGuide(0);
+  assert.equal(run('demo.state.tutorial.dialog.id'), 'warden');
+});
+
 test('a spell rebound to E never also interacts, and interaction can move to another key', async () => {
   const a = app();
   await new Promise((r) => setImmediate(r));

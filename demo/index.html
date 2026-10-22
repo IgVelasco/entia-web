@@ -232,6 +232,13 @@
             <button id="setup-example">Usar ejemplo: C / V / R / F1 / F2</button>
           </div>
           <p id="setup-summary" hidden></p>
+          <fieldset id="setup-movement-choice" class="click-movement-choice" hidden>
+            <legend>¿Querés moverte con clic o toque en el suelo?</legend>
+            <p>Esta opción solo cambia cómo caminás. Para lanzar hechizos seguís apuntando y haciendo clic.</p>
+            <button id="setup-click-yes" type="button" aria-pressed="true">Sí, activar movimiento con clic</button>
+            <button id="setup-click-no" type="button" aria-pressed="false">No, usar teclas o joystick</button>
+            <p id="setup-movement-status"></p>
+          </fieldset>
         </div>
         <p id="setup-error" role="status" aria-live="polite"></p>
         <button id="setup-reassign" hidden></button>
@@ -258,6 +265,15 @@
         deposita automáticamente al permanecer junto al cofre; ninguna tecla la deposita.
       </p>
       <div class="bindings-content">
+        <fieldset class="click-movement-choice">
+          <legend>Movimiento con clic o toque</legend>
+          <p>
+            ¿Querés caminar al hacer clic en el suelo? Podés cambiarlo en cualquier momento. Lanzar e interactuar siguen
+            funcionando.
+          </p>
+          <button id="bindings-click-yes" type="button" aria-pressed="true">Sí, activar movimiento con clic</button>
+          <button id="bindings-click-no" type="button" aria-pressed="false">No, usar teclas o joystick</button>
+        </fieldset>
         <h3>Hechizos y pociones</h3>
         <div class="macro-assignment">
           <span>Apocalipsis</span

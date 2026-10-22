@@ -409,11 +409,13 @@ export function worldClick(e: MouseEvent) {
         M.talk(demo.state, g.id);
         clear();
         syncGuide();
-      } else M.walkTo(demo.state, { x: g.x, y: 464 }, g.id);
+      } else if (demo.clickMovement) M.walkTo(demo.state, { x: g.x, y: 464 }, g.id);
+      else M.tell(demo.state, 'Acercate con WASD, flechas o joystick para hablar con el guía.');
       schedule();
       return;
     }
   }
+  if (!demo.clickMovement) return;
   if (demo.state.phase === 'hallway' && world.x >= 464 && demo.state.tutorial!.seen.length < 3)
     M.tell(demo.state, 'Meet all three guides before entering the arena.');
   if (

@@ -113,6 +113,36 @@ test.describe('offline demo', () => {
   test.describe('with reduced motion', () => {
     test.use({ reducedMotion: 'reduce' });
 
+    test('click movement can be disabled, persists after reload, and can be enabled again', async ({ page }) => {
+      await openDemo(page);
+      await page.locator('#controls-options').click();
+      await page.locator('#bindings-click-no').click();
+      await expect(page.locator('#bindings-click-no')).toHaveAttribute('aria-pressed', 'true');
+      await page.reload();
+      await expect(page.locator('#curtain')).toBeHidden();
+      const time = new Date('2026-10-22T12:00:00Z');
+      await page.clock.install({ time });
+      await page.clock.pauseAt(new Date(time.getTime() + 10000));
+      await page.locator('#controls-options').click();
+      await expect(page.locator('#bindings-click-no')).toHaveAttribute('aria-pressed', 'true');
+      await page.locator('#bindings-close').click();
+      const canvas = page.locator('#game');
+      const bounds = await canvas.boundingBox();
+      if (!bounds) throw new Error('Missing game canvas');
+      const position = { x: bounds.width / 2 + 180, y: bounds.height / 2 };
+      await canvas.click({ position });
+      await page.clock.runFor(1500);
+      await expect(page.locator('#guide-dialog')).toBeHidden();
+      await expect(page.locator('#objective')).toHaveText('0 / 3 guides met');
+      await page.locator('#controls-options').click();
+      await page.locator('#bindings-click-yes').click();
+      await page.locator('#bindings-close').click();
+      await canvas.click({ position });
+      await page.clock.runFor(1500);
+      await expect(page.locator('#guide-dialog')).toBeVisible();
+      await expect(page.locator('#guide-name')).toHaveText('The Warden');
+    });
+
     test('saved assignments survive reload and another visit, including keys left unbound', async ({ page }) => {
       await openDemo(page);
       await page.locator('#controls-options').click();
@@ -258,6 +288,12 @@ test.describe('offline demo', () => {
       await expect(page.locator('#setup-bindings [data-bind="life"]')).toHaveText('F3');
       await page.locator('#setup-next').click();
       await expect(page.locator('#setup-summary')).toContainText('Apocalipsis: T');
+      await expect(page.locator('#setup-movement-choice')).toBeVisible();
+      await page.locator('#setup-click-no').click();
+      await expect(page.locator('#setup-movement-status')).toContainText('Desactivado');
+      await expect(page.locator('#setup-click-no')).toHaveAttribute('aria-pressed', 'true');
+      await page.locator('#setup-click-yes').click();
+      await expect(page.locator('#setup-movement-status')).toContainText('Activado');
       await expect(page.locator('body')).toHaveAttribute('data-tutorial-stage', 'setup');
       await page.locator('#setup-experienced').click();
       await page.locator('#setup-start').click();
