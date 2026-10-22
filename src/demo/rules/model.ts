@@ -285,7 +285,7 @@ function cast(s: DemoState, target?: CastTarget | null) {
   if (d > 0) p.dir = heading(target.x - p.x, target.y - p.y);
   const reject = (message: string, lesson: 'miss' | 'mana' | 'enemyRemover' = 'miss') => {
     tell(s, message);
-    teach(s, lesson);
+    teach(s, lesson, lesson === 'enemyRemover' ? enemy!.name : 'player');
     return false;
   };
   if (p.mana < spell.mana) {
@@ -312,7 +312,7 @@ function cast(s: DemoState, target?: CastTarget | null) {
     enemy!.cleanseReaction = 0.9;
     s.fx.push({ x: enemy!.x, y: enemy!.y, age: 0, hit: true, owner: 'bind', targetId: enemy!.name });
     tell(s, `${enemy!.name} quedó inmovilizado. Gastaste ${spell.mana} de maná; todavía puede lanzar.`);
-    teach(s, 'inmovilizar');
+    teach(s, 'inmovilizar', enemy!.name);
   } else if (s.selectedSpell === 'remover') {
     p.immobilized = 0;
     s.fx.push({ x: p.x, y: p.y, age: 0, hit: true, owner: 'cleanse', targetId: 'player' });
@@ -325,7 +325,7 @@ function cast(s: DemoState, target?: CastTarget | null) {
       if (enemy.hp === 0) defeatEnemy(s, enemy);
     }
     tell(s, `Acertaste Apocalipsis: el rival perdió vida y gastaste ${spell.mana} de maná.`);
-    teach(s, 'apocalipsis');
+    teach(s, 'apocalipsis', enemy!.name);
   }
   recordSpellWords(s, s.selectedSpell, 'player', p);
   return true;
@@ -564,7 +564,7 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
         s.fx.push({ x: e.x, y: e.y, age: 0, hit: true, owner: 'cleanse' });
         recordSpellWords(s, 'remover', e.name, e);
         tell(s, `${e.name} usó Remover y recuperó el movimiento.`);
-        teach(s, 'enemyCleanse');
+        teach(s, 'enemyCleanse', e.name);
         if (s.tutorial?.coach?.current) break;
       }
     }

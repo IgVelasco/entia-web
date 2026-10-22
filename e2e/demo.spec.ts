@@ -84,6 +84,33 @@ test.describe('offline demo', () => {
   test.describe('with reduced motion', () => {
     test.use({ reducedMotion: 'reduce' });
 
+    test('saved assignments survive reload and another visit, including keys left unbound', async ({ page }) => {
+      await openDemo(page);
+      await page.locator('#controls-options').click();
+      const editor = page.locator('#bindings-dialog');
+      await editor.locator('[data-bind="apocalipsis"]').click();
+      await page.keyboard.press('e');
+      await page.locator('#bindings-reassign').click();
+      await editor.locator('[data-bind="interact"]').click();
+      await page.keyboard.press('g');
+      await editor.locator('[data-bind="mana"]').click();
+      await page.keyboard.press('F4');
+      await editor.locator('[data-clear-macro="pickup"]').click();
+      await page.reload();
+      await expect(page.locator('#curtain')).toBeHidden();
+      await expect(page.locator('#macro-spell')).toHaveAttribute('aria-label', 'Apocalipsis · E');
+      await expect(page.locator('#macro-mana')).toHaveAttribute('aria-label', 'Poción de maná · F4');
+      await page.locator('#controls-options').click();
+      await expect(editor.locator('[data-bind="interact"]')).toHaveText('G');
+      await expect(editor.locator('[data-bind="pickup"]')).toHaveText('Asignar');
+      await editor.locator('[data-clear-macro="apocalipsis"]').click();
+      const later = await page.context().newPage();
+      await openDemo(later);
+      await expect(later.locator('#macro-spell')).toHaveAttribute('aria-label', 'Apocalipsis · sin tecla');
+      await expect(later.locator('#macro-mana')).toHaveAttribute('aria-label', 'Poción de maná · F4');
+      await later.close();
+    });
+
     test('all bindings can reopen and E can move from interaction to casting without a double action', async ({
       page,
     }) => {
@@ -127,6 +154,18 @@ test.describe('offline demo', () => {
       await page.locator('#setup-start').click();
       await expect(page.locator('#combat-title')).toHaveText('Un clic, un casillero');
       await expect(page.locator('#combat-description')).toContainText('no se cargan ni cubren un área');
+      await expect(page.locator('main')).toHaveAttribute('inert', '');
+      await expect(page.locator('#combat-guidance')).toBeVisible();
+      await expect(page.locator('#combat-action-label')).toHaveText('Apocalipsis');
+      await expect(page.locator('#combat-actor-label')).toHaveText('Tu personaje');
+      const lesson = await page.locator('#combat-lesson').boundingBox();
+      if (!lesson) throw new Error('Missing combat explanation');
+      expect(lesson.width).toBeLessThanOrEqual(360);
+      expect(lesson.height).toBeLessThan(450);
+      await page.keyboard.press('Tab');
+      await expect(page.locator('#combat-skip')).toBeFocused();
+      await page.keyboard.press('Tab');
+      await expect(page.locator('#combat-continue')).toBeFocused();
       await page.locator('#combat-continue').click();
       await page.locator('#prepare-spell').click();
       const canvas = page.locator('#game');
@@ -141,6 +180,8 @@ test.describe('offline demo', () => {
       await expect(page.locator('#health')).toHaveText('100 / 100');
       await page.locator('#combat-skip').click();
       await expect(page.locator('#combat-lesson')).toBeHidden();
+      await expect(page.locator('#combat-guidance')).toBeHidden();
+      await expect(page.locator('main')).not.toHaveAttribute('inert');
       await expect(page.locator('#spell-status')).toContainText('Apocalipsis');
       await page.locator('#prepare-spell').click();
       await expect(page.locator('#spell-status')).toHaveText('Ready: click your target');
@@ -250,20 +291,28 @@ test.describe('offline demo', () => {
     test('a recovering attempt preserves aim, while misses restore the normal cursor', async ({ page }) => {
       await openDemo(page);
       await enterArena(page);
+      // Hold simulation time still between clicks; browser/CI latency must not
+      // decide whether the second attempt falls inside the 1.38s recovery.
+      await page.clock.install({ time: new Date('2026-10-22T12:00:00Z') });
+      await page.clock.pauseAt(new Date('2026-10-22T12:00:01Z'));
       const canvas = page.locator('#game');
       const bounds = await canvas.boundingBox();
       if (!bounds) throw new Error('Missing game canvas');
       const position = { x: bounds.width / 2 + 60, y: bounds.height / 2 };
       await page.keyboard.press('c');
       await canvas.click({ position });
+      await page.clock.runFor(20);
       await expect(page.locator('#mana')).toHaveText('100 / 100');
       await expect(page.locator('#prepare-spell')).toHaveAttribute('aria-pressed', 'false');
       await page.keyboard.press('c');
       await canvas.click({ position });
+      await page.clock.runFor(20);
       await expect(page.locator('#mana')).toHaveText('100 / 100');
       await expect(page.locator('#prepare-spell')).toHaveAttribute('aria-pressed', 'true');
+      await page.clock.runFor(1400);
       await expect(page.locator('#spell-status')).toHaveText('Ready: click your target');
       await canvas.click({ position });
+      await page.clock.runFor(20);
       await expect(page.locator('#mana')).toHaveText('100 / 100');
       await expect(page.locator('#prepare-spell')).toHaveAttribute('aria-pressed', 'false');
     });

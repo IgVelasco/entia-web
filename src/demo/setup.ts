@@ -3,6 +3,7 @@ import M from './rules/navigation.ts';
 import { clear } from './input.ts';
 import { focusGame, setHudDrawer } from './hud.ts';
 import { schedule } from './loop.ts';
+import { saveBindings } from './binding-storage.ts';
 import {
   assignMacro,
   bindingConflict,
@@ -40,6 +41,11 @@ let step = 0;
 let capturing: BindingAction | null = null;
 let error = '';
 let conflict: { action: BindingAction; key: string; other: BindingAction } | null = null;
+
+function persistBindings() {
+  if (!saveBindings(demo.macroBindings))
+    error = 'El navegador no permite guardar las teclas. Se conservarán durante esta sesión.';
+}
 
 function syncBindings() {
   const message = error || (capturing ? `Presioná una tecla para ${macroLabels[capturing]}. Escape cancela.` : '');
@@ -171,7 +177,10 @@ export function handleSetupKey(event: KeyboardEvent, editor = false) {
     error = assignMacro(demo.macroBindings, capturing, event.key);
     const other = bindingConflict(demo.macroBindings, capturing, event.key);
     conflict = error && other ? { action: capturing, key: event.key.toLowerCase(), other } : null;
-    if (!error) capturing = null;
+    if (!error) {
+      capturing = null;
+      persistBindings();
+    }
   }
   syncSetup();
 }
@@ -188,7 +197,10 @@ export function bindSetup() {
       if (!conflict) return;
       const next = { ...demo.macroBindings, [conflict.other]: '' };
       error = assignMacro(next, conflict.action, conflict.key);
-      if (!error) demo.macroBindings = next;
+      if (!error) {
+        demo.macroBindings = next;
+        persistBindings();
+      }
       capturing = null;
       conflict = null;
       syncSetup();
@@ -198,6 +210,8 @@ export function bindSetup() {
   $('#setup-windows').onclick = () => {
     for (const action of macroActions) demo.macroBindings[action] = '';
     changeStep(3);
+    persistBindings();
+    syncSetup();
   };
   $('#setup-example').onclick = () => {
     const example = exampleBindings();
@@ -207,7 +221,10 @@ export function bindSetup() {
       error = assignMacro(next, action, example[action]);
       if (error) break;
     }
-    if (!error) demo.macroBindings = next;
+    if (!error) {
+      demo.macroBindings = next;
+      persistBindings();
+    }
     capturing = null;
     syncSetup();
   };
@@ -224,6 +241,7 @@ export function bindSetup() {
       capturing = null;
       conflict = null;
       error = '';
+      persistBindings();
       syncSetup();
     };
   $('#setup-start').onclick = () => {

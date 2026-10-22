@@ -37,6 +37,7 @@ export function tick(now: number) {
     demo.ready &&
     !demo.paused &&
     (!demo.state.tutorial?.dialog || demo.guideHoldUntil > now) &&
+    (!demo.state.tutorial?.coach?.current || demo.motionHandles.size > 0) &&
     !(demo.state.tutorial?.stage === 'complete' && !demo.state.streamParticles.length && demo.guideHoldUntil <= now) &&
     !document.hidden &&
     !demo.hostSuspended

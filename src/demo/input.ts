@@ -5,6 +5,7 @@ import { focusGame, selectSpell, setHudDrawer, syncGuide, togglePause, ui, useSe
 import { schedule } from './loop.ts';
 import { handleSetupKey } from './setup.ts';
 import { macroForKey } from './rules/macros.ts';
+import { handleCombatCoachKey } from './combat-coach.ts';
 
 declare global {
   // Chromium's non-standard InputDeviceCapabilities; clicks synthesized from touches are ignored.
@@ -112,7 +113,10 @@ export function bindKeyboard() {
       handleSetupKey(e, true);
       return;
     }
-    if ($('#combat-lesson').open || demo.state.tutorial?.coach?.current) return;
+    if ($('#combat-lesson').open || demo.state.tutorial?.coach?.current) {
+      if ($('#combat-lesson').open) handleCombatCoachKey(e);
+      return;
+    }
     if (demo.state.tutorial?.stage === 'setup' && !demo.paused) {
       handleSetupKey(e);
       return;

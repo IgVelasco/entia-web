@@ -1,3 +1,10 @@
+# Saved controls and contextual spotlights — 22 October 2026
+
+- Every accepted assignment, explicit conflict transfer, cleared key, optional example and window-only choice saves the full eleven-action table in this browser's local storage. Reloading or entering again restores it, including deliberately unbound interaction keys when E belongs to a spell. A versioned decoder rejects malformed, incomplete, reserved or duplicate-key snapshots; unavailable storage leaves the tutorial playable and reports failed saves in the editor.
+- Combat explanations use shorter copy in a compact side card. A screen overlay keeps the actual affected sprite, relevant hotbar action and life/mana resource visible and outlined. Labels identify the player or the particular rival, while a condition line connects status, target and cost. Insufficient mana during immobilization points at a mana potion before Remover.
+- Coaching still pauses simulation and traps focus; continuing, skipping, pausing and hiding the scene release the overlay and inert background. On phones the highlighted hotbar moves above the playfield and the card sits below it. The original spell artwork and game rules remain intact.
+- Verification covers reload and a later tab with persisted assignments, blank-key restoration, invalid storage, conditional Remover/potion focus, the actual affected rival, compact geometry, keyboard focus and overlay cleanup. Recovery browser checks use controlled simulation time so test-runner latency cannot move a click outside its recovery interval.
+
 # Rebindable actions and contextual combat coaching — 22 October 2026
 
 - Teclas y macros reopens from the header, safe workshop or pause menu. The editor lists all five spell/potion macros plus interaction, alternative pickup, selected-item use, strike, meditation and pause. Movement and Escape remain visible fixed controls. Conflicts name the current action and offer an explicit transfer of the key; E can therefore become a spell key without also interacting. Banking remains automatic.

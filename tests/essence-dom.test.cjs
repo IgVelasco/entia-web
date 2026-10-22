@@ -40,6 +40,9 @@ function app({ embedded = false, width = 1100, height = 800, coarse = false, tut
     showModal() {
       this.open = true;
     },
+    show() {
+      this.open = true;
+    },
     close() {
       this.open = false;
       this.closeEvent?.();
@@ -54,7 +57,12 @@ function app({ embedded = false, width = 1100, height = 800, coarse = false, tut
     getBoundingClientRect: () => ({ width, height, left: 0, top: 0 }),
     focus() {},
     setPointerCapture() {},
-    setAttribute() {},
+    setAttribute(name, value) {
+      (this.attributes ||= {})[name] = String(value);
+    },
+    getAttribute(name) {
+      return this.attributes?.[name] ?? null;
+    },
     addEventListener(type, fn) {
       this[type === 'close' ? 'closeEvent' : type] = fn;
     },
@@ -248,6 +256,51 @@ test('real incoming paralysis opens its explanation, pauses time and teaches a s
   run("M.resolveEnemySpell(demo.state,demo.state.player,'apocalipsis');Hud.ui()");
   assert(!a.get('#combat-lesson').open);
   assert.equal(run('demo.state.player.hp'), 88);
+});
+
+test('compact coaching releases its highlights and focus lock on pause, then restores them on resume', async () => {
+  const a = app({ tutorial: true });
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  run(
+    "demo.state.tutorial.seen=M.guides.map(g=>g.id);M.enterArena(demo.state);M.startFight(demo.state);M.dismissCombatLesson(demo.state);M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');Hud.ui()",
+  );
+  assert.equal(a.get('main').inert, true);
+  assert.equal(a.get('#combat-guidance').hidden, false);
+  assert.match(a.get('#combat-actor-label').textContent, /inmovilizado/);
+  assert.equal(a.get('#combat-action-label').textContent, 'Remover parálisis');
+  run('Hud.showHelp();Hud.ui()');
+  assert.equal(a.get('main').inert, false);
+  assert.equal(a.get('#combat-guidance').hidden, true);
+  let prevented = false;
+  a.listeners.keydown({
+    key: 'Escape',
+    preventDefault() {
+      prevented = true;
+    },
+  });
+  assert.equal(prevented, false, 'the native help dialog must receive Escape');
+  assert.equal(run('demo.state.tutorial.coach.current'), 'receivedInmovilizar');
+  run('Hud.hideHelp();Hud.ui()');
+  assert.equal(a.get('main').inert, true);
+  assert(a.get('#combat-lesson').open);
+  a.get('#combat-skip').onclick();
+  assert.equal(a.get('main').inert, false);
+  assert.equal(a.get('#combat-guidance').hidden, true);
+});
+
+test('phone coaching highlights visible vitals instead of the offscreen resource drawer', async () => {
+  const a = app({ tutorial: true, width: 390, height: 844 });
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  a.get('.mana-track').getBoundingClientRect = () => ({ left: 420, top: 100, width: 300, height: 20 });
+  a.get('#mobile-vitals').getBoundingClientRect = () => ({ left: 240, top: 120, width: 120, height: 20 });
+  run(
+    "demo.state.tutorial.seen=M.guides.map(g=>g.id);M.enterArena(demo.state);M.startFight(demo.state);M.dismissCombatLesson(demo.state);M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');Hud.ui()",
+  );
+  assert.equal(a.get('#combat-resource-outline').getAttribute('x'), '235');
+  assert.equal(a.get('#combat-resource-outline').getAttribute('width'), '130');
+  assert.equal(a.get('#combat-action-label').textContent, 'Remover parálisis');
 });
 
 test('pointer coordinates stay free over sprites and no aiming or NPC impact areas are drawn', async () => {

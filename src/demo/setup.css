@@ -115,17 +115,75 @@
   display: block;
   width: 100%;
   white-space: normal;
-  margin-top: 10px;
+  margin-top: 8px;
+  min-height: 36px;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+#combat-lesson {
+  position: fixed;
+  z-index: 61;
+  inset: auto;
+  top: 96px;
+  left: 18px;
+  margin: 0;
+  width: min(352px, calc(100vw - 36px));
+  max-height: calc(100dvh - 115px);
+  padding: 16px;
+}
+#combat-lesson[data-side='right'] {
+  left: auto;
+  right: 18px;
+}
+#combat-lesson h2 {
+  font-size: 22px;
+  margin: 6px 0 10px;
+}
+#combat-lesson .kicker {
+  font-size: 9px;
 }
 #combat-lesson p {
-  line-height: 1.6;
+  line-height: 1.45;
+  font-size: 13px;
+  margin: 9px 0;
+}
+#combat-lesson #combat-condition {
+  padding: 7px 9px;
+  color: #f3d58e;
+  background: #a48c3c22;
+  border-radius: 4px;
+  font-size: 12px;
 }
 #combat-response {
   border-left: 2px solid #b8a067;
-  padding-left: 14px;
+  padding-left: 10px;
 }
 #combat-controls {
   color: #bed1b7;
+  font-size: 11px;
+}
+#combat-guidance {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+#combat-spotlight {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  width: 100vw;
+  height: 100dvh;
+  pointer-events: auto;
+}
+.combat-focus-label {
+  font:
+    600 12px Inter,
+    sans-serif;
+  fill: #f7df9b;
+  stroke: #07150e;
+  stroke-width: 5px;
+  paint-order: stroke;
+  stroke-linejoin: round;
 }
 #setup-error {
   color: #f4c281;
@@ -206,6 +264,32 @@ body[data-controls-lesson] .spells-window.lesson-target {
   text-align: center;
 }
 @media (max-width: 760px) {
+  #combat-lesson {
+    top: auto;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: 52dvh;
+    padding: 13px;
+  }
+  #combat-lesson > button {
+    min-height: 40px;
+  }
+  body[data-combat-lesson] #control-deck .macrobar {
+    position: fixed;
+    top: 78px;
+    bottom: auto;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    padding: 10px;
+    justify-content: center;
+    background: #12251e;
+  }
+  body[data-combat-lesson] .macrobar > span {
+    display: none;
+  }
   #controls-options {
     display: none;
   }
