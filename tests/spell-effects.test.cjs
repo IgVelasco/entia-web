@@ -52,10 +52,10 @@ test('Apocalipsis is a single 50-move burst at 60 moves per second', () => {
   assert.equal(effectFrame(fx('player', 50 / 60)), null);
 });
 
-test('enemy immobilization renders its own artwork at impact instead of Apocalipsis during windup', () => {
-  const effect = { ...fx('enemy', 0.29), spell: 'inmovilizar' };
-  assert.equal(effectFrame(effect), null);
-  effect.age = 0.8;
+test('enemy immobilization starts its own artwork at launch after windup, without another hidden delay', () => {
+  const effect = { ...fx('enemy', 0), spell: 'inmovilizar' };
+  assert.equal(effectFrame(effect).frame, 0);
+  effect.age = 0.5;
   assert.equal(effectFrame(effect).kind, 'bind');
   assert.equal(effectFrame(effect).frame, 6);
 });

@@ -256,6 +256,11 @@ body[data-controls-lesson] .spells-window.lesson-target {
   min-height: 210px;
 }
 #movement-status {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  pointer-events: none;
   margin: 0;
   padding: 7px 12px;
   color: #f3cd92;

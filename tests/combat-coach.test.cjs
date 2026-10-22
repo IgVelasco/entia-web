@@ -45,6 +45,13 @@ test('outgoing spells explain the actual mana spent and effect once per situatio
     assert.equal(s.player.mana, 100 - cost);
     assert.equal(s.tutorial.coach.current, spell);
     assert(spell === 'apocalipsis' ? s.enemies[0].hp === 1 : s.enemies[0].immobilized > 0);
+    const gameplay = JSON.stringify([s.player, s.enemies, s.time, s.cooldown]);
+    advance(s, 3);
+    assert.equal(JSON.stringify([s.player, s.enemies, s.time, s.cooldown]), gameplay);
+    assert(
+      s.fx.some((effect) => effect.age >= 0.59),
+      'the triggering effect gets to play before the card',
+    );
     const before = JSON.stringify(s);
     advance(s, 3);
     assert.equal(JSON.stringify(s), before);

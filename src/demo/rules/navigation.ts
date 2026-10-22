@@ -3,6 +3,7 @@ import * as Physics from '../../shared/physics.ts';
 import M from './tutorial.ts';
 import type { DemoState, Point } from './state.ts';
 import { occupiedPosition, sameTile } from './occupancy.ts';
+import { advanceCombatPresentation } from './combat-lessons.ts';
 const originalUpdate = M.update;
 function cancelWalk(s: DemoState) {
   s.navigation = null;
@@ -103,7 +104,10 @@ function finish(s: DemoState) {
   }
 }
 M.update = function (s, dt, input = { x: 0, y: 0 }) {
-  if (s.tutorial?.coach?.current) return;
+  if (s.tutorial?.coach?.current) {
+    advanceCombatPresentation(s, dt);
+    return;
+  }
   if (input.x || input.y) cancelWalk(s);
   if (s.player.hp <= 0 || s.tutorial?.dialog || s.navigation?.phase !== s.phase) cancelWalk(s);
   let nav = s.navigation;

@@ -136,7 +136,7 @@ test('lethal hit during a click route preserves the death and drop notice', () =
   M.walkTo(s, { x: 432, y: 432 });
   M.update(s, 0.02);
   s.player.hp = 12;
-  M.resolveEnemySpell(s, s.player.step.end, 'apocalipsis');
+  M.resolveEnemySpell(s, { x: s.player.x, y: s.player.y }, 'apocalipsis');
   M.update(s, 0.02);
   assert.equal(s.player.x, 176);
   assert.equal(s.navigation, null);

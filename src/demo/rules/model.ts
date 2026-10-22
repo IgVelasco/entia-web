@@ -3,7 +3,7 @@ import * as Physics from '../../shared/physics.ts';
 import type { Body } from '../../shared/physics.ts';
 import { cardinal, walk } from './movement.ts';
 import { teach } from './combat-lessons.ts';
-import { blockingActor, occupiedPosition, sameTile } from './occupancy.ts';
+import { blockingActor, sameTile } from './occupancy.ts';
 import type { CastTarget, DemoState, Drop, Enemy, Input, Player, Point, Rect, SceneryItem, Spell } from './state.ts';
 const WIDTH = 1200,
   HEIGHT = 880,
@@ -280,8 +280,10 @@ function cast(s: DemoState, target?: CastTarget | null) {
   const p = s.player,
     d = Math.hypot(target.x - p.x, target.y - p.y),
     spell = spells[s.selectedSpell] || spells.apocalipsis;
-  const enemy = s.enemies.find((e) => e.hp > 0 && sameTile(occupiedPosition(e), target)),
-    self = sameTile(occupiedPosition(p), target);
+  // Casts resolve the tile under the visible feet. A reserved step destination
+  // belongs only to movement collision, never to a spell's hitbox.
+  const enemy = s.enemies.find((e) => e.hp > 0 && sameTile(e, target)),
+    self = sameTile(p, target);
   if (d > 0) p.dir = heading(target.x - p.x, target.y - p.y);
   const reject = (message: string, lesson: 'miss' | 'mana' | 'enemyRemover' = 'miss') => {
     tell(s, message);
@@ -613,7 +615,7 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
 // Resolve an NPC's chosen tile at launch. Animation does not defer damage or add a radius.
 function resolveEnemySpell(s: DemoState, target: Point, spell = 'apocalipsis') {
   const p = s.player;
-  const hit = p.x >= 270 && sameTile(occupiedPosition(p), target);
+  const hit = p.x >= 270 && sameTile(p, target);
   s.fx.push({ ...target, age: 0, hit: true, owner: 'enemy', spell, targetId: hit ? 'player' : undefined });
   if (!hit) {
     tell(s, 'El rival falló: el hechizo no acertó tu casillero.');

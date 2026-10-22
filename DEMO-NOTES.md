@@ -1,3 +1,11 @@
+# Reversible coaching and visual targeting fixes — 22 October 2026
+
+- The experience option toggles both ways in preparation and pause. Re-enabling explanations resets their seen situations without restarting combat or changing saved bindings. The pause/workshop remains open while changing this option.
+- A first spell event freezes gameplay immediately, lets its original effect and overhead words play for 600 ms, then shows the explanation with the effect visible. Damage, movement, paralysis duration and recovery cannot advance during this presentation. Skipping cancels the pending card. Enemy visuals now begin at launch after their existing windup, without a second invisible delay.
+- Spells resolve the single 32px floor tile containing the actor's currently rendered feet, including while moving or immobilized mid-step. Movement still reserves only its destination to prevent overlapping routes; that reservation no longer moves the spell hitbox ahead of the sprite. Both incoming spells and self Remover use the same visible-foot rule.
+- Magic words now sit 10.5px above the visible sprite head, accounting for transparent padding in the source sheet. Movement/block/paralysis notices overlay the control deck edge instead of taking space away from the map.
+- Verification: 293 Node tests and 35 browser tests passed, plus typecheck, lint, format check and build. Regressions cover replaying explanations, effect-before-card timing with frozen gameplay, all four movement directions, mid-step self-removal, nearby spell words and unchanged canvas/page dimensions at desktop and phone sizes. The six new focused rule/render checks fail against the preceding commit in an isolated source snapshot. Actual desktop rendering was also inspected.
+
 # Saved controls and contextual spotlights — 22 October 2026
 
 - Every accepted assignment, explicit conflict transfer, cleared key, optional example and window-only choice saves the full eleven-action table in this browser's local storage. Reloading or entering again restores it, including deliberately unbound interaction keys when E belongs to a spell. A versioned decoder rejects malformed, incomplete, reserved or duplicate-key snapshots; unavailable storage leaves the tutorial playable and reports failed saves in the editor.

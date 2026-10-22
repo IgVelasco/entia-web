@@ -1,7 +1,7 @@
 /* Guided offline onboarding. Numerical match limits remain design proposals. */
 import M from './model.ts';
 import { walk } from './movement.ts';
-import { createCoach, teach, dismissCombatLesson, skipCombatLessons } from './combat-lessons.ts';
+import { createCoach, teach, dismissCombatLesson, skipCombatLessons, enableCombatLessons } from './combat-lessons.ts';
 import type { DemoState, Guide } from './state.ts';
 const hallway = {
   floor: { x: 48, y: 384, w: 512, h: 160 },
@@ -286,5 +286,6 @@ export default Object.assign(M, {
   startFight,
   dismissCombatLesson,
   skipCombatLessons,
+  enableCombatLessons,
   revealBank,
 });

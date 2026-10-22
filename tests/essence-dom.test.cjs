@@ -235,7 +235,7 @@ test('real incoming paralysis opens its explanation, pauses time and teaches a s
   await new Promise((r) => setImmediate(r));
   const run = (s) => vm.runInContext(s, a.context);
   run(
-    "demo.state.tutorial.seen=M.guides.map(g=>g.id);M.enterArena(demo.state);M.startFight(demo.state);M.dismissCombatLesson(demo.state);M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');Hud.ui()",
+    "demo.state.tutorial.seen=M.guides.map(g=>g.id);M.enterArena(demo.state);M.startFight(demo.state);M.dismissCombatLesson(demo.state);M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');for(let i=0;i<31;i++)M.update(demo.state,.02);Hud.ui()",
   );
   assert(a.get('#combat-lesson').open);
   assert.equal(a.get('#combat-title').textContent, 'Te inmovilizaron');
@@ -246,7 +246,7 @@ test('real incoming paralysis opens its explanation, pauses time and teaches a s
   a.get('#combat-continue').onclick();
   assert(!a.get('#combat-lesson').open);
   run(
-    "Hud.selectSpell('remover');Input.prepareSpell();demo.pointer={x:demo.width/2,y:demo.height/2};Input.castAtPointer();Hud.ui()",
+    "Hud.selectSpell('remover');Input.prepareSpell();demo.pointer={x:demo.width/2,y:demo.height/2};Input.castAtPointer();for(let i=0;i<31;i++)M.update(demo.state,.02);Hud.ui()",
   );
   assert.equal(run('demo.state.player.immobilized'), 0);
   assert.equal(run('demo.state.player.mana'), 90);
@@ -258,12 +258,41 @@ test('real incoming paralysis opens its explanation, pauses time and teaches a s
   assert.equal(run('demo.state.player.hp'), 88);
 });
 
-test('compact coaching releases its highlights and focus lock on pause, then restores them on resume', async () => {
+test('coaching waits for the spell visual before opening its card, then remains reversible from pause', async () => {
   const a = app({ tutorial: true });
   await new Promise((r) => setImmediate(r));
   const run = (s) => vm.runInContext(s, a.context);
   run(
     "demo.state.tutorial.seen=M.guides.map(g=>g.id);M.enterArena(demo.state);M.startFight(demo.state);M.dismissCombatLesson(demo.state);M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');Hud.ui()",
+  );
+  assert(!a.get('#combat-lesson').open);
+  assert.equal(a.get('#combat-guidance').hidden, true);
+  run('for(let i=0;i<10;i++)Loop.tick((i+1)*20)');
+  assert(!a.get('#combat-lesson').open);
+  assert(run('demo.state.fx[0].age > .19'));
+  run('for(let i=10;i<32;i++)Loop.tick((i+1)*20)');
+  assert(a.get('#combat-lesson').open);
+  assert.equal(run('demo.state.player.immobilized'), 2.5);
+  a.get('#combat-skip').onclick();
+  run('Hud.showHelp();Hud.ui()');
+  assert.match(a.get('#help-experienced').textContent, /Volver a mostrar/);
+  a.get('#help-experienced').onclick();
+  assert.equal(run('demo.state.tutorial.coach.enabled'), true);
+  assert.equal(run('demo.paused'), true);
+  assert(a.get('#help-dialog').open);
+  assert.match(a.get('#help-experienced').textContent, /Ya he jugado/);
+  run(
+    "Hud.hideHelp();M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');for(let i=0;i<31;i++)M.update(demo.state,.02);Hud.ui()",
+  );
+  assert(a.get('#combat-lesson').open);
+});
+
+test('compact coaching releases its highlights and focus lock on pause, then restores them on resume', async () => {
+  const a = app({ tutorial: true });
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  run(
+    "demo.state.tutorial.seen=M.guides.map(g=>g.id);M.enterArena(demo.state);M.startFight(demo.state);M.dismissCombatLesson(demo.state);M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');for(let i=0;i<31;i++)M.update(demo.state,.02);Hud.ui()",
   );
   assert.equal(a.get('main').inert, true);
   assert.equal(a.get('#combat-guidance').hidden, false);
@@ -296,7 +325,7 @@ test('phone coaching highlights visible vitals instead of the offscreen resource
   a.get('.mana-track').getBoundingClientRect = () => ({ left: 420, top: 100, width: 300, height: 20 });
   a.get('#mobile-vitals').getBoundingClientRect = () => ({ left: 240, top: 120, width: 120, height: 20 });
   run(
-    "demo.state.tutorial.seen=M.guides.map(g=>g.id);M.enterArena(demo.state);M.startFight(demo.state);M.dismissCombatLesson(demo.state);M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');Hud.ui()",
+    "demo.state.tutorial.seen=M.guides.map(g=>g.id);M.enterArena(demo.state);M.startFight(demo.state);M.dismissCombatLesson(demo.state);M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');for(let i=0;i<31;i++)M.update(demo.state,.02);Hud.ui()",
   );
   assert.equal(a.get('#combat-resource-outline').getAttribute('x'), '235');
   assert.equal(a.get('#combat-resource-outline').getAttribute('width'), '130');

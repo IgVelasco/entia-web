@@ -32,12 +32,13 @@ export function syncCombatCoach() {
   const coach = demo.state.tutorial?.coach;
   for (const id of ['#setup-experienced', '#help-experienced']) {
     $(id).textContent =
-      coach?.enabled === false ? 'Explicaciones de combate desactivadas' : 'Ya he jugado Argentums previamente';
-    $(id).setAttribute('aria-disabled', String(coach?.enabled === false));
+      coach?.enabled === false ? 'Volver a mostrar las explicaciones de combate' : 'Ya he jugado Argentums previamente';
+    $(id).setAttribute('aria-pressed', String(coach?.enabled === false));
   }
   const dialog = $('#combat-lesson');
   const shown =
     coach?.current &&
+    !coach.revealRemaining &&
     !demo.paused &&
     !demo.hostSuspended &&
     !$('#bindings-dialog').open &&
@@ -129,7 +130,15 @@ export function bindCombatCoach() {
     M.skipCombatLessons(demo.state);
     resume();
   };
-  for (const id of ['#combat-skip', '#setup-experienced', '#help-experienced']) $(id).onclick = skip;
+  $('#combat-skip').onclick = skip;
+  for (const id of ['#setup-experienced', '#help-experienced'])
+    $(id).onclick = () => {
+      if (demo.state.tutorial?.coach?.enabled === false) M.enableCombatLessons(demo.state);
+      else M.skipCombatLessons(demo.state);
+      // Keep the workshop or pause open while changing this preference.
+      ui();
+      schedule();
+    };
   $('#combat-lesson').addEventListener('cancel', (event) => {
     event.preventDefault();
     M.dismissCombatLesson(demo.state);

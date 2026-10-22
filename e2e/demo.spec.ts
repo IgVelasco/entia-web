@@ -45,6 +45,35 @@ async function enterArena(page: Page) {
 }
 
 test.describe('offline demo', () => {
+  for (const viewport of [
+    { width: 1280, height: 720 },
+    { width: 390, height: 844 },
+  ]) {
+    test(`movement notices never resize the map or page at ${viewport.width}px`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await openDemo(page);
+      const time = new Date('2026-10-22T12:00:00Z');
+      await page.clock.install({ time });
+      await page.clock.pauseAt(new Date(time.getTime() + 100));
+      const before = await page.locator('#game').boundingBox();
+      const pageHeight = await page.locator('body').evaluate((el) => el.scrollHeight);
+      const notice = page.locator('#movement-status');
+      await notice.evaluate((el) => {
+        el.removeAttribute('hidden');
+        el.textContent = 'Inmovilizado · 3 s · Usá Remover parálisis o esperá.';
+      });
+      await expect(notice).toBeVisible();
+      await expect(notice).toHaveCSS('position', 'absolute');
+      await expect(notice).toHaveCSS('color', 'rgb(243, 205, 146)');
+      expect(await page.locator('#game').boundingBox()).toEqual(before);
+      expect(await page.locator('body').evaluate((el) => el.scrollHeight)).toEqual(pageHeight);
+      await notice.evaluate((el) => {
+        el.setAttribute('hidden', '');
+      });
+      expect(await page.locator('#game').boundingBox()).toEqual(before);
+    });
+  }
+
   test('loads the original particle and immobilization artwork', async ({ page }) => {
     const loaded: string[] = [];
     page.on('response', (response) => {
@@ -188,6 +217,20 @@ test.describe('offline demo', () => {
       await canvas.click({ position });
       await expect(page.locator('#prepare-spell')).toHaveAttribute('aria-pressed', 'false');
       await expect(page.locator('#combat-lesson')).toBeHidden();
+      await page.locator('#pause').click();
+      await expect(page.locator('#help-experienced')).toHaveText('Volver a mostrar las explicaciones de combate');
+      await page.locator('#help-experienced').click();
+      await expect(page.locator('#help-experienced')).toHaveAttribute('aria-pressed', 'false');
+      await expect(page.locator('#help-dialog')).toBeVisible();
+      await page.locator('#resume').click();
+      const time = new Date('2026-10-22T12:00:00Z');
+      await page.clock.install({ time });
+      await page.clock.pauseAt(new Date(time.getTime() + 1000));
+      await page.clock.runFor(1450);
+      await page.locator('#prepare-spell').click();
+      await canvas.click({ position });
+      await expect(page.locator('#combat-title')).toHaveText('El intento no acertó');
+      await expect(page.locator('#combat-lesson')).toBeVisible();
     });
 
     test('safe workshop highlights sections, validates keys and starts combat only after review', async ({ page }) => {

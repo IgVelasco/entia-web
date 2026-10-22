@@ -73,7 +73,7 @@ test('immobilization pauses a step, then release or expiry resumes its original 
     if (cleanse) {
       s.selectedSpell = 'remover';
       s.armed = true;
-      assert(M.cast(s, { ...end }));
+      assert(M.cast(s, { x: s.player.x, y: s.player.y }));
     }
     advance(s, 0.5);
     assert.equal(s.player.x, end.x);

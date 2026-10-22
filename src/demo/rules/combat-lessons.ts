@@ -64,6 +64,8 @@ export interface CombatCoach {
   seen: CombatLessonId[];
   current: CombatLessonId | null;
   subject?: string;
+  // Gameplay freezes immediately; only the triggering visual plays before the card.
+  revealRemaining?: number;
 }
 export const createCoach = (): CombatCoach => ({ enabled: true, seen: [], current: null });
 export function teach(s: DemoState, id: CombatLessonId, subject = 'player') {
@@ -72,12 +74,37 @@ export function teach(s: DemoState, id: CombatLessonId, subject = 'player') {
   coach.seen.push(id);
   coach.current = id;
   coach.subject = subject;
+  coach.revealRemaining = [
+    'apocalipsis',
+    'inmovilizar',
+    'remover',
+    'receivedApocalipsis',
+    'receivedInmovilizar',
+    'enemyMiss',
+    'enemyCleanse',
+  ].includes(id)
+    ? 0.6
+    : 0;
+}
+export function advanceCombatPresentation(s: DemoState, dt: number) {
+  const coach = s.tutorial?.coach;
+  if (!coach?.current || !coach.revealRemaining) return;
+  const elapsed = Math.min(coach.revealRemaining, Math.max(0, Math.min(dt, 0.05)));
+  coach.revealRemaining = Math.max(0, coach.revealRemaining - elapsed);
+  for (const effect of s.fx) effect.age += elapsed;
+  for (const damage of s.damageTexts) damage.age += elapsed;
 }
 export function dismissCombatLesson(s: DemoState) {
-  if (s.tutorial?.coach) s.tutorial.coach.current = null;
+  if (!s.tutorial?.coach) return;
+  s.tutorial.coach.current = null;
+  s.tutorial.coach.revealRemaining = 0;
 }
 export function skipCombatLessons(s: DemoState) {
   if (!s.tutorial?.coach) return;
   s.tutorial.coach.enabled = false;
   s.tutorial.coach.current = null;
+  s.tutorial.coach.revealRemaining = 0;
+}
+export function enableCombatLessons(s: DemoState) {
+  if (s.tutorial) s.tutorial.coach = createCoach();
 }

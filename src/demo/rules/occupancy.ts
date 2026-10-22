@@ -7,7 +7,8 @@ export function sameTile(a: Point, b: Point) {
   return first.x === second.x && first.y === second.y;
 }
 // Movement claims its destination tile. Sprite dimensions and interpolation
-// never enlarge an actor's footprint into neighbouring tiles.
+// never enlarge an actor's collision footprint into neighbouring tiles.
+// Spell targeting uses the tile under the actor's current rendered feet instead.
 export function occupiedPosition(actor: Player | Enemy): Point {
   return actor.step?.end || actor;
 }

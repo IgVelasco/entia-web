@@ -9,7 +9,8 @@ export function effectAnchor(effect: Effect, state: DemoState): Point {
 }
 
 export function effectFrame(effect: Effect, reduced = false) {
-  const age = effect.age - (effect.owner === 'enemy' ? 0.3 : 0);
+  // Enemy effects are created at launch, after their windup has already ended.
+  const age = effect.age;
   if (age < 0) return null;
   if (effect.owner === 'bind' || (effect.owner === 'enemy' && effect.spell === 'inmovilizar')) {
     const spec = art.inmovilizar;
@@ -45,8 +46,11 @@ export function drawSpellEffect(
     ctx.strokeStyle = '#08130f';
     ctx.fillStyle = '#f4e6c5';
     ctx.globalAlpha = reduced ? 1 : Math.min(1, (1.2 - effect.age) / 0.2);
-    ctx.strokeText(words, anchor.x, anchor.y - 122);
-    ctx.fillText(words, anchor.x, anchor.y - 122);
+    // The 160px source cell has 51px of transparent padding above the actor.
+    // At the render scale, its visible head is 67.5px above its feet.
+    const y = anchor.y - 78;
+    ctx.strokeText(words, anchor.x, y);
+    ctx.fillText(words, anchor.x, y);
     ctx.restore();
     return;
   }
