@@ -15,6 +15,7 @@ function walkTo(s: DemoState, target?: Point | null, guide: string | null = null
     !Number.isFinite(target.y) ||
     s.armed ||
     s.tutorial?.stage === 'setup' ||
+    !!s.tutorial?.coach?.current ||
     s.tutorial?.dialog ||
     s.tutorial?.stage === 'complete'
   )
@@ -102,6 +103,7 @@ function finish(s: DemoState) {
   }
 }
 M.update = function (s, dt, input = { x: 0, y: 0 }) {
+  if (s.tutorial?.coach?.current) return;
   if (input.x || input.y) cancelWalk(s);
   if (s.player.hp <= 0 || s.tutorial?.dialog || s.navigation?.phase !== s.phase) cancelWalk(s);
   let nav = s.navigation;

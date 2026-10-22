@@ -48,6 +48,25 @@ test.describe('Nix site on a phone', () => {
 });
 
 test.describe('offline demo on a phone', () => {
+  test('the pause menu opens all key bindings on a phone and safely transfers E to a spell', async ({ page }) => {
+    await openDemo(page);
+    await page.locator('#pause').tap();
+    await page.locator('#help-bindings').tap();
+    const editor = page.locator('#bindings-dialog');
+    await expect(editor).toBeVisible();
+    await expect(editor.locator('[data-bind]')).toHaveCount(11);
+    await editor.locator('[data-bind="apocalipsis"]').tap();
+    await page.keyboard.press('e');
+    await expect(page.locator('#bindings-error')).toContainText('Hablar');
+    await page.locator('#bindings-reassign').tap();
+    await expect(editor.locator('[data-bind="apocalipsis"]')).toHaveText('E');
+    await page.locator('#bindings-close').tap();
+    await expect(page.locator('#help-dialog')).toBeVisible();
+    await page.locator('#resume').tap();
+    await expect(page.locator('#help-dialog')).toBeHidden();
+    await expect(page.locator('#macro-spell')).toHaveAttribute('aria-label', 'Apocalipsis · E');
+  });
+
   test('safe preparation keeps each highlighted section above the lesson and offers window-only play', async ({
     page,
   }) => {
@@ -83,6 +102,7 @@ test.describe('offline demo on a phone', () => {
     }
     await page.locator('#setup-windows').tap();
     await expect(page.locator('#setup-summary')).toContainText('No hay teclas');
+    await page.locator('#setup-experienced').tap();
     await page.locator('#setup-start').tap();
     await expect(page.locator('#controls-lesson')).toBeHidden();
     await expect(page.locator('#cast')).toBeEnabled();

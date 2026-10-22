@@ -15,6 +15,7 @@
       <div class="header-actions">
         <button id="return-home">Home</button><button id="character-button">Character</button
         ><button id="toggle-hud" aria-expanded="false">Inventory</button
+        ><button id="controls-options">Teclas y macros</button
         ><button id="pause" aria-pressed="false">Pause & controls <kbd>P</kbd></button>
       </div>
     </header>
@@ -24,7 +25,7 @@
           <canvas
             id="game"
             tabindex="0"
-            aria-label="WASD o flechas para moverte. Seleccioná un hechizo y apretá Lanzar, luego hacé clic en un casillero. Los macros se configuran antes de pelear. E recoge o habla. Espacio golpea al soltar. N medita y P pausa."
+            aria-label="WASD o flechas para moverte. Seleccioná un hechizo y apretá Lanzar, luego hacé clic en un casillero. Teclas y macros permite ver y cambiar las asignaciones. Escape cancela el apuntado o pausa."
           ></canvas>
           <nav id="tutorial-journey" aria-label="Tutorial progress">
             <span id="journey-0"><b>01</b> Learn</span><i></i><span id="journey-1"><b>02</b> Fight</span><i></i
@@ -202,6 +203,7 @@
           <h2 id="setup-title">Prepará tus controles</h2>
           <p id="setup-description"></p>
           <div id="setup-bindings" hidden>
+            <button id="setup-all-bindings">Ver todas las teclas y macros</button>
             <div class="macro-assignment">
               <span>Apocalipsis</span
               ><button data-bind="apocalipsis" aria-label="Asignar tecla a Apocalipsis">Asignar</button
@@ -232,13 +234,99 @@
           <p id="setup-summary" hidden></p>
         </div>
         <p id="setup-error" role="status" aria-live="polite"></p>
+        <button id="setup-reassign" hidden></button>
         <div class="lesson-actions">
           <button id="setup-back">Atrás</button><button id="setup-next" class="primary">Siguiente</button
           ><button id="setup-start" class="primary" hidden>Entrar en la arena</button>
         </div>
         <button id="setup-windows" class="quiet">Jugar desde las ventanas, sin macros</button>
+        <button id="setup-experienced" class="quiet">Ya he jugado Argentums previamente</button>
       </div>
     </section>
+    <dialog id="bindings-dialog" aria-labelledby="bindings-title">
+      <div class="bindings-heading">
+        <h2 id="bindings-title">Teclas y macros</h2>
+        <button id="bindings-close">Listo</button>
+      </div>
+      <p>
+        Todas las asignaciones están acá. Cada tecla tiene una sola acción: si está ocupada, podés cambiarla o dejar la
+        acción anterior sin tecla. La pelea espera mientras editás.
+      </p>
+      <p class="fixed-controls">
+        Movimiento fijo: WASD / flechas · Escape cancela el apuntado o pausa · Tab recorre los controles. La esencia se
+        deposita automáticamente al permanecer junto al cofre; ninguna tecla la deposita.
+      </p>
+      <div class="bindings-content">
+        <h3>Hechizos y pociones</h3>
+        <div class="macro-assignment">
+          <span>Apocalipsis</span
+          ><button data-bind="apocalipsis" aria-label="Cambiar tecla de Apocalipsis">Asignar</button
+          ><button data-clear-macro="apocalipsis" aria-label="Borrar tecla de Apocalipsis">×</button>
+        </div>
+        <div class="macro-assignment">
+          <span>Inmovilizar</span
+          ><button data-bind="inmovilizar" aria-label="Cambiar tecla de Inmovilizar">Asignar</button
+          ><button data-clear-macro="inmovilizar" aria-label="Borrar tecla de Inmovilizar">×</button>
+        </div>
+        <div class="macro-assignment">
+          <span>Remover parálisis</span
+          ><button data-bind="remover" aria-label="Cambiar tecla de Remover">Asignar</button
+          ><button data-clear-macro="remover" aria-label="Borrar tecla de Remover">×</button>
+        </div>
+        <div class="macro-assignment">
+          <span>Poción de vida</span
+          ><button data-bind="life" aria-label="Cambiar tecla de poción de vida">Asignar</button
+          ><button data-clear-macro="life" aria-label="Borrar tecla de poción de vida">×</button>
+        </div>
+        <div class="macro-assignment">
+          <span>Poción de maná</span
+          ><button data-bind="mana" aria-label="Cambiar tecla de poción de maná">Asignar</button
+          ><button data-clear-macro="mana" aria-label="Borrar tecla de poción de maná">×</button>
+        </div>
+        <h3>Otras acciones</h3>
+        <div class="macro-assignment">
+          <span>Hablar / recoger / interactuar</span
+          ><button data-bind="interact" aria-label="Cambiar tecla de interacción">Asignar</button
+          ><button data-clear-macro="interact" aria-label="Borrar tecla de interacción">×</button>
+        </div>
+        <div class="macro-assignment">
+          <span>Recoger esencia (alternativa)</span
+          ><button data-bind="pickup" aria-label="Cambiar tecla alternativa de recoger">Asignar</button
+          ><button data-clear-macro="pickup" aria-label="Borrar tecla alternativa de recoger">×</button>
+        </div>
+        <div class="macro-assignment">
+          <span>Usar objeto seleccionado</span
+          ><button data-bind="use" aria-label="Cambiar tecla de usar">Asignar</button
+          ><button data-clear-macro="use" aria-label="Borrar tecla de usar">×</button>
+        </div>
+        <div class="macro-assignment">
+          <span>Golpear</span><button data-bind="strike" aria-label="Cambiar tecla de golpear">Asignar</button
+          ><button data-clear-macro="strike" aria-label="Borrar tecla de golpear">×</button>
+        </div>
+        <div class="macro-assignment">
+          <span>Meditar</span><button data-bind="meditate" aria-label="Cambiar tecla de meditar">Asignar</button
+          ><button data-clear-macro="meditate" aria-label="Borrar tecla de meditar">×</button>
+        </div>
+        <div class="macro-assignment">
+          <span>Pausar</span><button data-bind="pause" aria-label="Cambiar tecla de pausa">Asignar</button
+          ><button data-clear-macro="pause" aria-label="Borrar tecla de pausa">×</button>
+        </div>
+      </div>
+      <p id="bindings-error" role="status" aria-live="polite"></p>
+      <button id="bindings-reassign" hidden></button>
+    </dialog>
+    <dialog id="combat-lesson" aria-labelledby="combat-title" aria-describedby="combat-description combat-response">
+      <span class="kicker">Pelea detenida · aprendé a tu ritmo</span>
+      <h2 id="combat-title"></h2>
+      <p id="combat-description"></p>
+      <h3>Cómo responder</h3>
+      <p id="combat-response"></p>
+      <p id="combat-facts"></p>
+      <small id="combat-controls"></small>
+      <p>Esta explicación pausa la pelea la primera vez que ocurre cada situación. Después verás avisos breves.</p>
+      <button id="combat-continue" class="primary">Entendido, continuar</button>
+      <button id="combat-skip" class="quiet">Ya he jugado Argentums previamente</button>
+    </dialog>
     <dialog id="guide-dialog" aria-labelledby="guide-title">
       <div id="guide-portrait-wrap">
         <canvas id="guide-portrait" width="96" height="112" aria-hidden="true"></canvas>
@@ -254,6 +342,8 @@
       </div>
     </dialog>
     <dialog id="help-dialog" aria-labelledby="help-title">
+      <button id="help-bindings">Ver o cambiar teclas y macros</button>
+      <button id="help-experienced">Ya he jugado Argentums previamente</button>
       <div class="dialog-heading">
         <span class="kicker">ENTIA / PRACTICE</span><button id="close-help" aria-label="Close instructions">×</button>
       </div>
@@ -268,16 +358,16 @@
           <p>
             Click the floor to walk. Select a spell and press Lanzar to aim, then click its target tile. Escape or
             Cancelar cancels aiming. Prepare again for each cast. Keep moving while aiming and casting. Inmovilizar
-            stops movement; Remover parálisis targets a character, including yourself. Bots can remove immobilization
-            too. Aim stays free and spells have no target-area indicators. Walk into the return portal to go back to
-            Nix.
+            stops translation but allows turning; Remover parálisis targets your own tile and costs mana. You cannot
+            remove an enemy's immobilization. Bots can remove their own immobilization too. Aim stays free and spells
+            have no target-area indicators. Walk into the return portal to go back to Nix.
           </p>
         </div>
         <div>
           <b>2. Collect</b>
           <p>
-            Stand on a dropped crystal and press E. If you die, your carried essence drops in separate piles of up to
-            10. Rivals can steal it; defeat them to recover what they carry.
+            Stand on a dropped crystal and use Pick up or your assigned interaction key. If you die, your carried
+            essence drops in separate piles of up to 10. Rivals can steal it; defeat them to recover what they carry.
           </p>
         </div>
         <div>
@@ -321,19 +411,19 @@
             <dd>Prepare & cast while moving; recovery keeps aiming ready</dd>
           </div>
           <div>
-            <dt>Q</dt>
-            <dd>Pick up essence (practice alias for E)</dd>
+            <dt>Assigned pickup key</dt>
+            <dd>Pick up essence (alternative to interaction)</dd>
           </div>
           <div>
-            <dt>Space</dt>
+            <dt>Assigned strike key</dt>
             <dd>Release to strike in front</dd>
           </div>
           <div>
-            <dt>N</dt>
+            <dt>Assigned meditation key</dt>
             <dd>Meditate for mana</dd>
           </div>
           <div>
-            <dt>E</dt>
+            <dt>Assigned interaction key</dt>
             <dd>Release to pick up essence / talk / interact</dd>
           </div>
           <div>
@@ -341,7 +431,7 @@
             <dd>Cancel aiming, then pause</dd>
           </div>
           <div>
-            <dt>P</dt>
+            <dt>Assigned pause key</dt>
             <dd>Pause & controls</dd>
           </div>
         </dl>

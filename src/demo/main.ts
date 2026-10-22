@@ -8,6 +8,7 @@ import { bindGestureGuards, bindKeyboard, bindPointer, bindTouchControls, clear 
 import { bindLifecycle, schedule } from './loop.ts';
 import { resize } from './render.ts';
 import { bindSetup } from './setup.ts';
+import { bindCombatCoach } from './combat-coach.ts';
 
 bindKeyboard();
 bindTouchControls();
@@ -37,4 +38,5 @@ Character.mount({
 bindSpells();
 bindGuide();
 bindSetup();
+bindCombatCoach();
 if (typeof ResizeObserver !== 'undefined') new ResizeObserver(resize).observe($('#playfield'));

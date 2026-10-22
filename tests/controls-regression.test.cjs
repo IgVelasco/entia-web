@@ -86,7 +86,9 @@ test('free tile targeting hits only the clicked occupied tile, with no sprite ma
   s.player.x = 400;
   s.player.y = 368;
   s.armed = true;
-  assert(M.cast(s, { x: e.x, y: e.y - 40 }));
+  assert(!M.cast(s, { x: e.x, y: e.y - 40 }));
+  assert.equal(s.player.mana, 100);
+  assert.equal(s.armed, false);
   assert.equal(e.hp, 2);
   s.cooldown = 0;
   s.armed = true;

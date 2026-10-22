@@ -1,5 +1,6 @@
 // Shapes of the offline demo's game state, shared by the model, tutorial and navigation rules.
 import type { Point, Rect } from '../../shared/physics.ts';
+import type { CombatCoach } from './combat-lessons.ts';
 
 export type { Point, Rect };
 export type Phase = 'hallway' | 'arena';
@@ -97,6 +98,7 @@ export interface Guide extends Dialog, Point {
   gait: number;
 }
 export interface TutorialState {
+  coach?: CombatCoach;
   stage: 'hallway' | 'setup' | 'fight' | 'deposit' | 'complete';
   seen: string[];
   dialog: Dialog | null;

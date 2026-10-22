@@ -7,11 +7,13 @@ import { schedule } from './loop.ts';
 import { animateGuide, motion, resetMotion } from './motion.ts';
 import type { TutorialState } from './rules/state.ts';
 import { syncSetup } from './setup.ts';
+import { syncCombatCoach } from './combat-coach.ts';
 import { macroActions, macroLabels, keyLabel } from './rules/macros.ts';
 
 export function ui() {
   syncGuide();
   syncSetup();
+  syncCombatCoach();
   // Counts are written as numbers; the DOM stringifies them.
   const p = demo.state.player;
   $('#health-fill').style.width = p.hp + '%';
@@ -50,7 +52,7 @@ export function ui() {
   $('#hint').textContent = demo.state.carried
     ? 'Stay near the bank to secure your essence. Fall and you drop what you carry.'
     : demo.state.drops.length
-      ? 'Stand on a crystal and press E. Your dropped essence can be recovered.'
+      ? 'Stand on a crystal and use Pick up or your interaction key. Your dropped essence can be recovered.'
       : `Prepare Apocalipsis, then point and click a rival. ${demo.state.secured} / 60 secured.`;
   const near = M.nearBank(demo.state),
     gate = M.nearGate(demo.state),
@@ -67,14 +69,14 @@ export function ui() {
         ? 'Carrying ' + demo.state.carried + ' · bank south of the portal'
         : 'Bank unlocked · ' + demo.state.secured + ' essence secured';
   $('#interact').innerHTML = item
-    ? 'Pick up essence <kbd>E</kbd>'
+    ? `Pick up essence <kbd>${keyLabel(demo.macroBindings.interact)}</kbd>`
     : demo.state.bank >= 1
       ? 'Drawing in essence…'
       : demo.state.bank
         ? 'Stay nearby…'
         : near
           ? 'Essence bank · automatic transfer'
-          : 'Return to Nix <kbd>E</kbd>';
+          : `Return to Nix <kbd>${keyLabel(demo.macroBindings.interact)}</kbd>`;
   $('#bank-progress').hidden = !demo.state.bank;
   $('#bank-progress span').style.width =
     (demo.state.bank < 1
@@ -82,7 +84,10 @@ export function ui() {
       : Math.max(0, (1 - demo.state.carried / Math.max(1, demo.state.bankAmount)) * 100)) + '%';
   $('#cast').disabled = demo.paused;
   $('#meditate').setAttribute('aria-pressed', String(demo.state.meditating));
-  $('#meditate').textContent = demo.state.meditating ? 'Meditating… N to stop' : 'Meditate · N';
+  $('#meditate').textContent =
+    (demo.state.meditating ? 'Meditar: activo' : 'Meditar') + ' · ' + keyLabel(demo.macroBindings.meditate);
+  $('#use-selected').textContent = 'Usar · ' + keyLabel(demo.macroBindings.use);
+  $('#pause kbd').textContent = keyLabel(demo.macroBindings.pause);
   $('#prepare-spell').disabled = demo.paused;
   $('#prepare-spell').textContent = demo.state.armed ? 'Cancelar' : 'Lanzar';
   $('#cast').textContent = demo.state.armed ? 'Cancelar' : 'Lanzar';
@@ -92,7 +97,7 @@ export function ui() {
   $('#target-help').textContent = demo.state.armed
     ? M.spells[demo.state.selectedSpell].name +
       ' ready · ' +
-      (demo.state.selectedSpell === 'remover' ? 'click yourself or a character' : 'click a rival') +
+      (demo.state.selectedSpell === 'remover' ? 'click your own tile' : 'click a rival') +
       ' · Esc cancels'
     : 'WASD para moverte · seleccioná un hechizo y apretá Lanzar · E recoge';
   for (const action of macroActions) {
@@ -126,7 +131,7 @@ export function ui() {
         ? 'Life potion · restores 40'
         : 'Mana potion · restores 50';
   $('#use-selected').disabled = demo.selectedInventory === 'essence' || demo.paused;
-  canvas.style.cursor = demo.state.armed ? 'crosshair' : 'pointer';
+  canvas.style.cursor = demo.state.armed ? 'crosshair' : 'default';
   $('#cast').style.opacity = recovery > 0 ? '.55' : '1';
   for (const id of ['#strike', '#mobile-strike']) {
     $(id).style.opacity = Math.max(demo.state.meleeCooldown, demo.state.castToHit) > 0 ? '.55' : '1';
@@ -318,6 +323,8 @@ export function focusGame() {
     demo.hudDrawerOpen ||
     demo.state.tutorial?.dialog ||
     demo.state.tutorial?.stage === 'setup' ||
+    !!demo.state.tutorial?.coach?.current ||
+    $('#bindings-dialog').open ||
     $('#help-dialog').open ||
     $('#character-dialog').open
   )
@@ -390,8 +397,8 @@ function tutorialUI() {
     : done
       ? 'The full-match rules are provisional. Replay, review them or return to Nix.'
       : t.bankRevealed
-        ? 'Pick up crystals with E. Follow BANK and stay nearby until your carried essence is secured.'
-        : 'Elegí un hechizo y apretá Lanzar, o usá tu macro. Apuntá al casillero. E recoge cristales.';
+        ? 'Recogé cristales con el botón o tu tecla de interacción. Seguí BANK y permanecé cerca para guardar la esencia.'
+        : 'Elegí un hechizo y apretá Lanzar, o usá tu macro. Apuntá al casillero. Usá tu tecla de interacción para recoger.';
   $('#deposit-status').textContent = hall
     ? 'Safe hallway · learn at your pace'
     : done
@@ -419,7 +426,7 @@ function tutorialUI() {
     const g = M.nearGuide(demo.state);
     $('.interact-area').hidden = !g;
     $('#interact').disabled = !g;
-    $('#interact').textContent = g ? 'Talk to ' + g.name + ' · E' : 'Talk';
+    $('#interact').textContent = g ? 'Talk to ' + g.name + ' · ' + keyLabel(demo.macroBindings.interact) : 'Talk';
   }
   $('#cast').disabled = demo.paused || hall || done;
   $('#prepare-spell').disabled = demo.paused || hall || done;

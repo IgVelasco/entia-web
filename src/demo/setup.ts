@@ -5,12 +5,12 @@ import { focusGame, setHudDrawer } from './hud.ts';
 import { schedule } from './loop.ts';
 import {
   assignMacro,
-  emptyBindings,
+  bindingConflict,
   exampleBindings,
   keyLabel,
   macroActions,
   macroLabels,
-  type MacroAction,
+  type BindingAction,
 } from './rules/macros.ts';
 
 const lessons = [
@@ -27,20 +27,62 @@ const lessons = [
   {
     focus: 'macros',
     title: '3. Creá tus macros (opcional)',
-    text: 'Un macro es un acceso rápido a una acción. Elegí Asignar, luego presioná la tecla que quieras. Un macro de hechizo lo deja listo para apuntar; uno de poción la usa al soltar o la repite mientras lo mantenés si Auto-pot está activo. Cada tecla puede tener una sola acción.',
+    text: 'Un macro es un acceso rápido. Elegí Asignar y presioná tu tecla. El de hechizo lo prepara para apuntar; el de poción la usa al soltar o la repite al mantenerla con Auto-pot. Abrí Teclas y macros para ver todas las acciones. Si una tecla está ocupada, podés reasignarla aquí.',
   },
   {
     focus: 'ready',
     title: '4. Tus controles están listos',
-    text: 'Para jugar desde las ventanas: seleccioná un hechizo → Lanzar → clic en el casillero; para pociones: seleccioná una → Usar o doble clic. WASD o flechas mueven; E recoge esencia; Espacio golpea. La pelea sigue detenida hasta que aprietes Entrar en la arena.',
+    text: 'Para jugar desde las ventanas: seleccioná un hechizo → Lanzar → clic en el casillero; para pociones: seleccioná una → Usar o doble clic. WASD o flechas mueven. Podés reabrir Teclas y macros en cualquier momento. La pelea espera hasta que aprietes Entrar en la arena.',
   },
 ];
 let active = false;
 let step = 0;
-let capturing: MacroAction | null = null;
+let capturing: BindingAction | null = null;
 let error = '';
+let conflict: { action: BindingAction; key: string; other: BindingAction } | null = null;
+
+function syncBindings() {
+  const message = error || (capturing ? `Presioná una tecla para ${macroLabels[capturing]}. Escape cancela.` : '');
+  for (const id of ['#setup-error', '#bindings-error']) $(id).textContent = message;
+  for (const id of ['#setup-reassign', '#bindings-reassign']) {
+    $(id).hidden = !conflict;
+    $(id).textContent = conflict
+      ? `Usar ${keyLabel(conflict.key)} para ${macroLabels[conflict.action]} y dejar ${macroLabels[conflict.other]} sin tecla`
+      : '';
+  }
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-bind]')) {
+    const action = button.dataset.bind as BindingAction;
+    button.textContent =
+      capturing === action
+        ? 'Presioná una tecla…'
+        : demo.macroBindings[action]
+          ? keyLabel(demo.macroBindings[action])
+          : 'Asignar';
+    button.setAttribute('aria-pressed', String(capturing === action));
+  }
+}
+export function openBindings() {
+  if (!demo.ready) return;
+  clear();
+  capturing = null;
+  conflict = null;
+  error = '';
+  syncBindings();
+  if (!$('#bindings-dialog').open) $('#bindings-dialog').showModal();
+}
+function closeBindings() {
+  capturing = null;
+  conflict = null;
+  error = '';
+  $('#bindings-dialog').close();
+  clear();
+  demo.previous = performance.now();
+  focusGame();
+  schedule();
+}
 
 export function syncSetup() {
+  syncBindings();
   const shown = demo.state.tutorial?.stage === 'setup' && !demo.hostSuspended;
   $('#controls-lesson').hidden = !shown || demo.paused;
   if (!shown || demo.paused) {
@@ -49,7 +91,10 @@ export function syncSetup() {
       $(selector).classList.toggle('lesson-target', false);
     if (!shown) {
       active = false;
-      capturing = null;
+      if (!$('#bindings-dialog').open) {
+        capturing = null;
+        conflict = null;
+      }
     }
     return;
   }
@@ -73,22 +118,10 @@ export function syncSetup() {
   $('#setup-summary').textContent = assigned.length
     ? assigned.map((action) => `${macroLabels[action]}: ${keyLabel(demo.macroBindings[action])}`).join(' · ')
     : 'Elegiste jugar desde las ventanas. No hay teclas de macro asignadas.';
-  $('#setup-error').textContent =
-    error || (capturing ? `Presioná una tecla para ${macroLabels[capturing]}. Escape cancela.` : '');
   $('#setup-back').disabled = step === 0;
   $('#setup-next').hidden = step === 3;
   $('#setup-start').hidden = step !== 3;
   $('#setup-start').disabled = capturing !== null;
-  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-bind]')) {
-    const action = button.dataset.bind as MacroAction;
-    button.textContent =
-      capturing === action
-        ? 'Presioná una tecla…'
-        : demo.macroBindings[action]
-          ? keyLabel(demo.macroBindings[action])
-          : 'Asignar';
-    button.setAttribute('aria-pressed', String(capturing === action));
-  }
   for (const [selector, focus] of [
     ['.spells-window', 'spells'],
     ['.inventory-window', 'inventory'],
@@ -99,15 +132,19 @@ export function syncSetup() {
 function changeStep(next: number) {
   step = next;
   capturing = null;
+  conflict = null;
   error = '';
   syncSetup();
   $('.lesson-content').scrollTop = 0;
   (step === 3 ? $('#setup-start') : $('#setup-next')).focus();
 }
-export function handleSetupKey(event: KeyboardEvent) {
+export function handleSetupKey(event: KeyboardEvent, editor = false) {
   if (event.key === 'Tab') {
     capturing = null;
-    const buttons = [...document.querySelectorAll<HTMLButtonElement>('#controls-lesson button')].filter(
+    conflict = null;
+    error = '';
+    const root = editor ? '#bindings-dialog' : '#controls-lesson';
+    const buttons = [...document.querySelectorAll<HTMLButtonElement>(`${root} button`)].filter(
       (button) => !button.disabled && button.getClientRects().length,
     );
     const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
@@ -119,44 +156,73 @@ export function handleSetupKey(event: KeyboardEvent) {
     return;
   }
   if (!capturing) {
-    if (event.key === 'Escape') event.preventDefault();
+    if (event.key === 'Escape' && !editor) event.preventDefault();
     return;
   }
   event.preventDefault();
   if (event.repeat) return;
+  conflict = null;
   if (event.key === 'Escape') {
     capturing = null;
+    conflict = null;
     error = '';
   } else if (event.ctrlKey || event.metaKey || event.altKey) error = 'Usá una tecla sin Ctrl, Alt ni Meta.';
   else {
     error = assignMacro(demo.macroBindings, capturing, event.key);
+    const other = bindingConflict(demo.macroBindings, capturing, event.key);
+    conflict = error && other ? { action: capturing, key: event.key.toLowerCase(), other } : null;
     if (!error) capturing = null;
   }
   syncSetup();
 }
 export function bindSetup() {
+  for (const selector of ['#controls-options', '#setup-all-bindings', '#help-bindings'])
+    $(selector).onclick = openBindings;
+  $('#bindings-close').onclick = closeBindings;
+  $('#bindings-dialog').addEventListener('cancel', (event) => {
+    event.preventDefault();
+    closeBindings();
+  });
+  for (const id of ['#setup-reassign', '#bindings-reassign'])
+    $(id).onclick = () => {
+      if (!conflict) return;
+      const next = { ...demo.macroBindings, [conflict.other]: '' };
+      error = assignMacro(next, conflict.action, conflict.key);
+      if (!error) demo.macroBindings = next;
+      capturing = null;
+      conflict = null;
+      syncSetup();
+    };
   $('#setup-next').onclick = () => changeStep(Math.min(3, step + 1));
   $('#setup-back').onclick = () => changeStep(Math.max(0, step - 1));
   $('#setup-windows').onclick = () => {
-    demo.macroBindings = emptyBindings();
+    for (const action of macroActions) demo.macroBindings[action] = '';
     changeStep(3);
   };
   $('#setup-example').onclick = () => {
-    demo.macroBindings = exampleBindings();
+    const example = exampleBindings();
+    const next = { ...demo.macroBindings };
+    for (const action of macroActions) next[action] = '';
+    for (const action of macroActions) {
+      error = assignMacro(next, action, example[action]);
+      if (error) break;
+    }
+    if (!error) demo.macroBindings = next;
     capturing = null;
-    error = '';
     syncSetup();
   };
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-bind]'))
     button.onclick = () => {
-      capturing = button.dataset.bind as MacroAction;
+      capturing = button.dataset.bind as BindingAction;
+      conflict = null;
       error = '';
       syncSetup();
     };
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-clear-macro]'))
     button.onclick = () => {
-      demo.macroBindings[button.dataset.clearMacro as MacroAction] = '';
+      demo.macroBindings[button.dataset.clearMacro as BindingAction] = '';
       capturing = null;
+      conflict = null;
       error = '';
       syncSetup();
     };

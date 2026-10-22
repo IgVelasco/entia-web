@@ -19,6 +19,7 @@ export function tick(now: number) {
     !document.hidden &&
     !demo.returning &&
     !demo.hudDrawerOpen &&
+    !$('#bindings-dialog').open &&
     !$('#character-dialog').open
   ) {
     M.update(demo.state, dt, input());
@@ -48,7 +49,7 @@ export function schedule() {
 export function bindLifecycle() {
   window.addEventListener('blur', () => {
     clear();
-    if (demo.ready && !demo.paused) togglePause(true);
+    if (demo.ready && !demo.paused && !$('#bindings-dialog').open) togglePause(true);
   });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {

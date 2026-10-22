@@ -63,6 +63,7 @@ test('a turn waits for the active tile and releasing it does not replay stale in
 
 test('a recovering spell keeps its cursor and does not interrupt the current step', () => {
   const s = arena();
+  s.enemies = [{ ...M.create().enemies[0], x: 400, y: 432, speed: 0, cooldown: 99, hp: 10 }];
   s.armed = true;
   assert(M.cast(s, { x: 400, y: 432 }));
   assert.equal(s.cooldown, 1.38);
@@ -81,6 +82,7 @@ test('a recovering spell keeps its cursor and does not interrupt the current ste
 
 test('hit-to-magic and magic-to-hit gates prevent bypassing combat cadence', () => {
   const s = arena();
+  s.enemies = [{ ...M.create().enemies[0], x: 440, y: 432, speed: 0, cooldown: 99, hp: 10 }];
   s.player.x = 400;
   assert(M.melee(s));
   s.armed = true;

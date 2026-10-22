@@ -2,6 +2,7 @@
 import * as Physics from '../../shared/physics.ts';
 import type { Body } from '../../shared/physics.ts';
 import { cardinal, walk } from './movement.ts';
+import { teach } from './combat-lessons.ts';
 import { blockingActor, occupiedPosition, sameTile } from './occupancy.ts';
 import type { CastTarget, DemoState, Drop, Enemy, Input, Player, Point, Rect, SceneryItem, Spell } from './state.ts';
 const WIDTH = 1200,
@@ -270,63 +271,61 @@ function cast(s: DemoState, target?: CastTarget | null) {
     return false;
   }
   if (!target || !Number.isFinite(target.x) || !Number.isFinite(target.y) || s.player.hp <= 0) return false;
+  // The client completes a sent attempt before receiving the target/mana result.
+  s.armed = false;
+  s.cooldown = 1.38;
+  s.castToHit = 0.625;
+  s.potionAttackLockout = 0.31;
+  s.meditating = false;
   const p = s.player,
     d = Math.hypot(target.x - p.x, target.y - p.y),
     spell = spells[s.selectedSpell] || spells.apocalipsis;
   const enemy = s.enemies.find((e) => e.hp > 0 && sameTile(occupiedPosition(e), target)),
     self = sameTile(occupiedPosition(p), target);
-  if (p.mana < spell.mana) {
-    tell(s, 'Not enough mana. Rest in the sanctuary to recover.');
+  if (d > 0) p.dir = heading(target.x - p.x, target.y - p.y);
+  const reject = (message: string, lesson: 'miss' | 'mana' | 'enemyRemover' = 'miss') => {
+    tell(s, message);
+    teach(s, lesson);
     return false;
+  };
+  if (p.mana < spell.mana) {
+    return reject('No tenés suficiente maná. Usá una poción y prepará el hechizo otra vez.', 'mana');
   }
   if (d > 270) {
-    tell(s, 'Out of range. Move closer to your target.');
-    return false;
+    return reject('Fuera de alcance. Acercate y volvé a preparar el hechizo.');
   }
   if (!lineClear(p, target)) {
-    tell(s, 'The spell is blocked. Find a clear line of sight.');
-    return false;
+    return reject('Un obstáculo bloqueó el intento. Buscá una línea de visión libre.');
   }
-  if (s.selectedSpell !== 'apocalipsis' && !enemy && !self) {
-    tell(s, 'Point at a character to cast this spell.');
-    return false;
-  }
-  if (s.selectedSpell === 'inmovilizar' && !enemy) {
-    tell(s, 'Aim Inmovilizar at a rival.');
-    return false;
-  }
+  if (s.selectedSpell === 'remover' && enemy)
+    return reject('No podés usar Remover sobre un enemigo. Apuntá a tu propio casillero.', 'enemyRemover');
+  if (s.selectedSpell === 'remover' && (!self || !p.immobilized))
+    return reject('Remover necesita tu propio casillero y una inmovilización activa.');
+  if (s.selectedSpell !== 'remover' && !enemy)
+    return reject('No acertaste a un rival. El cursor volvió a normal; prepará el hechizo para intentar otra vez.');
   if (s.selectedSpell === 'inmovilizar' && enemy!.immobilized > 0) {
-    tell(s, 'That rival is already immobilized.');
-    return false;
+    return reject('Ese rival ya está inmovilizado. El intento no gastó maná.');
   }
-  if (s.selectedSpell === 'remover' && !(self ? p : enemy!).immobilized) {
-    tell(s, 'That character is not immobilized.');
-    return false;
-  }
-  p.dir = heading(target.x - p.x, target.y - p.y);
-  s.armed = false;
-  // ActionRateController defaults, with independent hit/magic cross gates.
-  s.cooldown = 1.38;
-  s.castToHit = 0.625;
-  s.potionAttackLockout = 0.31;
-  s.meditating = false;
   p.mana -= spell.mana;
   if (s.selectedSpell === 'inmovilizar') {
     enemy!.immobilized = 3;
     enemy!.cleanseReaction = 0.9;
     s.fx.push({ x: enemy!.x, y: enemy!.y, age: 0, hit: true, owner: 'bind', targetId: enemy!.name });
-    tell(s, `${enemy!.name} is immobilized. It can still cast and may remove the effect.`);
+    tell(s, `${enemy!.name} quedó inmovilizado. Gastaste ${spell.mana} de maná; todavía puede lanzar.`);
+    teach(s, 'inmovilizar');
   } else if (s.selectedSpell === 'remover') {
-    const who = self ? p : enemy!;
-    who.immobilized = 0;
-    s.fx.push({ x: who.x, y: who.y, age: 0, hit: true, owner: 'cleanse', targetId: self ? 'player' : enemy!.name });
-    tell(s, self ? 'Movement restored.' : 'Paralysis removed.');
+    p.immobilized = 0;
+    s.fx.push({ x: p.x, y: p.y, age: 0, hit: true, owner: 'cleanse', targetId: 'player' });
+    tell(s, `Recuperaste el movimiento. Remover gastó ${spell.mana} de maná.`);
+    teach(s, 'remover');
   } else {
     s.fx.push({ x: target.x, y: target.y, age: 0, hit: true, owner: 'player', targetId: enemy?.name });
     if (enemy) {
       damage(s, enemy, 1);
       if (enemy.hp === 0) defeatEnemy(s, enemy);
-    } else tell(s, 'No rival under the pointer. Aim at a character and click.');
+    }
+    tell(s, `Acertaste Apocalipsis: el rival perdió vida y gastaste ${spell.mana} de maná.`);
+    teach(s, 'apocalipsis');
   }
   recordSpellWords(s, s.selectedSpell, 'player', p);
   return true;
@@ -378,7 +377,7 @@ function meditate(s: DemoState) {
   tell(s, s.meditating ? 'Meditating. Stay still to recover mana.' : 'Meditation stopped.');
 }
 function usePotion(s: DemoState, kind: string) {
-  if (s.tutorial?.stage === 'setup') return false;
+  if (s.tutorial?.stage === 'setup' || s.tutorial?.coach?.current) return false;
   const life = kind === 'life';
   if (!life && kind !== 'mana') return false;
   const stock = life ? 'lifePotions' : 'manaPotions',
@@ -482,6 +481,10 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
       s.navigation?.points,
     );
   }
+  if (p.immobilized && (input.x || input.y)) {
+    const direction = cardinal(input.x || 0, input.y || 0);
+    p.dir = heading(direction.x, direction.y);
+  }
   if (s.pendingMelee > 0) {
     if (Math.max(s.meleeCooldown, s.castToHit) <= 1e-6) melee(s);
     else s.pendingMelee = Math.max(0, s.pendingMelee - dt);
@@ -494,21 +497,7 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
     p.hp = Math.min(100, p.hp + 12 * dt);
     p.mana = Math.min(100, p.mana + 24 * dt);
   }
-  for (const f of s.fx) {
-    f.age += dt;
-    if (f.owner === 'enemy' && !f.hit && f.age >= 0.3) {
-      f.hit = true;
-      if (!safe && Math.hypot(p.x - f.x, p.y - f.y) < 35) {
-        f.targetId = 'player';
-        if (f.spell === 'inmovilizar') {
-          p.immobilized = 2.5;
-          tell(s, 'Immobilized! Prepare Remover parálisis and click yourself.');
-        } else damage(s, p, 12);
-        s.flash = 0.2;
-        cancelDeposit(s);
-      }
-    }
-  }
+  for (const f of s.fx) f.age += dt;
   s.fx = s.fx.filter((f) => f.age < 2);
   if (p.hp <= 0) {
     respawnPlayer(s);
@@ -574,7 +563,9 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
         e.cleanseCooldown = 5;
         s.fx.push({ x: e.x, y: e.y, age: 0, hit: true, owner: 'cleanse' });
         recordSpellWords(s, 'remover', e.name, e);
-        tell(s, `${e.name} used Remover parálisis.`);
+        tell(s, `${e.name} usó Remover y recuperó el movimiento.`);
+        teach(s, 'enemyCleanse');
+        if (s.tutorial?.coach?.current) break;
       }
     }
     if (e.step && !e.immobilized) {
@@ -598,15 +589,9 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
       if (e.wind <= 0) {
         e.cooldown = 2.4;
         if (!safe && e.aim && lineClear(e, e.aim)) {
-          s.fx.push({
-            x: e.aim.x,
-            y: e.aim.y,
-            age: 0,
-            hit: false,
-            owner: 'enemy',
-            spell: e.attackSpell || 'apocalipsis',
-          });
+          resolveEnemySpell(s, e.aim, e.attackSpell || 'apocalipsis');
           recordSpellWords(s, e.attackSpell || 'apocalipsis', e.name, e);
+          if (s.tutorial?.coach?.current) break;
         }
       }
       continue;
@@ -620,12 +605,36 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
       } else if (d > 115) botStep(s, e, p, dt);
     } else if (Math.hypot(e.x - e.homeX, e.y - e.homeY) > 5) botStep(s, e, { x: e.homeX, y: e.homeY }, dt);
   }
-  if (s.autopotEnabled && s.heldPotions.length) {
+  if (!s.tutorial?.coach?.current && s.autopotEnabled && s.heldPotions.length) {
     const primary = s.heldPotions.at(-1)!;
     if (usePotion(s, primary.kind)) primary.claimed = true;
   }
 }
+// Resolve an NPC's chosen tile at launch. Animation does not defer damage or add a radius.
+function resolveEnemySpell(s: DemoState, target: Point, spell = 'apocalipsis') {
+  const p = s.player;
+  const hit = p.x >= 270 && sameTile(occupiedPosition(p), target);
+  s.fx.push({ ...target, age: 0, hit: true, owner: 'enemy', spell, targetId: hit ? 'player' : undefined });
+  if (!hit) {
+    tell(s, 'El rival falló: el hechizo no acertó tu casillero.');
+    teach(s, 'enemyMiss');
+    return false;
+  }
+  if (spell === 'inmovilizar') {
+    p.immobilized = 2.5;
+    tell(s, 'Te inmovilizaron. Podés girar y lanzar: usá Remover sobre tu casillero (10 de maná).');
+    teach(s, 'receivedInmovilizar');
+  } else {
+    damage(s, p, 12);
+    tell(s, 'Te acertaron Apocalipsis: perdiste 12 de vida. Usá una poción de vida si hace falta.');
+    teach(s, 'receivedApocalipsis');
+  }
+  s.flash = 0.2;
+  cancelDeposit(s);
+  return true;
+}
 const api = {
+  resolveEnemySpell,
   bankAt,
   bankBounds,
   spells,

@@ -35,7 +35,9 @@
 }
 .lesson-actions,
 #setup-windows,
-#setup-error {
+#setup-error,
+#setup-reassign,
+#setup-experienced {
   flex-shrink: 0;
 }
 .lesson-card h2 {
@@ -61,6 +63,69 @@
 #setup-windows {
   width: 100%;
   white-space: normal;
+}
+#setup-experienced {
+  margin-top: 8px;
+  white-space: normal;
+}
+#setup-reassign,
+#bindings-reassign {
+  white-space: normal;
+  background: #554729;
+  border-color: #e2c27d;
+}
+#setup-all-bindings {
+  width: 100%;
+  margin: 0 0 12px;
+}
+#bindings-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.bindings-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.bindings-content {
+  min-height: 100px;
+  overflow: auto;
+  padding: 4px;
+}
+.fixed-controls {
+  color: #b5c5ae;
+  font-size: 12px;
+  border-left: 2px solid #b6a26d;
+  padding-left: 12px;
+}
+#bindings-error,
+#combat-facts {
+  color: #f1d397;
+}
+#bindings-error:empty {
+  display: none;
+}
+#bindings-reassign {
+  flex-shrink: 0;
+}
+#combat-lesson > button {
+  display: block;
+  width: 100%;
+  white-space: normal;
+  margin-top: 10px;
+}
+#combat-lesson p {
+  line-height: 1.6;
+}
+#combat-response {
+  border-left: 2px solid #b8a067;
+  padding-left: 14px;
+}
+#combat-controls {
+  color: #bed1b7;
 }
 #setup-error {
   color: #f4c281;
@@ -141,6 +206,9 @@ body[data-controls-lesson] .spells-window.lesson-target {
   text-align: center;
 }
 @media (max-width: 760px) {
+  #controls-options {
+    display: none;
+  }
   .lesson-card {
     top: auto;
     bottom: max(12px, env(safe-area-inset-bottom));

@@ -72,6 +72,8 @@ interface DemoElements {
   '#help-dialog': HTMLDialogElement;
   '#character-dialog': HTMLDialogElement;
   '#guide-dialog': HTMLDialogElement;
+  '#bindings-dialog': HTMLDialogElement;
+  '#combat-lesson': HTMLDialogElement;
   '#autopot': HTMLInputElement;
   '#mobile-spell': HTMLSelectElement;
   '#inventory-crystal': HTMLCanvasElement;

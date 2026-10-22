@@ -1,3 +1,12 @@
+# Rebindable actions and contextual combat coaching — 22 October 2026
+
+- Teclas y macros reopens from the header, safe workshop or pause menu. The editor lists all five spell/potion macros plus interaction, alternative pickup, selected-item use, strike, meditation and pause. Movement and Escape remain visible fixed controls. Conflicts name the current action and offer an explicit transfer of the key; E can therefore become a spell key without also interacting. Banking remains automatic.
+- A sent targeting attempt returns the cursor to normal even when the target is empty, invalid, blocked, out of range or lacks mana. Such rejections consume the cast interval but spend no mana. The local recovery gate preserves the prepared cursor because no attempt has been sent yet.
+- Reference evidence, read-only: Godot `ClientInputDispatcher._dispatch_spell_action`, `CombatActionController.send_spell_at`, `ArmedActionController.complete_targeted_spell`; server `spells.go` cast-entry/target/cost ordering and `TestCastAtInvalidTargetDoesNotSpendMana` / `TestCastAtRemoveParalysisRejectsFreeTargetAndConsumesInterval`. The tutorial's numeric costs and damage remain rescaled practice values.
+- Enemy spells now resolve one occupied tile at launch. Their artwork has no delayed radius or later damage tick. Immobilized players can turn toward all four headings without translating or discarding the current step. Remover accepts the immobilized player itself and rejects hostile bots without spending mana.
+- First occurrences pause the actual simulation for contextual explanations: precision, miss, mana shortage, outgoing damage/bind/cleanse, incoming damage/bind, an enemy's miss/self-cleanse and rejected enemy cleansing. Cards show current life/mana and a response. Repeated outcomes use brief notices. Ya he jugado Argentums previamente skips current and future combat explanations while preserving the optional control workshop.
+- Regression evidence: the three cursor/enemy-cleanse/turn-in-place checks fail on the preceding commit and pass after these changes. Node tests also exercise frozen lessons, skip behavior, costs, one-tile enemy hits, remapped E dispatch and the real DOM's incoming-bind/self-cleanse flow. Browser checks cover reopening all bindings, explicit E reassignment, the actual miss card and experienced-player opt-out.
+
 # Free aiming, tile occupancy and control workshop — 22 October 2026
 
 - Actors reserve only their destination tile during a step; sprites and swept circles do not block adjacent tiles. NPCs finish a step before preparing another cast, and immobilization pauses rather than discards the current endpoint. The HUD distinguishes paralysis (with time remaining) from an occupied tile or obstacle.
@@ -17,7 +26,7 @@
 # Godot gameplay adaptation — 21 October 2026
 
 - The hallway and arena share the same cardinal footstep controller: 32 pixels in 200 ms, finishing a tile after release and turning at its boundary. Straight movement carries unused frame time into the next tile, eliminating cadence gaps at 30/60/144 FPS.
-- Preparing and casting preserve existing walking orders. WASD/arrows and touch movement work while aiming. Successful casts clear the cursor; cooldown and invalid-target rejections leave it ready for retry without spending mana.
+- Preparing and casting preserve existing walking orders. WASD/arrows and touch movement work while aiming. Sent attempts clear the cursor; a local recovery rejection leaves it ready for retry without spending mana.
 - Combat uses the Godot client's default intervals: 1.48 s between strikes, 1.38 s between casts, 650 ms from hit to magic, and 625 ms from magic to hit. Melee accepts one input during the last 100 ms of recovery. These are the generic defaults, not class/race-specific server balance.
 - Space, E and U execute on release. E picks up essence and talks; Q remains a practice pickup alias. Potion macros retain their shared 260 ms cadence and 310 ms post-attack lockout. Pause, focus loss and dialogs clear pending actions.
 - Read-only behavior references: `IgVelasco/rao-client` at `635a4ab4a987e5db51b710358135288ff8f124d9` and the available working tree: `MovementController.gd`, `InputController.gd`, `ControlBindings.gd`, `ActionRateController.gd`, `CombatActionController.gd`, `ClientInputDispatcher.gd` and `ArmedActionController.gd`.

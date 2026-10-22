@@ -65,7 +65,7 @@ test('prepared cast consumes click mode without creating a route', () => {
   const s = arena();
   s.armed = true;
   assert(!M.walkTo(s, { x: 450, y: 432 }));
-  assert(M.cast(s, { x: 450, y: 432 }));
+  assert(!M.cast(s, { x: 450, y: 432 }));
   assert.equal(s.armed, false);
   assert.equal(s.navigation, null);
   assert.equal(s.player.x, 304);
@@ -136,7 +136,7 @@ test('lethal hit during a click route preserves the death and drop notice', () =
   M.walkTo(s, { x: 432, y: 432 });
   M.update(s, 0.02);
   s.player.hp = 12;
-  s.fx = [{ x: s.player.x, y: s.player.y, owner: 'enemy', spell: 'apocalipsis', age: 0.29, hit: false }];
+  M.resolveEnemySpell(s, s.player.step.end, 'apocalipsis');
   M.update(s, 0.02);
   assert.equal(s.player.x, 176);
   assert.equal(s.navigation, null);

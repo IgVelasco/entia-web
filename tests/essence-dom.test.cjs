@@ -17,6 +17,7 @@ const controllerGlobals = (load) => ({
   Motion: load('demo/motion.ts'),
   Embed: load('demo/embed.ts'),
   Loop: load('demo/loop.ts'),
+  Setup: load('demo/setup.ts'),
 });
 // The demo controller's modules, for source-text checks.
 const controllerSource = () =>
@@ -155,11 +156,98 @@ test('controller uses latest held direction and pointer-specific casts', async (
   run("demo.keys.add('w');demo.keys.add('d')");
   assert.equal(run('Input.input().x'), 1);
   assert.equal(run('Input.input().y'), 0);
+  run('Render.draw();demo.pointer={x:demo.width/2+100*demo.scale,y:demo.height/2};Input.prepareSpell()');
+  assert.equal(run('Input.aimPoint().x'), 404);
+  assert.equal(run('Input.aimPoint().y'), 432);
+  run('Input.castAtPointer()');
+  assert(!run('demo.state.armed'));
+  assert.equal(run('demo.state.player.mana'), 100);
+});
+
+test('a spell rebound to E never also interacts, and interaction can move to another key', async () => {
+  const a = app();
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  a.get('#resume').onclick();
   run(
-    'Render.draw();demo.pointer={x:demo.width/2+100*demo.scale,y:demo.height/2};Input.prepareSpell();Input.castAtPointer()',
+    "demo.macroBindings.interact='t';demo.macroBindings.apocalipsis='e';globalThis.interactions=0;M.interact=()=>++interactions",
   );
-  assert.equal(run('demo.state.fx[0].x'), 404);
-  assert.equal(run('demo.state.fx[0].y'), 432);
+  const event = (key) => ({ key, target: { closest: () => false }, preventDefault() {} });
+  a.listeners.keydown(event('e'));
+  assert(run('demo.state.armed'));
+  a.listeners.keyup(event('e'));
+  assert.equal(run('interactions'), 0);
+  a.listeners.keydown(event('t'));
+  assert.equal(run('interactions'), 0);
+  a.listeners.keyup(event('t'));
+  assert.equal(run('interactions'), 1);
+});
+
+test('held macro repeats suppress browser function-key defaults without dispatching twice', async () => {
+  const a = app();
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  a.get('#resume').onclick();
+  run("demo.macroBindings.life='f1'");
+  let prevented = 0;
+  for (const repeat of [false, true, true])
+    a.listeners.keydown({
+      key: 'F1',
+      repeat,
+      target: { closest: () => false },
+      preventDefault() {
+        prevented++;
+      },
+    });
+  assert.equal(prevented, 3);
+  assert.equal(run('demo.state.heldPotions.length'), 1);
+  a.listeners.keyup({ key: 'F1', preventDefault() {} });
+  assert.equal(run('demo.state.lifePotions'), 99);
+});
+
+test('the full bindings editor freezes the world and can reopen without changing assignments', async () => {
+  const a = app();
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  a.get('#resume').onclick();
+  run("demo.macroBindings.apocalipsis='t';Setup.openBindings()");
+  assert(a.get('#bindings-dialog').open);
+  const time = run('demo.state.time');
+  run('Loop.tick(40)');
+  assert.equal(run('demo.state.time'), time);
+  a.get('#bindings-close').onclick();
+  assert(!a.get('#bindings-dialog').open);
+  run('Loop.tick(80);Setup.openBindings()');
+  assert(run('demo.state.time') > time);
+  assert.equal(run('demo.macroBindings.apocalipsis'), 't');
+});
+
+test('real incoming paralysis opens its explanation, pauses time and teaches a self cast of Remover', async () => {
+  const a = app({ tutorial: true });
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  run(
+    "demo.state.tutorial.seen=M.guides.map(g=>g.id);M.enterArena(demo.state);M.startFight(demo.state);M.dismissCombatLesson(demo.state);M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');Hud.ui()",
+  );
+  assert(a.get('#combat-lesson').open);
+  assert.equal(a.get('#combat-title').textContent, 'Te inmovilizaron');
+  assert.match(a.get('#combat-response').textContent, /10 de maná/);
+  const paralysis = run('demo.state.player.immobilized');
+  run('Loop.tick(500)');
+  assert.equal(run('demo.state.player.immobilized'), paralysis);
+  a.get('#combat-continue').onclick();
+  assert(!a.get('#combat-lesson').open);
+  run(
+    "Hud.selectSpell('remover');Input.prepareSpell();demo.pointer={x:demo.width/2,y:demo.height/2};Input.castAtPointer();Hud.ui()",
+  );
+  assert.equal(run('demo.state.player.immobilized'), 0);
+  assert.equal(run('demo.state.player.mana'), 90);
+  assert.equal(a.get('#combat-title').textContent, 'Te quitaste la inmovilización');
+  a.get('#combat-skip').onclick();
+  assert(!a.get('#combat-lesson').open);
+  run("M.resolveEnemySpell(demo.state,demo.state.player,'apocalipsis');Hud.ui()");
+  assert(!a.get('#combat-lesson').open);
+  assert.equal(run('demo.state.player.hp'), 88);
 });
 
 test('pointer coordinates stay free over sprites and no aiming or NPC impact areas are drawn', async () => {
@@ -229,7 +317,7 @@ test('keyboard and touch movement keep working while a spell is prepared and cas
   await new Promise((r) => setImmediate(r));
   const run = (s) => vm.runInContext(s, a.context);
   a.get('#resume').onclick();
-  run('demo.state.enemies=[];Render.draw()');
+  run('demo.state.enemies=[{...demo.state.enemies[0],x:404,y:432,speed:0,cooldown:99}];Render.draw()');
   a.get('[data-dir=right]').pointerdown({ pointerId: 1, preventDefault() {} });
   run('Input.prepareSpell();M.update(demo.state,.04,Input.input())');
   const x = run('demo.state.player.x');
@@ -400,6 +488,9 @@ test('held touch movement survives preparing and casting with a second pointer',
   a.get('#resume').onclick();
   a.get('[data-dir=right]').pointerdown({ pointerId: 1, preventDefault() {} });
   assert.equal(run('Input.input().x'), 1);
+  run(
+    'demo.state.enemies[0].x=demo.state.player.x+(245-demo.width/2)/demo.scale;demo.state.enemies[0].y=demo.state.player.y',
+  );
   a.get('#cast').click();
   assert.equal(run('Input.input().x'), 1);
   a.get('#game').pointerdown({ pointerType: 'touch', pointerId: 2, clientX: 245, clientY: 350, preventDefault() {} });
@@ -563,7 +654,9 @@ test('control-panel events stop before map and outside release cannot cast', asy
   run('Input.worldClick({clientX:550,clientY:900})');
   assert.equal(run('demo.state.player.mana'), 100);
   assert(run('demo.state.armed'));
-  run('Input.worldClick({clientX:600,clientY:400})');
+  run(
+    'demo.state.enemies[0].x=demo.state.player.x+(600-demo.width/2)/demo.scale;demo.state.enemies[0].y=demo.state.player.y;Input.worldClick({clientX:600,clientY:400})',
+  );
   assert.equal(run('demo.state.player.mana'), 85);
 });
 test('deposit status explains locked, carrying and secured states on mobile', async () => {
@@ -754,7 +847,7 @@ test('tutorial HUD and final NPC completion are usable on phone', async () => {
   await new Promise((r) => setImmediate(r));
   const run = (s) => vm.runInContext(s, a.context);
   run(
-    'for(const g of M.guides){M.talk(demo.state,g.id);while(demo.state.tutorial.dialog)M.nextGuide(demo.state);}M.enterArena(demo.state);M.startFight(demo.state);demo.state.kills=2;M.update(demo.state,.02);Hud.ui()',
+    'for(const g of M.guides){M.talk(demo.state,g.id);while(demo.state.tutorial.dialog)M.nextGuide(demo.state);}M.enterArena(demo.state);M.skipCombatLessons(demo.state);M.startFight(demo.state);demo.state.kills=2;M.update(demo.state,.02);Hud.ui()',
   );
   assert.match(a.get('#objective-label').textContent, /BANK/);
   run(
@@ -836,7 +929,7 @@ test('arena entrance motion pauses simulation briefly and releases without a tim
     return x;
   };
   run(
-    'Motion.syncMotion(0);for(const g of M.guides){M.talk(demo.state,g.id);while(demo.state.tutorial.dialog)M.nextGuide(demo.state);}M.enterArena(demo.state);M.startFight(demo.state);Motion.syncMotion(100)',
+    'Motion.syncMotion(0);for(const g of M.guides){M.talk(demo.state,g.id);while(demo.state.tutorial.dialog)M.nextGuide(demo.state);}M.enterArena(demo.state);M.skipCombatLessons(demo.state);M.startFight(demo.state);Motion.syncMotion(100)',
   );
   assert.equal(run('demo.beatUntil'), 950);
   const before = run('demo.state.time');
@@ -944,7 +1037,9 @@ test('spell clicks preserve a walking route and toggling Prepare cancels only ai
   a.get('#resume').onclick();
   run('Render.draw();Input.worldClick({clientX:demo.width/2+100*demo.scale,clientY:demo.height/2})');
   assert(run('!!demo.state.navigation'));
-  run('Input.prepareSpell()');
+  run(
+    'demo.state.enemies[0].x=404;demo.state.enemies[0].y=432;demo.state.enemies[0].speed=0;demo.state.enemies[0].cooldown=99;Input.prepareSpell()',
+  );
   assert(run('!!demo.state.navigation'));
   run('Input.worldClick({clientX:demo.width/2+100*demo.scale,clientY:demo.height/2})');
   assert.equal(run('demo.state.player.mana'), 85);

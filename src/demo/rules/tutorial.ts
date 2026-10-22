@@ -1,6 +1,7 @@
 /* Guided offline onboarding. Numerical match limits remain design proposals. */
 import M from './model.ts';
 import { walk } from './movement.ts';
+import { createCoach, teach, dismissCombatLesson, skipCombatLessons } from './combat-lessons.ts';
 import type { DemoState, Guide } from './state.ts';
 const hallway = {
   floor: { x: 48, y: 384, w: 512, h: 160 },
@@ -24,7 +25,7 @@ const guides: Guide[] = [
     title: 'Find your footing',
     lines: [
       'Welcome to the Veil. Walk along this hall and meet our three guides before you enter the arena.',
-      'Click or tap the floor to walk there. WASD, arrows or the thumbstick also move you. Each guide introduces their lesson as you reach them. You can also click a guide, or press E nearby, to talk again.',
+      'Click or tap the floor to walk there. WASD, arrows or the thumbstick also move you. Each guide introduces their lesson as you reach them. Click a guide or use your assigned interaction key nearby to talk again. Teclas y macros shows every assignment.',
     ],
   },
   {
@@ -38,7 +39,7 @@ const guides: Guide[] = [
     title: 'Aim. Cast. Keep moving.',
     lines: [
       'Select a spell and press Lanzar, then click the ground tile you want to target. The cursor stays free. Before combat, a safe workshop will show spells, potions and optional keyboard macros.',
-      'Keep moving during combat. Your own status panel identifies immobilization and its remaining time. Remover parálisis restores movement; N or Meditate recovers mana while standing still.',
+      'Keep moving during combat. Immobilization stops translation but still allows turning and casting. Remover parálisis on your own tile restores movement and costs mana; it cannot release an enemy. Meditate recovers mana while standing still.',
     ],
   },
   {
@@ -51,7 +52,7 @@ const guides: Guide[] = [
     gait: 0,
     title: 'Carry risk. Bank safety.',
     lines: [
-      'Defeated rivals drop essence. Stand on a crystal and press E or Pick up. Q also works in this practice run. Carried essence drops when you fall; rivals can take it.',
+      'Defeated rivals drop essence. Stand on a crystal and use Pick up or your assigned interaction key. Carried essence drops when you fall; rivals can take it. All keys, including the alternative pickup key, can be changed in Teclas y macros.',
       'Fight a few rivals in the arena. A bank will appear nearby. Stay beside it until your carried essence has transferred. Secured essence stays safe.',
     ],
   },
@@ -63,6 +64,7 @@ function createTutorial() {
   s.player.y = 464;
   s.tutorial = {
     stage: 'hallway',
+    coach: createCoach(),
     seen: [],
     dialog: null,
     page: 0,
@@ -71,7 +73,7 @@ function createTutorial() {
     finalRead: false,
     hallTime: 0,
   };
-  M.tell(s, 'Walk right and meet the Warden. E or Talk opens a conversation.');
+  M.tell(s, 'Walk right and meet the Warden. Talk or your interaction key opens a conversation.');
   return s;
 }
 function nearGuide(s: DemoState) {
@@ -139,6 +141,7 @@ function enterArena(s: DemoState) {
 function startFight(s: DemoState) {
   if (s.phase !== 'arena' || s.tutorial?.stage !== 'setup') return false;
   s.tutorial.stage = 'fight';
+  teach(s, 'precision');
   s.armed = false;
   s.player.step = null;
   s.meditating = false;
@@ -160,11 +163,19 @@ M.pickup = function (s, radius) {
   return n;
 };
 M.cast = (s, target) =>
-  s.phase === 'hallway' || s.tutorial?.stage === 'setup' || s.tutorial?.stage === 'complete'
+  s.phase === 'hallway' ||
+  s.tutorial?.stage === 'setup' ||
+  s.tutorial?.stage === 'complete' ||
+  !!s.tutorial?.coach?.current
     ? ((s.armed = false), false)
     : originalCast(s, target);
 M.melee = (s) =>
-  s.phase === 'hallway' || s.tutorial?.stage === 'setup' || s.tutorial?.stage === 'complete' ? false : originalMelee(s);
+  s.phase === 'hallway' ||
+  s.tutorial?.stage === 'setup' ||
+  s.tutorial?.stage === 'complete' ||
+  !!s.tutorial?.coach?.current
+    ? false
+    : originalMelee(s);
 M.interact = function (s) {
   if (s.phase === 'hallway') {
     const g = nearGuide(s);
@@ -207,7 +218,7 @@ M.update = function (s, dt, input = { x: 0, y: 0 }) {
   if (!s.tutorial) return originalUpdate(s, dt, input);
   const t = s.tutorial;
   dt = Math.max(0, Math.min(dt, 0.05));
-  if (t.dialog || t.stage === 'setup') return;
+  if (t.dialog || t.stage === 'setup' || t.coach?.current) return;
   if (s.phase === 'hallway') {
     s.time += dt;
     t.hallTime += dt;
@@ -273,5 +284,7 @@ export default Object.assign(M, {
   nextGuide: next,
   enterArena,
   startFight,
+  dismissCombatLesson,
+  skipCombatLessons,
   revealBank,
 });

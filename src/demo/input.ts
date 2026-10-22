@@ -18,6 +18,8 @@ export function input() {
     demo.returning ||
     demo.presentationNow < demo.beatUntil ||
     demo.hudDrawerOpen ||
+    $('#bindings-dialog').open ||
+    !!demo.state.tutorial?.coach?.current ||
     demo.state.tutorial?.stage === 'setup' ||
     $('#help-dialog').open ||
     $('#character-dialog').open ||
@@ -54,6 +56,8 @@ export function prepareSpell() {
   if (
     !demo.ready ||
     demo.paused ||
+    $('#bindings-dialog').open ||
+    !!demo.state.tutorial?.coach?.current ||
     demo.presentationNow < demo.beatUntil ||
     demo.state.phase === 'hallway' ||
     demo.state.tutorial?.stage === 'setup' ||
@@ -71,9 +75,7 @@ export function prepareSpell() {
     demo.state,
     M.spells[demo.state.selectedSpell].name +
       ' ready. ' +
-      (demo.state.selectedSpell === 'remover'
-        ? 'Click yourself or another character.'
-        : 'Point at a rival and click.') +
+      (demo.state.selectedSpell === 'remover' ? 'Hacé clic en tu propio casillero.' : 'Point at a rival and click.') +
       ' Esc cancels.',
   );
   focusGame();
@@ -106,6 +108,11 @@ export function clear() {
 const accepted = ['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright'];
 export function bindKeyboard() {
   document.addEventListener('keydown', (e) => {
+    if ($('#bindings-dialog').open) {
+      handleSetupKey(e, true);
+      return;
+    }
+    if ($('#combat-lesson').open || demo.state.tutorial?.coach?.current) return;
     if (demo.state.tutorial?.stage === 'setup' && !demo.paused) {
       handleSetupKey(e);
       return;
@@ -129,20 +136,24 @@ export function bindKeyboard() {
       M.tell(demo.state, 'Spell cancelled.');
       return;
     }
-    if (key === 'p' || key === 'escape') {
+    if (macroForKey(demo.macroBindings, key) === 'pause' || key === 'escape') {
       e.preventDefault();
       if (!e.repeat) togglePause();
       return;
     }
     if ((e.target as Element).closest('input,select,textarea')) return;
     const macro = macroForKey(demo.macroBindings, key);
-    if (macro && !e.repeat && demo.ready && !demo.paused && !demo.hudDrawerOpen) {
+    if (macro && demo.ready && !demo.paused && !demo.hudDrawerOpen) {
       e.preventDefault();
+      if (e.repeat) return;
       if (macro === 'life' || macro === 'mana') M.pressPotion(demo.state, key, macro);
-      else {
+      else if (macro === 'apocalipsis' || macro === 'inmovilizar' || macro === 'remover') {
         selectSpell(macro);
         prepareSpell();
-      }
+      } else if (macro === 'meditate') {
+        clear();
+        M.meditate(demo.state);
+      } else demo.heldActions.add(key);
       return;
     }
     if ((e.target as Element).closest('button,a')) return;
@@ -153,14 +164,6 @@ export function bindKeyboard() {
         demo.keys.add(key);
         demo.keyboardOrder.set(key, ++demo.movementOrder);
       }
-    }
-    if ([' ', 'e', 'q', 'u'].includes(key) && !e.repeat && demo.ready && !demo.paused && !demo.hudDrawerOpen) {
-      e.preventDefault();
-      demo.heldActions.add(key);
-    }
-    if (key === 'n' && !e.repeat && demo.ready && !demo.paused) {
-      clear();
-      M.meditate(demo.state);
     }
   });
   document.addEventListener('keyup', (e) => {
@@ -185,11 +188,12 @@ export function bindKeyboard() {
       demo.state.tutorial?.dialog
     )
       return;
-    if (key === ' ') M.melee(demo.state);
-    else if (key === 'e') interact();
-    else if (key === 'q') {
+    const action = macroForKey(demo.macroBindings, key);
+    if (action === 'strike') M.melee(demo.state);
+    else if (action === 'interact') interact();
+    else if (action === 'pickup') {
       if (!M.pickup(demo.state, 22)) M.tell(demo.state, 'Stand on a dropped crystal, then press E.');
-    } else if (key === 'u') useSelected();
+    } else if (action === 'use') useSelected();
   });
 }
 const mapping: Record<string, string> = { up: 'w', left: 'a', down: 's', right: 'd' };
@@ -373,6 +377,8 @@ export function worldClick(e: MouseEvent) {
     demo.hudDrawerOpen ||
     $('#help-dialog').open ||
     $('#character-dialog').open ||
+    $('#bindings-dialog').open ||
+    !!demo.state.tutorial?.coach?.current ||
     demo.state.tutorial?.dialog ||
     demo.state.tutorial?.stage === 'setup'
   )

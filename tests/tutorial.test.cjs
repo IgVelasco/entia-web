@@ -11,6 +11,7 @@ function arena() {
     while (s.tutorial.dialog) M.nextGuide(s);
   }
   assert(M.enterArena(s));
+  M.skipCombatLessons(s);
   assert(M.startFight(s));
   return s;
 }
@@ -70,6 +71,7 @@ test('preparation freezes movement, enemies, timers and resources until explicit
   assert(!M.usePotion(s, 'life'));
   assert.equal(s.lifePotions, 100);
   assert.equal(s.player.hp, 80);
+  M.skipCombatLessons(s);
   assert(M.startFight(s));
   assert.equal(s.tutorial.stage, 'fight');
   assert(!M.startFight(s));
