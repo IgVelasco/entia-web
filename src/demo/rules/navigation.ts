@@ -101,7 +101,7 @@ function finish(s: DemoState) {
 }
 M.update = function (s, dt, input = { x: 0, y: 0 }) {
   if (input.x || input.y) cancelWalk(s);
-  if (s.armed || s.player.hp <= 0 || s.tutorial?.dialog || s.navigation?.phase !== s.phase) cancelWalk(s);
+  if (s.player.hp <= 0 || s.tutorial?.dialog || s.navigation?.phase !== s.phase) cancelWalk(s);
   let nav = s.navigation;
   const p = s.player,
     x = p.x,
@@ -111,19 +111,21 @@ M.update = function (s, dt, input = { x: 0, y: 0 }) {
     if (!nav.points.length) {
       finish(s);
       nav = null;
-    } else {
-      const q = nav.points[0];
-      input = M.cardinal(q.x - p.x, q.y - p.y);
-      if (s.phase === 'hallway') {
-        const distance = Math.abs(input.x ? q.x - p.x : q.y - p.y);
-        dt = Math.min(dt, distance / 160);
-      }
     }
   }
   const stepEnd = p.step?.end,
     noticeBefore = s.noticeId;
   originalUpdate(s, dt, input);
   if (nav && s.navigation === nav) {
+    if (s.tutorial?.dialog) {
+      cancelWalk(s);
+      return;
+    }
+    while (nav.points.length && Math.hypot(nav.points[0].x - p.x, nav.points[0].y - p.y) < 0.1) nav.points.shift();
+    if (!nav.points.length && !p.step) {
+      finish(s);
+      return;
+    }
     if (s.phase !== nav.phase || Math.hypot(p.x - x, p.y - y) > 160 * Math.max(0, Math.min(dt, 0.05)) + 0.1) {
       cancelWalk(s);
       return;

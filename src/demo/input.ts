@@ -68,7 +68,6 @@ export function prepareSpell() {
   )
     return;
   setHudDrawer(false);
-  M.cancelWalk(demo.state);
   demo.state.armed = !demo.state.armed;
   if (!demo.state.armed) {
     M.tell(demo.state, 'Aiming cancelled. Click to walk.');
@@ -103,11 +102,13 @@ export function interact() {
 export function clear() {
   M.cancelWalk(demo.state);
   demo.keys.clear();
+  demo.heldActions.clear();
   demo.keyboardOrder.clear();
   demo.touches.clear();
   syncDpad();
   demo.worldTouches.clear();
   M.clearPotionKeys(demo.state);
+  demo.state.pendingMelee = 0;
 }
 const accepted = ['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright'];
 export function bindKeyboard() {
@@ -160,19 +161,14 @@ export function bindKeyboard() {
       e.preventDefault();
       prepareSpell();
     }
-    if (key === ' ' && !e.repeat && demo.ready && !demo.paused) {
+    if ([' ', 'e', 'q', 'u'].includes(key) && !e.repeat && demo.ready && !demo.paused && !demo.hudDrawerOpen) {
       e.preventDefault();
-      M.melee(demo.state);
-    }
-    if (key === 'q' && !e.repeat && demo.ready && !demo.paused) {
-      if (!M.pickup(demo.state, 22)) M.tell(demo.state, 'Stand on a dropped crystal, then press Q.');
+      demo.heldActions.add(key);
     }
     if (key === 'n' && !e.repeat && demo.ready && !demo.paused) {
       clear();
       M.meditate(demo.state);
     }
-    if (key === 'u' && !e.repeat && demo.ready && !demo.paused) useSelected();
-    if (key === 'e' && !e.repeat && demo.ready && !demo.paused) interact();
   });
   document.addEventListener('keyup', (e) => {
     const key = e.key.toLowerCase();
@@ -182,6 +178,25 @@ export function bindKeyboard() {
       e.preventDefault();
       M.releasePotion(demo.state, key);
     }
+    const released = demo.heldActions.delete(key);
+    if (!released) return;
+    e.preventDefault();
+    if (
+      !demo.ready ||
+      demo.paused ||
+      demo.hudDrawerOpen ||
+      demo.returning ||
+      demo.presentationNow < demo.beatUntil ||
+      $('#help-dialog').open ||
+      $('#character-dialog').open ||
+      demo.state.tutorial?.dialog
+    )
+      return;
+    if (key === ' ') M.melee(demo.state);
+    else if (key === 'e') interact();
+    else if (key === 'q') {
+      if (!M.pickup(demo.state, 22)) M.tell(demo.state, 'Stand on a dropped crystal, then press E.');
+    } else if (key === 'u') useSelected();
   });
 }
 const mapping: Record<string, string> = { up: 'w', left: 'a', down: 's', right: 'd' };
@@ -377,7 +392,6 @@ export function worldClick(e: MouseEvent) {
       (demo.pointer!.y - demo.height / 2) / demo.scale,
   };
   if (demo.state.armed) {
-    M.cancelWalk(demo.state);
     castAtPointer();
     ui();
     schedule();

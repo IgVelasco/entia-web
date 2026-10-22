@@ -1,5 +1,6 @@
 /* Guided offline onboarding. Numerical match limits remain design proposals. */
 import M from './model.ts';
+import { walk } from './movement.ts';
 import type { DemoState, Guide } from './state.ts';
 const hallway = {
   floor: { x: 48, y: 384, w: 512, h: 160 },
@@ -36,7 +37,7 @@ const guides: Guide[] = [
     gait: 0,
     title: 'Aim. Cast. Keep moving.',
     lines: [
-      'Normally, a click moves you. Press C or Prepare to enter aiming mode: the next click casts instead of walking. Escape or Prepare again cancels aiming. Prepare again for each cast. Space or Strike attacks in front of you.',
+      'Press 1, 2 or 3 to ready a spell, then click its target. C or Prepare toggles aiming. Keep walking while aiming and casting. A successful cast clears aiming; a recovering spell stays ready. Space or Strike attacks in front of you.',
       'Keep moving away from incoming spell markers. Hold the life or mana potion button to repeat it. N or Meditate recovers mana while you stand still.',
     ],
   },
@@ -50,7 +51,7 @@ const guides: Guide[] = [
     gait: 0,
     title: 'Carry risk. Bank safety.',
     lines: [
-      'Defeated rivals drop essence. Stand on a crystal and press Q or Pick up. Carried essence drops when you fall; rivals can take it.',
+      'Defeated rivals drop essence. Stand on a crystal and press E or Pick up. Q also works in this practice run. Carried essence drops when you fall; rivals can take it.',
       'Fight a few rivals in the arena. A bank will appear nearby. Stay beside it until your carried essence has transferred. Secured essence stays safe.',
     ],
   },
@@ -105,6 +106,8 @@ function talk(s: DemoState, id: string) {
   s.armed = false;
   s.player.step = null;
   M.clearPotionKeys(s);
+  s.pendingMelee = 0;
+  s.player.moving = false;
   return true;
 }
 function next(s: DemoState) {
@@ -195,17 +198,27 @@ M.update = function (s, dt, input = { x: 0, y: 0 }) {
     s.time += dt;
     t.hallTime += dt;
     s.flash = Math.max(0, s.flash - dt);
-    const p = s.player,
-      v = M.cardinal(input.x || 0, input.y || 0),
-      beforeX = p.x,
-      beforeY = p.y;
-    p.x = Math.max(hallway.walk.minX, Math.min(t.seen.length === 3 ? hallway.walk.maxX : 432, p.x + v.x * 160 * dt));
-    p.y = Math.max(hallway.walk.minY, Math.min(hallway.walk.maxY, p.y + v.y * 160 * dt));
-    p.moving = p.x !== beforeX || p.y !== beforeY;
-    if (p.moving) {
-      p.dir = v.x ? (v.x > 0 ? 1 : 3) : v.y > 0 ? 2 : 0;
-      p.gait += Math.hypot(p.x - beforeX, p.y - beforeY);
-    }
+    const p = s.player;
+    walk(
+      p,
+      dt,
+      input,
+      {
+        clear: () => true,
+        constrain: (end) => ({
+          x: Math.max(hallway.walk.minX, Math.min(t.seen.length === 3 ? hallway.walk.maxX : 432, end.x)),
+          y: Math.max(hallway.walk.minY, Math.min(hallway.walk.maxY, end.y)),
+        }),
+        move: (dx, dy) => {
+          p.x += dx;
+          p.y += dy;
+          const distance = Math.hypot(dx, dy);
+          p.gait += distance;
+          return distance;
+        },
+      },
+      s.navigation?.points,
+    );
     const g = guides.find((g) => !t.seen.includes(g.id) && Math.abs(g.x - p.x) <= 28 && Math.abs(g.y - p.y) <= 100);
     if (p.moving && g) {
       talk(s, g.id);

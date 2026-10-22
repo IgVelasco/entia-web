@@ -53,7 +53,9 @@ test.describe('offline demo', () => {
     await openDemo(page);
     await expect(page.locator('#interact')).toHaveText('Talk to The Warden · E');
     await expect(page.locator('#game')).toBeFocused();
-    await page.keyboard.press('e');
+    await page.keyboard.down('e');
+    await expect(page.locator('#guide-dialog')).toBeHidden();
+    await page.keyboard.up('e');
     await readGuide(page, 'The Warden');
     await expect(page.locator('#objective')).toHaveText('1 / 3 guides met');
   });
@@ -103,6 +105,27 @@ test.describe('offline demo', () => {
       await expect(prepare).toHaveAttribute('aria-pressed', 'true');
       await prepare.click();
       await expect(prepare).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    test('a recovering cast preserves the prepared cursor until a successful retry', async ({ page }) => {
+      await openDemo(page);
+      await enterArena(page);
+      const canvas = page.locator('#game');
+      const bounds = await canvas.boundingBox();
+      if (!bounds) throw new Error('Missing game canvas');
+      const position = { x: bounds.width / 2 + 60, y: bounds.height / 2 };
+      await page.keyboard.press('1');
+      await canvas.click({ position });
+      await expect(page.locator('#mana')).toHaveText('85 / 100');
+      await expect(page.locator('#prepare-spell')).toHaveAttribute('aria-pressed', 'false');
+      await page.keyboard.press('1');
+      await canvas.click({ position });
+      await expect(page.locator('#mana')).toHaveText('85 / 100');
+      await expect(page.locator('#prepare-spell')).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator('#spell-status')).toHaveText('Ready: click your target');
+      await canvas.click({ position });
+      await expect(page.locator('#mana')).toHaveText('70 / 100');
+      await expect(page.locator('#prepare-spell')).toHaveAttribute('aria-pressed', 'false');
     });
 
     test('P pauses with the controls dialog and Resume continues', async ({ page }) => {

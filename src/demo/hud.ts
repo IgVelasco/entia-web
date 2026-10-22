@@ -42,7 +42,7 @@ export function ui() {
   $('#hint').textContent = demo.state.carried
     ? 'Stay near the bank to secure your essence. Fall and you drop what you carry.'
     : demo.state.drops.length
-      ? 'Stand on a crystal and press Q. Your dropped essence can be recovered.'
+      ? 'Stand on a crystal and press E. Your dropped essence can be recovered.'
       : `Prepare Apocalipsis, then point and click a rival. ${demo.state.secured} / 60 secured.`;
   const near = M.nearBank(demo.state),
     gate = M.nearGate(demo.state),
@@ -59,7 +59,7 @@ export function ui() {
         ? 'Carrying ' + demo.state.carried + ' · bank south of the portal'
         : 'Bank unlocked · ' + demo.state.secured + ' essence secured';
   $('#interact').innerHTML = item
-    ? 'Pick up essence <kbd>Q</kbd>'
+    ? 'Pick up essence <kbd>E</kbd>'
     : demo.state.bank >= 1
       ? 'Drawing in essence…'
       : demo.state.bank
@@ -85,10 +85,14 @@ export function ui() {
       ' ready · ' +
       (demo.state.selectedSpell === 'remover' ? 'click yourself or a character' : 'click a rival') +
       ' · Esc cancels'
-    : 'Click to walk · C to aim · Q to pick up';
-  $('#spell-status').textContent = demo.state.armed
-    ? 'Ready: click your target'
-    : M.spells[demo.state.selectedSpell].name + ' · ' + M.spells[demo.state.selectedSpell].mana + ' mana';
+    : 'WASD to move · 1–3 to aim · E to pick up';
+  const recovery = Math.max(demo.state.cooldown, demo.state.hitToCast);
+  $('#spell-status').textContent =
+    recovery > 0
+      ? 'Recovering · ' + recovery.toFixed(1) + 's' + (demo.state.armed ? ' · aim stays ready' : '')
+      : demo.state.armed
+        ? 'Ready: click your target'
+        : M.spells[demo.state.selectedSpell].name + ' · ' + M.spells[demo.state.selectedSpell].mana + ' mana';
   $('#inventory-count').textContent = String(demo.state.carried);
   $('#essence-slot').disabled = demo.state.carried === 0;
   $('#item-description').textContent =
@@ -99,7 +103,10 @@ export function ui() {
         : 'Mana potion · restores 50';
   $('#use-selected').disabled = demo.selectedInventory === 'essence' || demo.paused;
   canvas.style.cursor = demo.state.armed ? 'crosshair' : 'pointer';
-  $('#cast').style.opacity = demo.state.cooldown > 0 ? '.55' : '1';
+  $('#cast').style.opacity = recovery > 0 ? '.55' : '1';
+  for (const id of ['#strike', '#mobile-strike']) {
+    $(id).style.opacity = Math.max(demo.state.meleeCooldown, demo.state.castToHit) > 0 ? '.55' : '1';
+  }
 
   tutorialUI();
   if (demo.state.noticeId !== demo.noticeId) {
@@ -350,8 +357,8 @@ function tutorialUI() {
     : done
       ? 'The full-match rules are provisional. Replay, review them or return to Nix.'
       : t.bankRevealed
-        ? 'Pick up crystals with Q. Follow BANK and stay nearby until your carried essence is secured.'
-        : 'Prepare, aim and cast. Pick up crystals with Q or Pick up.';
+        ? 'Pick up crystals with E. Follow BANK and stay nearby until your carried essence is secured.'
+        : 'Ready a spell with 1–3, aim and click. Keep moving. E picks up crystals.';
   $('#deposit-status').textContent = hall
     ? 'Safe hallway · learn at your pace'
     : done

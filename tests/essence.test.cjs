@@ -311,7 +311,7 @@ test('unarmed clicks cannot cast, armed clicks consume mana once', () => {
   assert(!M.cast(s, target));
 });
 
-test('each cast attempt disarms, including cooldown and mana rejection', () => {
+test('successful casts disarm; rejected casts preserve aim without consuming mana', () => {
   const s = M.create();
   s.player.x = 400;
   s.player.y = 360;
@@ -321,12 +321,14 @@ test('each cast attempt disarms, including cooldown and mana rejection', () => {
   assert(!s.armed);
   s.armed = true;
   assert(!M.cast(s, target));
-  assert(!s.armed);
+  assert(s.armed);
+  assert.equal(s.player.mana, 85);
   s.cooldown = 0;
   s.player.mana = 0;
   s.armed = true;
   assert(!M.cast(s, target));
-  assert(!s.armed);
+  assert(s.armed);
+  assert.equal(s.player.mana, 0);
 });
 
 test('distant proximity never transfers and pausing simulation conserves value', () => {

@@ -167,6 +167,45 @@ test('holding space does not repeat casts', async () => {
   run("demo.keys.add(' ');for(let i=0;i<30;i++)Loop.tick(i*20)");
   assert.equal(run('demo.state.fx.length'), 0);
 });
+
+test('Space and E act on release, and pause discards a held action', async () => {
+  const a = app();
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  const event = (key) => ({ key, target: { closest: () => false }, preventDefault() {} });
+  a.get('#resume').onclick();
+  a.listeners.keydown(event(' '));
+  assert.equal(run('demo.state.fx.length'), 0);
+  a.listeners.keyup(event(' '));
+  assert.equal(run('demo.state.fx.filter(f=>f.owner==="melee").length'), 1);
+  run('M.drop(demo.state,demo.state.player.x,demo.state.player.y,10,"rival");demo.state.time=1');
+  a.listeners.keydown(event('e'));
+  assert.equal(run('demo.state.carried'), 0);
+  a.listeners.keyup(event('e'));
+  assert.equal(run('demo.state.carried'), 10);
+  a.listeners.keydown(event('u'));
+  run('Hud.showHelp();Hud.hideHelp()');
+  a.listeners.keyup(event('u'));
+  assert.equal(run('demo.state.lifePotions'), 100);
+});
+
+test('keyboard and touch movement keep working while a spell is prepared and cast', async () => {
+  const a = app();
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  a.get('#resume').onclick();
+  run('demo.state.enemies=[];Render.draw()');
+  a.get('[data-dir=right]').pointerdown({ pointerId: 1, preventDefault() {} });
+  run('Input.prepareSpell();M.update(demo.state,.04,Input.input())');
+  const x = run('demo.state.player.x');
+  run('Input.worldClick({clientX:demo.width/2+100*demo.scale,clientY:demo.height/2})');
+  run('M.update(demo.state,.04,Input.input())');
+  assert(run('demo.state.player.x') > x);
+  assert.equal(run('demo.state.player.mana'), 85);
+  assert(!run('demo.state.armed'));
+  a.get('[data-dir=right]').pointercancel({ pointerId: 1 });
+  assert.equal(run('Input.input().x'), 0);
+});
 test('Prepare arms without attacking and Escape cancels it', async () => {
   const a = app();
   await new Promise((r) => setImmediate(r));
@@ -863,7 +902,7 @@ test('floor click beside an NPC walks; only the NPC sprite opens a conversation'
   assert.equal(run('demo.state.tutorial.dialog.id'), 'warden');
   assert(a.get('#guide-dialog').open);
 });
-test('spell mode wins over movement and toggling Prepare cancels aiming', async () => {
+test('spell clicks preserve a walking route and toggling Prepare cancels only aiming', async () => {
   const a = app();
   await new Promise((r) => setImmediate(r));
   const run = (s) => vm.runInContext(s, a.context);
@@ -871,11 +910,14 @@ test('spell mode wins over movement and toggling Prepare cancels aiming', async 
   run('Render.draw();Input.worldClick({clientX:demo.width/2+100*demo.scale,clientY:demo.height/2})');
   assert(run('!!demo.state.navigation'));
   run('Input.prepareSpell()');
-  assert.equal(run('demo.state.navigation'), null);
+  assert(run('!!demo.state.navigation'));
   run('Input.worldClick({clientX:demo.width/2+100*demo.scale,clientY:demo.height/2})');
   assert.equal(run('demo.state.player.mana'), 85);
-  assert.equal(run('demo.state.navigation'), null);
+  assert(run('!!demo.state.navigation'));
   assert(!run('demo.state.armed'));
+  const x = run('demo.state.player.x');
+  run('M.update(demo.state,.04)');
+  assert(run('demo.state.player.x') > x);
   run('Input.prepareSpell();Input.prepareSpell()');
   assert(!run('demo.state.armed'));
 });

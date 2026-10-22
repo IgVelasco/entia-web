@@ -1,6 +1,7 @@
 /* Single-player teaching rules, intentionally independent from RAO's live economy. */
 import * as Physics from '../../shared/physics.ts';
 import type { Body } from '../../shared/physics.ts';
+import { cardinal, walk } from './movement.ts';
 import type { CastTarget, DemoState, Drop, Enemy, Input, Player, Point, Rect, SceneryItem, Spell } from './state.ts';
 const WIDTH = 1200,
   HEIGHT = 880,
@@ -48,11 +49,14 @@ function create(): DemoState {
     meditating: false,
     meleeCooldown: 0,
     cooldown: 0,
+    hitToCast: 0,
+    castToHit: 0,
+    pendingMelee: 0,
     time: 0,
     fx: [],
     drops: [],
     nextDrop: 1,
-    notice: 'Prepare Apocalipsis with C, then click a rival. Stand on its dropped essence and press Q.',
+    notice: 'Ready Apocalipsis with 1, then click a rival. Keep moving; E picks up dropped essence.',
     noticeId: 1,
     flash: 1,
     won: false,
@@ -197,6 +201,7 @@ function respawnPlayer(s: DemoState) {
   p.immobilized = 0;
   s.armed = false;
   s.meditating = false;
+  s.pendingMelee = 0;
   p.x = 176;
   p.y = 560;
   s.flash = 1;
@@ -242,9 +247,6 @@ function cancelDeposit(s: DemoState) {
   s.bankFraction = 0;
 }
 
-function cardinal(x: number, y: number): Point {
-  return Math.abs(x) >= Math.abs(y) ? { x: Math.sign(x), y: 0 } : { x: 0, y: Math.sign(y) };
-}
 function heading(x: number, y: number) {
   return Math.abs(x) > Math.abs(y) ? (x > 0 ? 1 : 3) : y > 0 ? 2 : 0;
 }
@@ -259,8 +261,12 @@ function move(actor: Body, dx: number, dy: number, others: Body[] = []) {
 }
 function cast(s: DemoState, target?: CastTarget | null) {
   if (!s.armed) return false;
-  s.armed = false;
-  if (s.cooldown > 0 || !target || !Number.isFinite(target.x) || !Number.isFinite(target.y)) return false;
+  s.pendingMelee = 0;
+  if (s.cooldown > 1e-6 || s.hitToCast > 1e-6) {
+    tell(s, 'Spell recovering. Keep aiming and click again when ready.');
+    return false;
+  }
+  if (!target || !Number.isFinite(target.x) || !Number.isFinite(target.y) || s.player.hp <= 0) return false;
   const p = s.player,
     d = Math.hypot(target.x - p.x, target.y - p.y),
     spell = spells[s.selectedSpell] || spells.apocalipsis;
@@ -297,7 +303,10 @@ function cast(s: DemoState, target?: CastTarget | null) {
     return false;
   }
   p.dir = heading(target.x - p.x, target.y - p.y);
-  s.cooldown = 0.75;
+  s.armed = false;
+  // ActionRateController defaults, with independent hit/magic cross gates.
+  s.cooldown = 1.38;
+  s.castToHit = 0.625;
   s.potionAttackLockout = 0.31;
   s.meditating = false;
   p.mana -= spell.mana;
@@ -322,8 +331,15 @@ function cast(s: DemoState, target?: CastTarget | null) {
   return true;
 }
 function melee(s: DemoState) {
-  if (s.meleeCooldown > 0) return false;
-  s.meleeCooldown = 1;
+  if (s.player.hp <= 0) return false;
+  const wait = Math.max(s.meleeCooldown, s.castToHit);
+  if (wait > 1e-6) {
+    if (wait <= 0.1 + 1e-6) s.pendingMelee = 0.1;
+    return false;
+  }
+  s.pendingMelee = 0;
+  s.meleeCooldown = 1.48;
+  s.hitToCast = 0.65;
   s.potionAttackLockout = 0.31;
   s.meditating = false;
   const p = s.player,
@@ -422,6 +438,8 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
   s.flash = Math.max(0, s.flash - dt * 1.5);
   s.cooldown = Math.max(0, s.cooldown - dt);
   s.meleeCooldown = Math.max(0, s.meleeCooldown - dt);
+  s.hitToCast = Math.max(0, s.hitToCast - dt);
+  s.castToHit = Math.max(0, s.castToHit - dt);
   for (const key of ['potionCooldown', 'potionAttackLockout', 'lifePulse', 'manaPulse'] as const)
     s[key] = Math.max(0, s[key] - dt);
   const p = s.player;
@@ -430,7 +448,6 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
     return;
   }
   p.immobilized = Math.max(0, p.immobilized - dt);
-  const vector = cardinal(input.x || 0, input.y || 0);
   p.moving = false;
   // Banking uses the same solid footprint as other props once it appears.
   const activeObstacles = s.bankUnlocked ? [bankBounds(s)] : [];
@@ -438,41 +455,22 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
     activeObstacles.some(
       (o) => x + RADIUS > o.x && x - RADIUS < o.x + o.w && y + RADIUS > o.y && y - RADIUS < o.y + o.h,
     );
-  if (!p.immobilized && !p.step && (vector.x || vector.y)) {
-    const end = { x: p.x + vector.x * 32, y: p.y + vector.y * 32 };
-    p.dir = heading(vector.x, vector.y);
-    if (
-      !insideBank(end.x, end.y) &&
-      physics.clear(
-        p,
-        end,
-        s.enemies.filter((e) => e.hp > 0),
-        p,
-      )
-    )
-      p.step = { ...vector, end, remaining: 32 };
+  if (!p.immobilized) {
+    const others = s.enemies.filter((e) => e.hp > 0);
+    walk(
+      p,
+      dt,
+      input,
+      {
+        clear: (start, end) => !insideBank(end.x, end.y) && physics.clear(start, end, others, p),
+        move: (dx, dy) => (insideBank(p.x + dx, p.y + dy) ? 0 : move(p, dx, dy, others)),
+      },
+      s.navigation?.points,
+    );
   }
-  if (p.step && !p.immobilized) {
-    const step = p.step,
-      distance = Math.min(step.remaining, 160 * dt),
-      dx = step.x * distance,
-      dy = step.y * distance;
-    const moved = insideBank(p.x + dx, p.y + dy)
-      ? 0
-      : move(
-          p,
-          dx,
-          dy,
-          s.enemies.filter((e) => e.hp > 0),
-        );
-    p.moving = moved > 0.01;
-    step.remaining -= moved;
-    if (moved < distance - 0.001) p.step = null;
-    else if (step.remaining < 0.001) {
-      p.x = step.end.x;
-      p.y = step.end.y;
-      p.step = null;
-    }
+  if (s.pendingMelee > 0) {
+    if (Math.max(s.meleeCooldown, s.castToHit) <= 1e-6) melee(s);
+    else s.pendingMelee = Math.max(0, s.pendingMelee - dt);
   }
 
   if (p.moving) s.meditating = false;

@@ -59,6 +59,7 @@ export interface DemoContext {
   movementOrder: number;
   keyboardOrder: Map<string | undefined, number>;
   keys: Set<string>;
+  heldActions: Set<string>;
   touches: Map<number, HeldDirection>;
   worldTouches: Set<number>;
   camera: Point;
@@ -134,6 +135,7 @@ export const demo: DemoContext = {
   movementOrder: 0,
   keyboardOrder: new Map(),
   keys: new Set(),
+  heldActions: new Set(),
   touches: new Map(),
   worldTouches: new Set(),
   camera: { x: 510, y: 490 },

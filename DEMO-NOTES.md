@@ -1,3 +1,13 @@
+# Godot gameplay adaptation — 21 October 2026
+
+- The hallway and arena share the same cardinal footstep controller: 32 pixels in 200 ms, finishing a tile after release and turning at its boundary. Straight movement carries unused frame time into the next tile, eliminating cadence gaps at 30/60/144 FPS.
+- Preparing and casting preserve existing walking orders. WASD/arrows and touch movement work while aiming. Successful casts clear the cursor; cooldown and invalid-target rejections leave it ready for retry without spending mana.
+- Combat uses the Godot client's default intervals: 1.48 s between strikes, 1.38 s between casts, 650 ms from hit to magic, and 625 ms from magic to hit. Melee accepts one input during the last 100 ms of recovery. These are the generic defaults, not class/race-specific server balance.
+- Space, E and U execute on release. E picks up essence and talks; Q remains a practice pickup alias. Potion macros retain their shared 260 ms cadence and 310 ms post-attack lockout. Pause, focus loss and dialogs clear pending actions.
+- Read-only behavior references: `IgVelasco/rao-client` at `635a4ab4a987e5db51b710358135288ff8f124d9` and the available working tree: `MovementController.gd`, `InputController.gd`, `ControlBindings.gd`, `ActionRateController.gd`, `CombatActionController.gd`, `ClientInputDispatcher.gd` and `ArmedActionController.gd`.
+- The existing browser artwork, click-to-walk convenience, practice health/mana/damage values, bots, three-guide progression and essence banking remain tutorial-specific. This is an offline TypeScript adaptation; it neither embeds Godot nor connects to the live server.
+- Regression coverage includes cadence across frame rates, tap/turn behavior, collision at tile boundaries, movement while casting, recovery retry, combat cross gates, attack buffering, release actions and cleanup. Seven new model regressions fail against the unmodified base and pass with the adaptation.
+
 # Chunkier readable heads — 6 October 2026
 
 - Redrew all six modular heads with fuller facial planes and stronger features, normalized within 28 x 30 pixels and aligned by the neck rather than the hair bounding box. Clothing and feet anchors are unchanged; the three outfit redesigns remain in this draft.

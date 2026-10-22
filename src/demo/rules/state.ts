@@ -139,6 +139,9 @@ export interface DemoState {
   meleeCooldown: number;
   cooldown: number;
   time: number;
+  hitToCast: number;
+  castToHit: number;
+  pendingMelee: number;
   fx: Effect[];
   drops: Drop[];
   nextDrop: number;
