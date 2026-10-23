@@ -3,14 +3,14 @@ import type { DemoState } from './state.ts';
 export const combatLessons = {
   precision: {
     title: 'Un clic, un casillero',
-    text: 'Estos hechizos no se cargan ni cubren un área. Apuntás al casillero de los pies, sin seguir al rival.',
+    text: 'Estos hechizos no se cargan ni cubren un área. Hacé clic sobre la figura visible del rival o el casillero de sus pies. El cursor queda libre.',
     response:
       'Prepará con Lanzar o tu macro y hacé clic. Si errás, prepará de nuevo; la recuperación conserva el apuntado.',
   },
   miss: {
     title: 'El intento no acertó',
     text: 'El casillero no tenía un objetivo válido. Volviste al cursor normal sin gastar maná.',
-    response: 'Prepará de nuevo y apuntá a los pies del rival, dentro del alcance y sin obstáculos.',
+    response: 'Prepará de nuevo y hacé clic sobre el rival o sus pies, dentro del alcance y sin obstáculos.',
   },
   mana: {
     title: 'Te falta maná',

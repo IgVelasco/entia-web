@@ -313,6 +313,48 @@ test('held macro repeats suppress browser function-key defaults without dispatch
   assert.equal(run('demo.state.lifePotions'), 99);
 });
 
+test('standalone Ctrl and Shift dispatch macros, can be held while walking, and wait for both modifier sides to release', async () => {
+  const a = app();
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  a.get('#resume').onclick();
+  run("demo.macroBindings.mana='control';demo.macroBindings.life='shift'");
+  const event = (key, rest = {}) => ({ key, target: { closest: () => false }, preventDefault() {}, ...rest });
+  a.listeners.keydown(event('Control', { ctrlKey: true }));
+  assert.equal(run('demo.state.heldPotions[0].key'), 'control');
+  let prevented = false;
+  a.listeners.keydown(
+    event('w', {
+      ctrlKey: true,
+      preventDefault() {
+        prevented = true;
+      },
+    }),
+  );
+  assert(prevented, 'bound Ctrl + walking must not trigger a browser tab shortcut');
+  assert.equal(run('Input.input().y'), -1);
+  a.listeners.keydown(event('Shift', { ctrlKey: true, shiftKey: true }));
+  assert.equal(run('demo.state.heldPotions.length'), 2);
+  a.listeners.keyup(event('Shift', { shiftKey: true }));
+  assert.equal(run('demo.state.heldPotions.length'), 2);
+  a.listeners.keyup(event('Shift'));
+  assert.equal(run('demo.state.heldPotions.length'), 1);
+  a.listeners.keyup(event('Control', { ctrlKey: true }));
+  assert.equal(run('demo.state.heldPotions.length'), 1);
+  a.listeners.keyup(event('Control'));
+  assert.equal(run('demo.state.heldPotions.length'), 0);
+  prevented = false;
+  a.listeners.keydown(
+    event('c', {
+      ctrlKey: true,
+      preventDefault() {
+        prevented = true;
+      },
+    }),
+  );
+  assert.equal(prevented, false, 'other Ctrl shortcuts keep their browser meaning');
+});
+
 test('the full bindings editor freezes the world and can reopen without changing assignments', async () => {
   const a = app();
   await new Promise((r) => setImmediate(r));

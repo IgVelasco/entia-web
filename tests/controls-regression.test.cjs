@@ -94,7 +94,7 @@ test('free tile targeting hits only the clicked occupied tile, with no sprite ma
   s.armed = true;
   assert(M.cast(s, { x: e.x + 10, y: e.y + 8 }));
   assert.equal(e.hp, 1);
-  assert.equal(s.fx.findLast((f) => f.owner === 'player').x, e.x + 10);
+  assert.equal(s.fx.findLast((f) => f.owner === 'player').x, e.x);
 });
 test('macros start empty and keyboard shortcuts exist only after explicit assignment', () => {
   const bindings = emptyBindings();
@@ -109,6 +109,15 @@ test('duplicate and reserved macro keys are rejected without changing an existin
   const bindings = exampleBindings();
   assert.match(assignMacro(bindings, 'mana', 'f1'), /asignada/);
   assert.equal(bindings.mana, 'f2');
-  for (const key of ['w', 'e', 'p', ' ', 'Escape', 'F5', 'F11', 'Control']) assert(assignMacro(bindings, 'mana', key));
+  for (const key of ['w', 'e', 'p', ' ', 'Escape', 'F5', 'F11', 'Alt']) assert(assignMacro(bindings, 'mana', key));
   assert.equal(bindings.mana, 'f2');
+});
+
+test('Shift and Ctrl are independent assignable keys with the normal conflict rules', () => {
+  const bindings = emptyBindings();
+  assert.equal(assignMacro(bindings, 'mana', 'Control'), '');
+  assert.equal(assignMacro(bindings, 'life', 'Shift'), '');
+  assert.equal(macroForKey(bindings, 'Control'), 'mana');
+  assert.equal(macroForKey(bindings, 'Shift'), 'life');
+  assert.match(assignMacro(bindings, 'apocalipsis', 'Control'), /asignada/);
 });

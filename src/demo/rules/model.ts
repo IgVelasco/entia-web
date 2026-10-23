@@ -321,7 +321,7 @@ function cast(s: DemoState, target?: CastTarget | null) {
     tell(s, `Recuperaste el movimiento. Remover gastó ${spell.mana} de maná.`);
     teach(s, 'remover');
   } else {
-    s.fx.push({ x: target.x, y: target.y, age: 0, hit: true, owner: 'player', targetId: enemy?.name });
+    s.fx.push({ x: enemy!.x, y: enemy!.y, age: 0, hit: true, owner: 'player', targetId: enemy!.name });
     if (enemy) {
       damage(s, enemy, 1);
       if (enemy.hp === 0) defeatEnemy(s, enemy);
@@ -334,7 +334,7 @@ function cast(s: DemoState, target?: CastTarget | null) {
 }
 function recordSpellWords(s: DemoState, spell: string, targetId: string, point: Point) {
   s.fx = s.fx.filter((effect) => effect.owner !== 'words' || effect.targetId !== targetId);
-  s.fx.push({ ...point, owner: 'words', spell, targetId, age: 0, hit: true });
+  s.fx.push({ x: point.x, y: point.y, owner: 'words', spell, targetId, age: 0, hit: true });
 }
 function melee(s: DemoState) {
   if (s.player.hp <= 0) return false;
@@ -616,7 +616,15 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
 function resolveEnemySpell(s: DemoState, target: Point, spell = 'apocalipsis') {
   const p = s.player;
   const hit = p.x >= 270 && sameTile(p, target);
-  s.fx.push({ ...target, age: 0, hit: true, owner: 'enemy', spell, targetId: hit ? 'player' : undefined });
+  s.fx.push({
+    x: hit ? p.x : target.x,
+    y: hit ? p.y : target.y,
+    age: 0,
+    hit,
+    owner: 'enemy',
+    spell,
+    targetId: hit ? 'player' : undefined,
+  });
   if (!hit) {
     tell(s, 'El rival falló: el hechizo no acertó tu casillero.');
     teach(s, 'enemyMiss');

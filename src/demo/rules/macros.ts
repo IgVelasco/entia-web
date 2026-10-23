@@ -50,8 +50,6 @@ const reserved = new Set([
   'escape',
   'tab',
   'enter',
-  'shift',
-  'control',
   'alt',
   'meta',
   'f5',
@@ -59,6 +57,8 @@ const reserved = new Set([
   'f12',
 ]);
 export function keyLabel(key: string) {
+  if (key === 'control') return 'Ctrl';
+  if (key === 'shift') return 'Shift';
   return key === ' ' ? 'Espacio' : key ? key.toUpperCase() : 'Sin tecla';
 }
 export function bindingConflict(bindings: MacroBindings, action: BindingAction, key: string) {
@@ -66,8 +66,11 @@ export function bindingConflict(bindings: MacroBindings, action: BindingAction, 
 }
 export function assignMacro(bindings: MacroBindings, action: BindingAction, key: string) {
   key = key.toLowerCase();
-  if (reserved.has(key) || !(/^[a-z0-9]$/.test(key) || /^f([1-9]|10)$/.test(key) || key === ' '))
-    return 'Esa tecla está reservada. Elegí otra letra, un número o una tecla F disponible.';
+  if (
+    reserved.has(key) ||
+    !(/^[a-z0-9]$/.test(key) || /^f([1-9]|10)$/.test(key) || key === ' ' || key === 'shift' || key === 'control')
+  )
+    return 'Esa tecla está reservada. Elegí una letra, un número, Shift, Ctrl o una tecla F disponible.';
   const conflict = bindingConflict(bindings, action, key);
   if (conflict) return `${keyLabel(key)} ya está asignada a ${macroLabels[conflict]}.`;
   bindings[action] = key;

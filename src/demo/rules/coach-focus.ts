@@ -3,7 +3,7 @@ import type { MacroAction } from './macros.ts';
 import type { DemoState } from './state.ts';
 
 const focuses: Record<CombatLessonId, { action: MacroAction; resource: 'mana' | 'health'; condition: string }> = {
-  precision: { action: 'apocalipsis', resource: 'mana', condition: 'Preparar → clic en el casillero del rival' },
+  precision: { action: 'apocalipsis', resource: 'mana', condition: 'Preparar → clic en el rival o sus pies' },
   miss: { action: 'apocalipsis', resource: 'mana', condition: 'Sin objetivo válido → no gasta maná' },
   mana: { action: 'mana', resource: 'mana', condition: 'Maná insuficiente → usar una poción' },
   apocalipsis: { action: 'apocalipsis', resource: 'mana', condition: 'Acierto en el rival → daño y −15 de maná' },

@@ -52,6 +52,37 @@ test('Apocalipsis is a single 50-move burst at 60 moves per second', () => {
   assert.equal(effectFrame(fx('player', 50 / 60)), null);
 });
 
+test('an enemy miss never renders an impact at a distant empty tile', () => {
+  const s = M.create();
+  s.player.x = 400;
+  s.player.y = 432;
+  assert.equal(M.resolveEnemySpell(s, { x: 800, y: 700 }), false);
+  const miss = s.fx.find((effect) => effect.owner === 'enemy');
+  assert.equal(miss.hit, false);
+  for (const age of [0, 0.3, 0.6, 1]) {
+    const effect = { ...miss, age };
+    assert.equal(effectFrame(effect), null);
+    const { ctx, calls } = canvas();
+    drawSpellEffect(ctx, { spellApocalipsis: 'apocalipsis' }, effect, s, false);
+    assert.equal(calls.filter((call) => call[0] === 'image').length, 0);
+  }
+});
+
+test('one outgoing hit creates one impact anchored to its victim, plus only text on the caster', () => {
+  const s = M.create();
+  s.player.x = 400;
+  s.player.y = 368;
+  s.armed = true;
+  assert(M.cast(s, { x: s.enemies[0].x + 10, y: s.enemies[0].y }));
+  const impacts = s.fx.filter((effect) => effectFrame(effect));
+  assert.equal(impacts.length, 1);
+  assert.equal(impacts[0].targetId, s.enemies[0].name);
+  const words = s.fx.find((effect) => effect.owner === 'words');
+  assert(words);
+  assert.equal(effectFrame(words), null);
+  assert.equal(effectAnchor(impacts[0], s), s.enemies[0]);
+});
+
 test('enemy immobilization starts its own artwork at launch after windup, without another hidden delay', () => {
   const effect = { ...fx('enemy', 0), spell: 'inmovilizar' };
   assert.equal(effectFrame(effect).frame, 0);

@@ -6,6 +6,7 @@ import { schedule } from './loop.ts';
 import { handleSetupKey } from './setup.ts';
 import { macroForKey } from './rules/macros.ts';
 import { handleCombatCoachKey } from './combat-coach.ts';
+import { spellTargetAt } from './targeting.ts';
 
 declare global {
   // Chromium's non-standard InputDeviceCapabilities; clicks synthesized from touches are ignored.
@@ -84,7 +85,7 @@ export function prepareSpell() {
 }
 export function castAtPointer() {
   const point = aimPoint();
-  if (point) M.cast(demo.state, point);
+  if (point) M.cast(demo.state, spellTargetAt(point));
   else M.tell?.(demo.state, 'Point at the world to aim.');
 }
 export function interact() {
@@ -135,8 +136,22 @@ export function bindKeyboard() {
       setHudDrawer(false);
       return;
     }
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.metaKey || e.altKey) return;
     const key = e.key.toLowerCase();
+    // A bound Ctrl can be held for potions while walking. Other Ctrl chords
+    // keep their browser meaning; the standalone modifier is its own macro.
+    if (
+      e.ctrlKey &&
+      key !== 'control' &&
+      !(
+        macroForKey(demo.macroBindings, 'control') &&
+        demo.ready &&
+        !demo.paused &&
+        !demo.hudDrawerOpen &&
+        (accepted.includes(key) || key === 'shift')
+      )
+    )
+      return;
     if (key === 'escape' && demo.state.armed) {
       demo.state.armed = false;
       M.tell(demo.state, 'Spell cancelled.');
@@ -174,6 +189,7 @@ export function bindKeyboard() {
   });
   document.addEventListener('keyup', (e) => {
     const key = e.key.toLowerCase();
+    if ((key === 'control' && e.ctrlKey) || (key === 'shift' && e.shiftKey)) return;
     demo.keys.delete(key);
     demo.keyboardOrder.delete(key);
     if (demo.state.heldPotions.some((potion) => potion.key === key)) {

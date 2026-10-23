@@ -9,6 +9,7 @@ export function effectAnchor(effect: Effect, state: DemoState): Point {
 }
 
 export function effectFrame(effect: Effect, reduced = false) {
+  if (!effect.hit) return null;
   // Enemy effects are created at launch, after their windup has already ended.
   const age = effect.age;
   if (age < 0) return null;

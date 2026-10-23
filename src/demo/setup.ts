@@ -29,7 +29,7 @@ const lessons = [
   {
     focus: 'macros',
     title: '3. Creá tus macros (opcional)',
-    text: 'Un macro es un acceso rápido. Elegí Asignar y presioná tu tecla. El de hechizo lo prepara para apuntar; el de poción la usa al soltar o la repite al mantenerla con Auto-pot. Abrí Teclas y macros para ver todas las acciones. Si una tecla está ocupada, podés reasignarla aquí.',
+    text: 'Un macro es un acceso rápido. Elegí Asignar y presioná tu tecla; también podés usar Shift o Ctrl solas. El de hechizo lo prepara para apuntar; el de poción la usa al soltar o la repite al mantenerla con Auto-pot. Abrí Teclas y macros para ver todas las acciones. Si una tecla está ocupada, podés reasignarla aquí.',
   },
   {
     focus: 'ready',
@@ -188,7 +188,8 @@ export function handleSetupKey(event: KeyboardEvent, editor = false) {
     capturing = null;
     conflict = null;
     error = '';
-  } else if (event.ctrlKey || event.metaKey || event.altKey) error = 'Usá una tecla sin Ctrl, Alt ni Meta.';
+  } else if ((event.ctrlKey && event.key !== 'Control') || event.metaKey || event.altKey)
+    error = 'Usá una tecla sola. Shift y Ctrl también se pueden asignar.';
   else {
     error = assignMacro(demo.macroBindings, capturing, event.key);
     const other = bindingConflict(demo.macroBindings, capturing, event.key);

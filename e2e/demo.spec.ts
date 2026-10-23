@@ -148,6 +148,55 @@ test.describe('offline demo', () => {
   test.describe('with reduced motion', () => {
     test.use({ reducedMotion: 'reduce' });
 
+    test('Ctrl and Shift can be assigned on their own and survive reload', async ({ page }) => {
+      await openDemo(page);
+      await page.locator('#controls-options').click();
+      const editor = page.locator('#bindings-dialog');
+      await editor.locator('[data-bind="apocalipsis"]').click();
+      await page.keyboard.press('Control');
+      await expect(editor.locator('[data-bind="apocalipsis"]')).toHaveText('Ctrl');
+      await editor.locator('[data-bind="mana"]').click();
+      await page.keyboard.press('Shift');
+      await expect(editor.locator('[data-bind="mana"]')).toHaveText('Shift');
+      await page.reload();
+      await expect(page.locator('#curtain')).toBeHidden();
+      await expect(page.locator('#macro-spell')).toHaveAttribute('aria-label', 'Apocalipsis · Ctrl');
+      await expect(page.locator('#macro-mana')).toHaveAttribute('aria-label', 'Poción de maná · Shift');
+    });
+
+    test('a Ctrl-prepared spell hits the visible chest above the foot tile without cursor snapping', async ({
+      page,
+    }) => {
+      await openDemo(page);
+      await enterPreparation(page);
+      await page.locator('#setup-next').click();
+      await page.locator('#setup-next').click();
+      await page.locator('#setup-bindings [data-bind="apocalipsis"]').click();
+      await page.keyboard.press('Control');
+      await page.locator('#setup-next').click();
+      await page.locator('#setup-experienced').click();
+      const time = new Date('2026-10-23T12:00:00Z');
+      await page.clock.install({ time });
+      await page.clock.pauseAt(new Date(time.getTime() + 10000));
+      await page.locator('#setup-start').click();
+      await page.clock.runFor(20);
+      await page.keyboard.press('Control');
+      await page.clock.runFor(20);
+      await expect(page.locator('#prepare-spell')).toHaveAttribute('aria-pressed', 'true');
+      const canvas = page.locator('#game');
+      const bounds = await canvas.boundingBox();
+      if (!bounds) throw new Error('Missing game canvas');
+      const scale = 1.32;
+      await canvas.click({
+        position: { x: bounds.width / 2 + (496 - 304) * scale, y: bounds.height / 2 + (368 - 40 - 432) * scale },
+      });
+      await expect(page.locator('#mana')).toHaveText('85 / 100');
+      await expect(page.locator('#prepare-spell')).toHaveAttribute('aria-pressed', 'false');
+      await expect(canvas).toHaveCSS('cursor', 'default');
+      await page.clock.runFor(100);
+      await expect(page.locator('#mana')).toHaveText('85 / 100');
+    });
+
     test('click movement can be disabled, persists after reload, and can be enabled again', async ({ page }) => {
       await openDemo(page);
       await page.locator('#controls-options').click();
@@ -260,6 +309,9 @@ test.describe('offline demo', () => {
       await expect(page.locator('#combat-skip')).toBeFocused();
       await page.keyboard.press('Tab');
       await expect(page.locator('#combat-continue')).toBeFocused();
+      const time = new Date('2026-10-23T12:00:00Z');
+      await page.clock.install({ time });
+      await page.clock.pauseAt(new Date(time.getTime() + 10000));
       await page.locator('#combat-continue').click();
       await page.locator('#prepare-spell').click();
       const canvas = page.locator('#game');
@@ -276,22 +328,22 @@ test.describe('offline demo', () => {
       await expect(page.locator('#combat-lesson')).toBeHidden();
       await expect(page.locator('#combat-guidance')).toBeHidden();
       await expect(page.locator('main')).not.toHaveAttribute('inert');
+      await page.clock.runFor(1400);
       await expect(page.locator('#spell-status')).toContainText('Apocalipsis');
       await page.locator('#prepare-spell').click();
+      await page.clock.runFor(20);
       await expect(page.locator('#spell-status')).toHaveText('Ready: click your target');
       await canvas.click({ position });
       await expect(page.locator('#prepare-spell')).toHaveAttribute('aria-pressed', 'false');
       await expect(page.locator('#combat-lesson')).toBeHidden();
+      await page.clock.runFor(1400);
       await page.locator('#pause').click();
       await expect(page.locator('#help-experienced')).toHaveText('Volver a mostrar las explicaciones de combate');
       await page.locator('#help-experienced').click();
       await expect(page.locator('#help-experienced')).toHaveAttribute('aria-pressed', 'false');
       await expect(page.locator('#help-dialog')).toBeVisible();
       await page.locator('#resume').click();
-      const time = new Date('2026-10-22T12:00:00Z');
-      await page.clock.install({ time });
-      await page.clock.pauseAt(new Date(time.getTime() + 1000));
-      await page.clock.runFor(1450);
+      await page.clock.runFor(20);
       await page.locator('#prepare-spell').click();
       await canvas.click({ position });
       await expect(page.locator('#combat-title')).toHaveText('El intento no acertó');

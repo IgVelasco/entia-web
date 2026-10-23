@@ -3,6 +3,7 @@ import * as Physics from '../shared/physics.ts';
 import M from './rules/navigation.ts';
 import { $, canvas, ctx, demo, floor, reduced } from './context.ts';
 import { drawSpellEffect } from './spell-effects.ts';
+import { actorFrame } from './actor-sprites.ts';
 import { schedule } from './loop.ts';
 import type { Drop, Point, SceneryItem } from './rules/state.ts';
 
@@ -90,11 +91,10 @@ function text(s: string, x: number, y: number, color = '#e6e4cc', size = 13) {
 }
 export function actor(a: Actor, body: string, player = false) {
   const im = demo.images[body];
-  const stride = body === 'mage' ? 32 : 64;
-  const f = !body.startsWith('npc-') && a.moving ? 1 + (Math.floor((a.gait / stride) * 7) % 7) : 0;
+  const frame = actorFrame(a, body);
   ellipse(a.x, a.y + 1, 16, 5, '#00110cc0');
   if (player) ellipse(a.x, a.y + 2, 20, 8, '#e8d491', true);
-  ctx.drawImage(im, f * 96, a.dir * 160, 96, 160, Math.round(a.x - 30), Math.round(a.y - 99.375), 60, 100);
+  ctx.drawImage(im, frame.sx, frame.sy, 96, 160, frame.x, frame.y, frame.width, frame.height);
 }
 export function resourceBar(a: Point, value: number, maxValue: number, yOffset = 12, mana = false) {
   const x = Math.round(a.x) - 23,
