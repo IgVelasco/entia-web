@@ -1,3 +1,10 @@
+# Unlimited practice potions, pursuing melee rival and lower cards — 23 October 2026
+
+- Tutorial life and mana potions are unlimited, with ∞ in both the inventory and macro bar. Uses restore the same amounts and retain the shared cooldown, attack recovery and held-key cadence. The workshop explains the unlimited supply; the finite-stock rules outside a tutorial remain unchanged.
+- Sentinel is the tutorial's melee rival; Wanderer and Keeper retain their spell attacks. Sentinel pursues the player within the arena, finds cardinal routes around living actors and the revealed bank, finishes each reserved tile step, and strikes for 8 health every 1.48 seconds only from an adjacent cardinal tile within reach and line of sight. It respects immobilization, self-removal, death/respawn and the safe refuge. It prioritizes the nearby player over dropped loot.
+- The first received melee strike has its own skippable response lesson, highlighting health and the life potion without labeling the hit as a spell. Spell casting/hit/miss cards are now anchored near the viewport's bottom on desktop too, and horizontal avoidance uses the card's actual lower bounds. Brief combat messages also sit at the playfield's bottom instead of covering its centre. Mobile keeps its existing bottom/safe-area placement.
+- Verification covers 150 uses of each potion, recovery and held keys, pursuit from the actual spawn, routing around actors/bank, reach/diagonal/refuge rejection, immobilization and melee coaching. Browser checks observe Sentinel's real melee notice, healing, infinite counters and lower initial/miss cards at desktop and phone widths.
+
 # Modifier macros, visible-sprite clicks and impact placement — 23 October 2026
 
 - Shift and Ctrl are assignable standalone macro/action keys, retain duplicate-key validation and persist through reload. Ctrl dispatch no longer rejects its own keydown; a held assigned Ctrl permits walking without triggering browser movement-key shortcuts. Other Ctrl chords retain their browser behavior. Left/right instances share one logical binding and releasing one side does not release a still-held modifier.

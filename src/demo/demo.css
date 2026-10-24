@@ -1029,7 +1029,8 @@ aside {
   bottom: 118px;
 }
 #message {
-  bottom: 176px;
+  top: auto;
+  bottom: 8px;
 }
 #target-help {
   bottom: 8px;

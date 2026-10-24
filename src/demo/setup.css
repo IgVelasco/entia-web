@@ -161,7 +161,7 @@
   position: fixed;
   z-index: 61;
   inset: auto;
-  top: 96px;
+  bottom: max(18px, env(safe-area-inset-bottom));
   left: 18px;
   margin: 0;
   width: min(352px, calc(100vw - 36px));

@@ -24,7 +24,7 @@ const lessons = [
   {
     focus: 'inventory',
     title: '2. Aprendé a usar las pociones',
-    text: 'En el inventario están las pociones de vida y maná. Seleccioná una y apretá Usar, U o hacé doble clic. La vida recupera salud y el maná permite seguir lanzando. Durante esta preparación no gastás pociones.',
+    text: 'En el inventario están las pociones de vida y maná. Seleccioná una y apretá Usar, U o hacé doble clic. La vida recupera salud y el maná permite seguir lanzando. En este tutorial son ilimitadas (∞); respetan la recuperación entre usos y después de atacar.',
   },
   {
     focus: 'macros',

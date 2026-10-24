@@ -59,6 +59,7 @@ const guides: Guide[] = [
 ];
 function createTutorial() {
   const s = M.create();
+  s.enemies.find((enemy) => enemy.name === 'Sentinel')!.kind = 'melee';
   s.phase = 'hallway';
   s.player.x = 80;
   s.player.y = 464;
@@ -147,7 +148,10 @@ function startFight(s: DemoState) {
   s.meditating = false;
   s.fx = [];
   M.clearPotionKeys(s);
-  M.tell(s, 'Defeat two rivals and collect their essence. A nearby bank will reveal itself.');
+  M.tell(
+    s,
+    'Derrotá a dos rivales y recogé su esencia. Sentinel te persigue para golpear cuerpo a cuerpo; los otros lanzan hechizos. Las pociones son ilimitadas.',
+  );
   return true;
 }
 const originalUpdate = M.update,

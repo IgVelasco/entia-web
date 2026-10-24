@@ -99,7 +99,11 @@ export function syncCombatCoach() {
     resource.top + resource.height > 0;
   spotlight('resource', resourceVisible ? resource : $('#mobile-vitals').getBoundingClientRect());
   const card = dialog.getBoundingClientRect();
-  const overlapsLeft = actor.left < 18 + card.width && actor.left + actor.width > 18 && actor.top < 96 + card.height;
+  const overlapsLeft =
+    actor.left < 18 + card.width &&
+    actor.left + actor.width > 18 &&
+    actor.top < card.bottom &&
+    actor.top + actor.height > card.top;
   dialog.dataset.side = (window.innerWidth || demo.width) > 760 && overlapsLeft ? 'right' : 'left';
 }
 export function handleCombatCoachKey(event: KeyboardEvent) {

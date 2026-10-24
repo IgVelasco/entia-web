@@ -42,6 +42,12 @@ export const combatLessons = {
     text: 'Acertaron tu casillero y perdiste 12 de vida. No queda una zona dañina.',
     response: 'Usá la poción de vida resaltada si hace falta y seguí moviéndote.',
   },
+  receivedMelee: {
+    title: 'Te golpearon cuerpo a cuerpo',
+    text: 'Sentinel se acercó a un casillero contiguo y te quitó 8 de vida con un golpe.',
+    response:
+      'Alejate para salir de su alcance, inmovilizalo o recuperá vida con una poción. Las pociones del tutorial son ilimitadas.',
+  },
   receivedInmovilizar: {
     title: 'Te inmovilizaron',
     text: 'Tu personaje resaltado no puede avanzar. Todavía podés girar y lanzar.',
@@ -79,6 +85,7 @@ export function teach(s: DemoState, id: CombatLessonId, subject = 'player') {
     'inmovilizar',
     'remover',
     'receivedApocalipsis',
+    'receivedMelee',
     'receivedInmovilizar',
     'enemyMiss',
     'enemyCleanse',

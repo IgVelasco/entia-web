@@ -11,6 +11,7 @@ const focuses: Record<CombatLessonId, { action: MacroAction; resource: 'mana' | 
   remover: { action: 'remover', resource: 'mana', condition: 'Remover sobre vos → movimiento y −10 de maná' },
   enemyRemover: { action: 'remover', resource: 'mana', condition: 'Objetivo enemigo → Remover no permitido' },
   receivedApocalipsis: { action: 'life', resource: 'health', condition: 'Te acertaron → −12 de vida' },
+  receivedMelee: { action: 'life', resource: 'health', condition: 'Rival contiguo → golpe y −8 de vida' },
   receivedInmovilizar: {
     action: 'remover',
     resource: 'mana',

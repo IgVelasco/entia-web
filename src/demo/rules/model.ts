@@ -3,7 +3,7 @@ import * as Physics from '../../shared/physics.ts';
 import type { Body } from '../../shared/physics.ts';
 import { cardinal, walk } from './movement.ts';
 import { teach } from './combat-lessons.ts';
-import { blockingActor, sameTile } from './occupancy.ts';
+import { blockingActor, sameTile, tileAt } from './occupancy.ts';
 import type { CastTarget, DemoState, Drop, Enemy, Input, Player, Point, Rect, SceneryItem, Spell } from './state.ts';
 const WIDTH = 1200,
   HEIGHT = 880,
@@ -384,9 +384,10 @@ function usePotion(s: DemoState, kind: string) {
   if (!life && kind !== 'mana') return false;
   const stock = life ? 'lifePotions' : 'manaPotions',
     resource = life ? 'hp' : 'mana';
-  if (s.player.hp <= 0 || s[stock] <= 0 || s.potionCooldown > 1e-6 || s.potionAttackLockout > 1e-6) return false;
-  // Normal-area RAO semantics: a valid use consumes stock even at full resources.
-  s[stock]--;
+  if (s.player.hp <= 0 || (!s.tutorial && s[stock] <= 0) || s.potionCooldown > 1e-6 || s.potionAttackLockout > 1e-6)
+    return false;
+  // Practice has unlimited supplies, but keeps recovery and attack lockouts.
+  if (!s.tutorial) s[stock]--;
   s.potionCooldown = 0.26;
   s.player[resource] = Math.min(100, s.player[resource] + (life ? 40 : 50));
   s[life ? 'lifePulse' : 'manaPulse'] = 0.4;
@@ -435,6 +436,52 @@ function botStep(s: DemoState, e: Enemy, target: Point, dt: number) {
     e.x = step.end.x;
     e.y = step.end.y;
     e.step = null;
+  }
+}
+function meleeReach(a: Point, b: Point) {
+  const first = tileAt(a),
+    second = tileAt(b);
+  return (
+    Math.abs(first.x - second.x) + Math.abs(first.y - second.y) === 1 &&
+    Math.hypot(a.x - b.x, a.y - b.y) <= 48 &&
+    lineClear(a, b)
+  );
+}
+function pursueMelee(s: DemoState, e: Enemy, dt: number) {
+  if (e.immobilized) return;
+  const bank = bankBounds(s);
+  const queue = [{ x: e.x, y: e.y, first: null as Point | null }],
+    seen = new Set([`${e.x},${e.y}`]);
+  // Find a free adjacent tile, routing around rivals and the revealed bank.
+  // Replan only between footsteps so moving actors keep one reserved tile.
+  for (let i = 0; i < queue.length && i < 1400; i++) {
+    const point = queue[i];
+    if (meleeReach(point, s.player)) {
+      if (point.first) botStep(s, e, point.first, dt);
+      return;
+    }
+    for (const [x, y] of [
+      [0, -32],
+      [32, 0],
+      [0, 32],
+      [-32, 0],
+    ]) {
+      const next = { x: point.x + x, y: point.y + y },
+        key = `${next.x},${next.y}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (
+        blockingActor(s, e, next) ||
+        !physics.clear(point, next) ||
+        (s.bankUnlocked &&
+          next.x + RADIUS > bank.x &&
+          next.x - RADIUS < bank.x + bank.w &&
+          next.y + RADIUS > bank.y &&
+          next.y - RADIUS < bank.y + bank.h)
+      )
+        continue;
+      queue.push({ ...next, first: point.first || next });
+    }
   }
 }
 function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
@@ -574,6 +621,27 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
       botStep(s, e, e.step.end, dt);
       continue;
     }
+    if (e.kind === 'melee' && !safe && Math.hypot(p.x - e.x, p.y - e.y) < 480) {
+      e.dir = heading(p.x - e.x, p.y - e.y);
+      if (meleeReach(e, p)) {
+        if (e.cooldown === 0) {
+          e.cooldown = 1.48;
+          damage(s, p, 8);
+          s.fx.push({ x: p.x, y: p.y, age: 0, hit: true, owner: 'melee', targetId: 'player' });
+          s.meditating = false;
+          s.flash = 0.2;
+          cancelDeposit(s);
+          tell(s, `${e.name} te golpeó cuerpo a cuerpo: perdiste 8 de vida. Alejate o usá una poción de vida.`);
+          teach(s, 'receivedMelee');
+          if (s.tutorial?.coach?.current) break;
+          if (p.hp <= 0) {
+            respawnPlayer(s);
+            break;
+          }
+        }
+      } else pursueMelee(s, e, dt);
+      continue;
+    }
     const loot = s.drops
       .filter((d) => s.time >= d.readyAt + 1 && d.x >= 270 && Math.hypot(d.x - e.x, d.y - e.y) < 240)
       .sort((a, b) => Math.hypot(a.x - e.x, a.y - e.y) - Math.hypot(b.x - e.x, b.y - e.y))[0];
@@ -598,7 +666,7 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
       }
       continue;
     }
-    if (!safe && d < 480) {
+    if (e.kind !== 'melee' && !safe && d < 480) {
       if (d < 170 && e.cooldown === 0 && lineClear(e, p)) {
         e.wind = 0.85;
         e.attackCount = (e.attackCount || 0) + 1;

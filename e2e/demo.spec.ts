@@ -148,6 +148,75 @@ test.describe('offline demo', () => {
   test.describe('with reduced motion', () => {
     test.use({ reducedMotion: 'reduce' });
 
+    for (const viewport of [
+      { width: 1280, height: 720 },
+      { width: 390, height: 844 },
+    ]) {
+      test(`combat explanations stay at the bottom, including misses at ${viewport.width}px`, async ({ page }) => {
+        await page.setViewportSize(viewport);
+        await openDemo(page);
+        await enterPreparation(page);
+        await page.locator('#setup-windows').click();
+        await page.locator('#setup-start').click();
+        const card = page.locator('#combat-lesson');
+        const assertBottom = async () => {
+          await expect(card).toBeVisible();
+          const bounds = await card.boundingBox();
+          if (!bounds) throw new Error('Missing combat explanation');
+          expect(bounds.y).toBeGreaterThan(viewport.height * 0.35);
+          expect(bounds.y + bounds.height).toBeGreaterThan(viewport.height - 24);
+          expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height);
+          await expect(page.locator('#combat-continue')).toBeInViewport();
+          await expect(page.locator('#combat-skip')).toBeInViewport();
+          const toast = await page.locator('#message').boundingBox();
+          const field = await page.locator('.playfield').boundingBox();
+          if (!toast || !field) throw new Error('Missing combat feedback');
+          expect(field.y + field.height - toast.y - toast.height).toBeGreaterThanOrEqual(0);
+          expect(field.y + field.height - toast.y - toast.height).toBeLessThanOrEqual(12);
+        };
+        await assertBottom();
+        const time = new Date('2026-10-23T12:00:00Z');
+        await page.clock.install({ time });
+        await page.clock.pauseAt(new Date(time.getTime() + 1000));
+        await page.locator('#combat-continue').click();
+        await page.locator(viewport.width <= 760 ? '#cast' : '#prepare-spell').click();
+        const canvas = page.locator('#game');
+        const bounds = await canvas.boundingBox();
+        if (!bounds) throw new Error('Missing game canvas');
+        await canvas.click({ position: { x: bounds.width / 2 + 55, y: bounds.height / 2 } });
+        await expect(page.locator('#combat-title')).toHaveText('El intento no acertó');
+        await assertBottom();
+      });
+    }
+
+    test('Sentinel reaches the player for melee and potion counters remain unlimited', async ({ page }) => {
+      await openDemo(page);
+      await enterPreparation(page);
+      await page.locator('#setup-windows').click();
+      await page.locator('#setup-experienced').click();
+      const time = new Date('2026-10-23T12:00:00Z');
+      await page.clock.install({ time });
+      await page.clock.pauseAt(new Date(time.getTime() + 1000));
+      await page.locator('#setup-start').click();
+      for (const id of ['life-stock', 'mana-stock', 'life-inventory-count', 'mana-inventory-count'])
+        await expect(page.locator('#' + id)).toHaveText('∞');
+      for (let i = 0; i < 40; i++) {
+        await page.clock.runFor(200);
+        if ((await page.locator('#message').textContent())?.includes('Sentinel te golpeó cuerpo a cuerpo')) break;
+      }
+      await expect(page.locator('#message')).toContainText('Sentinel te golpeó cuerpo a cuerpo');
+      await expect(page.locator('#health')).not.toHaveText('100 / 100');
+      await page.locator('#life-potion').dblclick();
+      await page.clock.runFor(20);
+      await expect(page.locator('#health')).toHaveText('100 / 100');
+      await page.clock.runFor(300);
+      await page.locator('#mana-potion').dblclick();
+      await page.clock.runFor(20);
+      await expect(page.locator('#mana')).toHaveText('100 / 100');
+      await expect(page.locator('#life-stock')).toHaveText('∞');
+      await expect(page.locator('#mana-stock')).toHaveText('∞');
+    });
+
     test('Ctrl and Shift can be assigned on their own and survive reload', async ({ page }) => {
       await openDemo(page);
       await page.locator('#controls-options').click();
@@ -384,7 +453,7 @@ test.describe('offline demo', () => {
       await expect(page.locator('#prepare-spell')).toHaveAttribute('aria-pressed', 'true');
       await page.keyboard.press('Escape');
       await page.keyboard.press('F3');
-      await expect(page.locator('#life-stock')).toHaveText('99');
+      await expect(page.locator('#life-stock')).toHaveText('∞');
     });
 
     test('window-only play leaves macros empty and still launches spells from their window', async ({ page }) => {
