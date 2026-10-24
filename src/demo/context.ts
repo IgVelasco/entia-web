@@ -1,6 +1,9 @@
 // The offline demo controller's shared state: page handles and every value the controller modules read and change.
 import M from './rules/navigation.ts';
 import type { DemoState, Point, TutorialState } from './rules/state.ts';
+import type { MacroBindings } from './rules/macros.ts';
+import { loadBindings } from './binding-storage.ts';
+import { loadClickMovementChoice } from './control-preferences.ts';
 
 // One pointer's held movement direction; order makes the most recent press win.
 export interface HeldDirection {
@@ -12,6 +15,9 @@ export interface DemoContext {
   // Inside Nix's same-origin iframe (?embedded=1): the parent hosts, suspends and resumes the demo.
   embedded: boolean;
   state: DemoState;
+  macroBindings: MacroBindings;
+  clickMovement: boolean;
+  clickMovementChosen: boolean;
   // Decoded artwork by asset name; bank and essence may be pre-cropped bitmaps.
   images: Record<string, HTMLImageElement | ImageBitmap>;
   ready: boolean;
@@ -59,6 +65,7 @@ export interface DemoContext {
   movementOrder: number;
   keyboardOrder: Map<string | undefined, number>;
   keys: Set<string>;
+  heldActions: Set<string>;
   touches: Map<number, HeldDirection>;
   worldTouches: Set<number>;
   camera: Point;
@@ -69,6 +76,9 @@ interface DemoElements {
   '#help-dialog': HTMLDialogElement;
   '#character-dialog': HTMLDialogElement;
   '#guide-dialog': HTMLDialogElement;
+  '#bindings-dialog': HTMLDialogElement;
+  '#combat-lesson': HTMLDialogElement;
+  '#movement-choice-dialog': HTMLDialogElement;
   '#autopot': HTMLInputElement;
   '#mobile-spell': HTMLSelectElement;
   '#inventory-crystal': HTMLCanvasElement;
@@ -76,6 +86,9 @@ interface DemoElements {
   '#interact': HTMLButtonElement;
   '#cast': HTMLButtonElement;
   '#prepare-spell': HTMLButtonElement;
+  '#practice-continue': HTMLButtonElement;
+  '#strike': HTMLButtonElement;
+  '#mobile-strike': HTMLButtonElement;
   '#use-selected': HTMLButtonElement;
   '#essence-slot': HTMLButtonElement;
   '#life-potion': HTMLButtonElement;
@@ -83,7 +96,9 @@ interface DemoElements {
   '#macro-life': HTMLButtonElement;
   '#macro-mana': HTMLButtonElement;
   '#macro-spell': HTMLButtonElement;
-  '#mobile-strike': HTMLButtonElement;
+  '#setup-next': HTMLButtonElement;
+  '#setup-back': HTMLButtonElement;
+  '#setup-start': HTMLButtonElement;
 }
 
 let embedded = false;
@@ -98,9 +113,13 @@ export const canvas = document.querySelector('#game') as HTMLCanvasElement,
   ctx = canvas.getContext('2d')!,
   $ = <S extends string>(s: S) =>
     document.querySelector(s) as S extends keyof DemoElements ? DemoElements[S] : HTMLElement;
+const savedClickMovement = loadClickMovementChoice();
 export const demo: DemoContext = {
   embedded,
   state: M.createTutorial(),
+  macroBindings: loadBindings(),
+  clickMovement: savedClickMovement ?? true,
+  clickMovementChosen: savedClickMovement !== null,
   images: {},
   ready: false,
   paused: false,
@@ -134,10 +153,12 @@ export const demo: DemoContext = {
   movementOrder: 0,
   keyboardOrder: new Map(),
   keys: new Set(),
+  heldActions: new Set(),
   touches: new Map(),
   worldTouches: new Set(),
   camera: { x: 510, y: 490 },
 };
+export const needsMovementChoice = () => demo.state.tutorial?.stage === 'hallway' && !demo.clickMovementChosen;
 export const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 export const floor = document.createElement('canvas');
 floor.width = 1;

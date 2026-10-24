@@ -66,10 +66,12 @@ test('pointer targeting does not substitute nearest enemy', () => {
   s.player.x = 400;
   s.player.y = 360;
   assert(!cast(s));
-  assert(cast(s, { x: 430, y: 430 }));
+  assert(!cast(s, { x: 430, y: 430 }));
   tick(s, 0.35);
   assert.equal(s.enemies[0].hp, 2);
-  assert.equal(s.fx[0].x, 430);
+  assert.equal(s.fx.length, 0);
+  assert.equal(s.player.mana, 100);
+  assert.equal(s.armed, false);
 });
 test('spells obey range and scenery line of sight', () => {
   const s = M.create();
@@ -171,7 +173,7 @@ test('death drops carried essence at death site, keeps secured and allows recove
   assert.equal(s.carried, 25);
   assert.equal(s.drops.length, 0);
 });
-test('bots launch visible spells; moving away from the marked tile avoids damage', () => {
+test('bots launch visible spells; moving away from the chosen tile avoids damage', () => {
   const s = M.create();
   s.player.x = 495;
   s.player.y = 405;
@@ -311,7 +313,7 @@ test('unarmed clicks cannot cast, armed clicks consume mana once', () => {
   assert(!M.cast(s, target));
 });
 
-test('each cast attempt disarms, including cooldown and mana rejection', () => {
+test('successful casts disarm; recovery keeps aim, sent mana rejection disarms', () => {
   const s = M.create();
   s.player.x = 400;
   s.player.y = 360;
@@ -321,12 +323,14 @@ test('each cast attempt disarms, including cooldown and mana rejection', () => {
   assert(!s.armed);
   s.armed = true;
   assert(!M.cast(s, target));
-  assert(!s.armed);
+  assert(s.armed);
+  assert.equal(s.player.mana, 85);
   s.cooldown = 0;
   s.player.mana = 0;
   s.armed = true;
   assert(!M.cast(s, target));
   assert(!s.armed);
+  assert.equal(s.player.mana, 0);
 });
 
 test('distant proximity never transfers and pausing simulation conserves value', () => {
@@ -555,7 +559,7 @@ test('damage records red-number payloads for player and enemy hits and expires',
   const e = s.enemies[0];
   cast(s, { x: e.x, y: e.y, enemyId: e.name });
   assert.equal(s.damageTexts[0].amount, 1);
-  s.fx.push({ x: s.player.x, y: s.player.y, age: 0.3, hit: false, owner: 'enemy' });
+  M.resolveEnemySpell(s, s.player, 'apocalipsis');
   M.update(s, 0.02);
   assert(s.damageTexts.some((d) => d.amount === 12));
   quiet(s);

@@ -29,6 +29,8 @@ export async function openSite(page: Page, path = '/') {
 export async function openDemo(page: Page) {
   await page.goto('/demo/');
   await expect(page.locator('#curtain')).toBeHidden();
+  const savedChoice = await page.evaluate(() => localStorage.getItem('entia-demo-click-movement-v1'));
+  if (savedChoice !== 'true' && savedChoice !== 'false') await page.locator('#movement-click-yes').click();
 }
 
 // The inline style transform is how the page places a label over the canvas.

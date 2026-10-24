@@ -1,8 +1,12 @@
 import M from './rules/navigation.ts';
-import { $, canvas, demo } from './context.ts';
+import { $, canvas, demo, needsMovementChoice } from './context.ts';
 import { returnToNix } from './embed.ts';
 import { focusGame, selectSpell, setHudDrawer, syncGuide, togglePause, ui, useSelected } from './hud.ts';
 import { schedule } from './loop.ts';
+import { handleSetupKey } from './setup.ts';
+import { macroForKey } from './rules/macros.ts';
+import { handleCombatCoachKey } from './combat-coach.ts';
+import { spellTargetAt } from './targeting.ts';
 
 declare global {
   // Chromium's non-standard InputDeviceCapabilities; clicks synthesized from touches are ignored.
@@ -13,9 +17,13 @@ declare global {
 
 export function input() {
   if (
+    needsMovementChoice() ||
     demo.returning ||
     demo.presentationNow < demo.beatUntil ||
     demo.hudDrawerOpen ||
+    $('#bindings-dialog').open ||
+    !!demo.state.tutorial?.coach?.current ||
+    demo.state.tutorial?.stage === 'setup' ||
     $('#help-dialog').open ||
     $('#character-dialog').open ||
     !!demo.state.tutorial?.dialog
@@ -40,35 +48,29 @@ export function input() {
 }
 export function aimPoint() {
   if (!demo.pointer) return null;
-  const point = {
+  return {
     x: demo.state.player.x + (demo.pointer.x - demo.width / 2) / demo.scale,
     y:
       (demo.state.phase === 'hallway' ? M.hallway.cameraY : demo.state.player.y) +
       (demo.pointer.y - demo.height / 2) / demo.scale,
   };
-  const hit = demo.state.enemies
-    .filter((e) => e.hp > 0 && Math.abs(e.x - point.x) < 28 && point.y >= e.y - 88 && point.y <= e.y + 8)
-    .sort((a, b) => b.y - a.y)[0];
-  if (
-    demo.state.selectedSpell === 'remover' &&
-    Math.abs(point.x - demo.state.player.x) < 28 &&
-    point.y >= demo.state.player.y - 88 &&
-    point.y <= demo.state.player.y + 8
-  )
-    return { x: demo.state.player.x, y: demo.state.player.y, self: true };
-  return hit ? { x: hit.x, y: hit.y, enemyId: hit.name } : point;
 }
 export function prepareSpell() {
   if (
     !demo.ready ||
     demo.paused ||
+    $('#bindings-dialog').open ||
+    !!demo.state.tutorial?.coach?.current ||
     demo.presentationNow < demo.beatUntil ||
     demo.state.phase === 'hallway' ||
-    demo.state.tutorial?.stage === 'complete'
+    demo.state.tutorial?.stage === 'setup' ||
+    demo.state.tutorial?.stage === 'complete' ||
+    (demo.state.tutorial?.stage === 'spells' &&
+      ['counter', 'complete'].includes(demo.state.tutorial.meleePractice?.spellStep || '')) ||
+    demo.state.tutorial?.stage === 'melee'
   )
     return;
   setHudDrawer(false);
-  M.cancelWalk(demo.state);
   demo.state.armed = !demo.state.armed;
   if (!demo.state.armed) {
     M.tell(demo.state, 'Aiming cancelled. Click to walk.');
@@ -79,16 +81,14 @@ export function prepareSpell() {
     demo.state,
     M.spells[demo.state.selectedSpell].name +
       ' ready. ' +
-      (demo.state.selectedSpell === 'remover'
-        ? 'Click yourself or another character.'
-        : 'Point at a rival and click.') +
+      (demo.state.selectedSpell === 'remover' ? 'Hacé clic en tu propio casillero.' : 'Point at a rival and click.') +
       ' Esc cancels.',
   );
   focusGame();
 }
 export function castAtPointer() {
   const point = aimPoint();
-  if (point) M.cast(demo.state, point);
+  if (point) M.cast(demo.state, spellTargetAt(point));
   else M.tell?.(demo.state, 'Point at the world to aim.');
 }
 export function interact() {
@@ -103,15 +103,30 @@ export function interact() {
 export function clear() {
   M.cancelWalk(demo.state);
   demo.keys.clear();
+  demo.heldActions.clear();
   demo.keyboardOrder.clear();
   demo.touches.clear();
   syncDpad();
   demo.worldTouches.clear();
   M.clearPotionKeys(demo.state);
+  demo.state.pendingMelee = 0;
 }
 const accepted = ['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright'];
 export function bindKeyboard() {
   document.addEventListener('keydown', (e) => {
+    if (needsMovementChoice()) return;
+    if ($('#bindings-dialog').open) {
+      handleSetupKey(e, true);
+      return;
+    }
+    if ($('#combat-lesson').open || demo.state.tutorial?.coach?.current) {
+      if ($('#combat-lesson').open) handleCombatCoachKey(e);
+      return;
+    }
+    if (demo.state.tutorial?.stage === 'setup' && !demo.paused) {
+      handleSetupKey(e);
+      return;
+    }
     if (
       demo.returning ||
       demo.presentationNow < demo.beatUntil ||
@@ -124,22 +139,45 @@ export function bindKeyboard() {
       setHudDrawer(false);
       return;
     }
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.metaKey || e.altKey) return;
     const key = e.key.toLowerCase();
+    // A bound Ctrl can be held for potions while walking. Other Ctrl chords
+    // keep their browser meaning; the standalone modifier is its own macro.
+    if (
+      e.ctrlKey &&
+      key !== 'control' &&
+      !(
+        macroForKey(demo.macroBindings, 'control') &&
+        demo.ready &&
+        !demo.paused &&
+        !demo.hudDrawerOpen &&
+        (accepted.includes(key) || key === 'shift')
+      )
+    )
+      return;
     if (key === 'escape' && demo.state.armed) {
       demo.state.armed = false;
       M.tell(demo.state, 'Spell cancelled.');
       return;
     }
-    if (key === 'p' || key === 'escape') {
+    if (macroForKey(demo.macroBindings, key) === 'pause' || key === 'escape') {
       e.preventDefault();
       if (!e.repeat) togglePause();
       return;
     }
     if ((e.target as Element).closest('input,select,textarea')) return;
-    if ((key === 'f1' || key === 'f2') && !e.repeat && demo.ready && !demo.paused) {
+    const macro = macroForKey(demo.macroBindings, key);
+    if (macro && demo.ready && !demo.paused && !demo.hudDrawerOpen) {
       e.preventDefault();
-      M.pressPotion(demo.state, key, key === 'f1' ? 'life' : 'mana');
+      if (e.repeat) return;
+      if (macro === 'life' || macro === 'mana') M.pressPotion(demo.state, key, macro);
+      else if (macro === 'apocalipsis' || macro === 'inmovilizar' || macro === 'remover') {
+        selectSpell(macro);
+        prepareSpell();
+      } else if (macro === 'meditate') {
+        clear();
+        M.meditate(demo.state);
+      } else demo.heldActions.add(key);
       return;
     }
     if ((e.target as Element).closest('button,a')) return;
@@ -151,37 +189,36 @@ export function bindKeyboard() {
         demo.keyboardOrder.set(key, ++demo.movementOrder);
       }
     }
-    if (['1', '2', '3'].includes(key) && !e.repeat && demo.ready && !demo.paused) {
-      e.preventDefault();
-      selectSpell(['apocalipsis', 'inmovilizar', 'remover'][Number(key) - 1]);
-      prepareSpell();
-    }
-    if (key === 'c' && !e.repeat && demo.ready && !demo.paused) {
-      e.preventDefault();
-      prepareSpell();
-    }
-    if (key === ' ' && !e.repeat && demo.ready && !demo.paused) {
-      e.preventDefault();
-      M.melee(demo.state);
-    }
-    if (key === 'q' && !e.repeat && demo.ready && !demo.paused) {
-      if (!M.pickup(demo.state, 22)) M.tell(demo.state, 'Stand on a dropped crystal, then press Q.');
-    }
-    if (key === 'n' && !e.repeat && demo.ready && !demo.paused) {
-      clear();
-      M.meditate(demo.state);
-    }
-    if (key === 'u' && !e.repeat && demo.ready && !demo.paused) useSelected();
-    if (key === 'e' && !e.repeat && demo.ready && !demo.paused) interact();
   });
   document.addEventListener('keyup', (e) => {
     const key = e.key.toLowerCase();
+    if ((key === 'control' && e.ctrlKey) || (key === 'shift' && e.shiftKey)) return;
     demo.keys.delete(key);
     demo.keyboardOrder.delete(key);
-    if (key === 'f1' || key === 'f2') {
+    if (demo.state.heldPotions.some((potion) => potion.key === key)) {
       e.preventDefault();
       M.releasePotion(demo.state, key);
     }
+    const released = demo.heldActions.delete(key);
+    if (!released) return;
+    e.preventDefault();
+    if (
+      !demo.ready ||
+      demo.paused ||
+      demo.hudDrawerOpen ||
+      demo.returning ||
+      demo.presentationNow < demo.beatUntil ||
+      $('#help-dialog').open ||
+      $('#character-dialog').open ||
+      demo.state.tutorial?.dialog
+    )
+      return;
+    const action = macroForKey(demo.macroBindings, key);
+    if (action === 'strike') M.melee(demo.state);
+    else if (action === 'interact') interact();
+    else if (action === 'pickup') {
+      if (!M.pickup(demo.state, 22)) M.tell(demo.state, 'Stand on a dropped crystal, then press E.');
+    } else if (action === 'use') useSelected();
   });
 }
 const mapping: Record<string, string> = { up: 'w', left: 'a', down: 's', right: 'd' };
@@ -349,6 +386,7 @@ export function bindPointer() {
   canvas.addEventListener('lostpointercapture', (e) => demo.worldTouches.delete(e.pointerId));
 }
 export function worldClick(e: MouseEvent) {
+  if (needsMovementChoice()) return;
   const bounds = canvas.getBoundingClientRect();
   if (e.button !== undefined && e.button !== 0) return;
   if (
@@ -365,7 +403,10 @@ export function worldClick(e: MouseEvent) {
     demo.hudDrawerOpen ||
     $('#help-dialog').open ||
     $('#character-dialog').open ||
-    demo.state.tutorial?.dialog
+    $('#bindings-dialog').open ||
+    !!demo.state.tutorial?.coach?.current ||
+    demo.state.tutorial?.dialog ||
+    demo.state.tutorial?.stage === 'setup'
   )
     return;
   focusGame();
@@ -377,7 +418,6 @@ export function worldClick(e: MouseEvent) {
       (demo.pointer!.y - demo.height / 2) / demo.scale,
   };
   if (demo.state.armed) {
-    M.cancelWalk(demo.state);
     castAtPointer();
     ui();
     schedule();
@@ -391,11 +431,13 @@ export function worldClick(e: MouseEvent) {
         M.talk(demo.state, g.id);
         clear();
         syncGuide();
-      } else M.walkTo(demo.state, { x: g.x, y: 464 }, g.id);
+      } else if (demo.clickMovement) M.walkTo(demo.state, { x: g.x, y: 464 }, g.id);
+      else M.tell(demo.state, 'Acercate con WASD, flechas o joystick para hablar con el guía.');
       schedule();
       return;
     }
   }
+  if (!demo.clickMovement) return;
   if (demo.state.phase === 'hallway' && world.x >= 464 && demo.state.tutorial!.seen.length < 3)
     M.tell(demo.state, 'Meet all three guides before entering the arena.');
   if (

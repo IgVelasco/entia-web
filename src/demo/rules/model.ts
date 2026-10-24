@@ -1,6 +1,9 @@
 /* Single-player teaching rules, intentionally independent from RAO's live economy. */
 import * as Physics from '../../shared/physics.ts';
 import type { Body } from '../../shared/physics.ts';
+import { cardinal, walk } from './movement.ts';
+import { teach } from './combat-lessons.ts';
+import { blockingActor, sameTile, tileAt } from './occupancy.ts';
 import type { CastTarget, DemoState, Drop, Enemy, Input, Player, Point, Rect, SceneryItem, Spell } from './state.ts';
 const WIDTH = 1200,
   HEIGHT = 880,
@@ -26,6 +29,7 @@ function create(): DemoState {
     phase: 'arena',
     selectedSpell: 'apocalipsis',
     damageTexts: [],
+    movementBlock: '',
     player: { x: 304, y: 432, dir: 1, gait: 0, hp: 100, mana: 100, immobilized: 0 },
     carried: 0,
     secured: 0,
@@ -48,11 +52,14 @@ function create(): DemoState {
     meditating: false,
     meleeCooldown: 0,
     cooldown: 0,
+    hitToCast: 0,
+    castToHit: 0,
+    pendingMelee: 0,
     time: 0,
     fx: [],
     drops: [],
     nextDrop: 1,
-    notice: 'Prepare Apocalipsis with C, then click a rival. Stand on its dropped essence and press Q.',
+    notice: 'Seleccioná Apocalipsis y apretá Lanzar. Apuntá al casillero; E recoge esencia.',
     noticeId: 1,
     flash: 1,
     won: false,
@@ -197,6 +204,8 @@ function respawnPlayer(s: DemoState) {
   p.immobilized = 0;
   s.armed = false;
   s.meditating = false;
+  s.pendingMelee = 0;
+  s.fx = s.fx.filter((effect) => effect.targetId !== 'player');
   p.x = 176;
   p.y = 560;
   s.flash = 1;
@@ -242,9 +251,6 @@ function cancelDeposit(s: DemoState) {
   s.bankFraction = 0;
 }
 
-function cardinal(x: number, y: number): Point {
-  return Math.abs(x) >= Math.abs(y) ? { x: Math.sign(x), y: 0 } : { x: 0, y: Math.sign(y) };
-}
 function heading(x: number, y: number) {
   return Math.abs(x) > Math.abs(y) ? (x > 0 ? 1 : 3) : y > 0 ? 2 : 0;
 }
@@ -259,71 +265,86 @@ function move(actor: Body, dx: number, dy: number, others: Body[] = []) {
 }
 function cast(s: DemoState, target?: CastTarget | null) {
   if (!s.armed) return false;
+  s.pendingMelee = 0;
+  if (s.cooldown > 1e-6 || s.hitToCast > 1e-6) {
+    tell(s, 'Spell recovering. Keep aiming and click again when ready.');
+    return false;
+  }
+  if (!target || !Number.isFinite(target.x) || !Number.isFinite(target.y) || s.player.hp <= 0) return false;
+  // The client completes a sent attempt before receiving the target/mana result.
   s.armed = false;
-  if (s.cooldown > 0 || !target || !Number.isFinite(target.x) || !Number.isFinite(target.y)) return false;
+  s.cooldown = 1.38;
+  s.castToHit = 0.625;
+  s.potionAttackLockout = 0.31;
+  s.meditating = false;
   const p = s.player,
     d = Math.hypot(target.x - p.x, target.y - p.y),
     spell = spells[s.selectedSpell] || spells.apocalipsis;
-  const enemy = s.enemies.find(
-      (e) => e.name === target.enemyId && e.hp > 0 && Math.hypot(e.x - target.x, e.y - target.y) < 1,
-    ),
-    self = target.self === true && d < 1;
-  if (p.mana < spell.mana) {
-    tell(s, 'Not enough mana. Rest in the sanctuary to recover.');
+  // Casts resolve the tile under the visible feet. A reserved step destination
+  // belongs only to movement collision, never to a spell's hitbox.
+  const enemy = s.enemies.find((e) => e.hp > 0 && sameTile(e, target)),
+    self = sameTile(p, target);
+  const reject = (message: string, lesson: 'miss' | 'mana' | 'enemyRemover' = 'miss') => {
+    tell(s, message);
+    teach(s, lesson, lesson === 'enemyRemover' ? enemy!.name : 'player');
     return false;
+  };
+  if (p.mana < spell.mana) {
+    return reject('No tenés suficiente maná. Usá una poción y prepará el hechizo otra vez.', 'mana');
   }
   if (d > 270) {
-    tell(s, 'Out of range. Move closer to your target.');
-    return false;
+    return reject('Fuera de alcance. Acercate y volvé a preparar el hechizo.');
   }
   if (!lineClear(p, target)) {
-    tell(s, 'The spell is blocked. Find a clear line of sight.');
-    return false;
+    return reject('Un obstáculo bloqueó el intento. Buscá una línea de visión libre.');
   }
-  if (s.selectedSpell !== 'apocalipsis' && !enemy && !self) {
-    tell(s, 'Point at a character to cast this spell.');
-    return false;
-  }
-  if (s.selectedSpell === 'inmovilizar' && !enemy) {
-    tell(s, 'Aim Inmovilizar at a rival.');
-    return false;
-  }
+  if (s.selectedSpell === 'remover' && enemy)
+    return reject('No podés usar Remover sobre un enemigo. Apuntá a tu propio casillero.', 'enemyRemover');
+  if (s.selectedSpell === 'remover' && (!self || !p.immobilized))
+    return reject('Remover necesita tu propio casillero y una inmovilización activa.');
+  if (s.selectedSpell !== 'remover' && !enemy)
+    return reject('No acertaste a un rival. El cursor volvió a normal; prepará el hechizo para intentar otra vez.');
   if (s.selectedSpell === 'inmovilizar' && enemy!.immobilized > 0) {
-    tell(s, 'That rival is already immobilized.');
-    return false;
+    return reject('Ese rival ya está inmovilizado. El intento no gastó maná.');
   }
-  if (s.selectedSpell === 'remover' && !(self ? p : enemy!).immobilized) {
-    tell(s, 'That character is not immobilized.');
-    return false;
-  }
-  p.dir = heading(target.x - p.x, target.y - p.y);
-  s.cooldown = 0.75;
-  s.potionAttackLockout = 0.31;
-  s.meditating = false;
   p.mana -= spell.mana;
   if (s.selectedSpell === 'inmovilizar') {
     enemy!.immobilized = 3;
     enemy!.cleanseReaction = 0.9;
-    enemy!.step = null;
-    s.fx.push({ x: enemy!.x, y: enemy!.y, age: 0, hit: true, owner: 'bind' });
-    tell(s, `${enemy!.name} is immobilized. It can still cast and may remove the effect.`);
+    s.fx.push({ x: enemy!.x, y: enemy!.y, age: 0, hit: true, owner: 'bind', targetId: enemy!.name });
+    tell(s, `${enemy!.name} quedó inmovilizado. Gastaste ${spell.mana} de maná; todavía puede lanzar.`);
+    teach(s, 'inmovilizar', enemy!.name);
   } else if (s.selectedSpell === 'remover') {
-    const who = self ? p : enemy!;
-    who.immobilized = 0;
-    s.fx.push({ x: who.x, y: who.y, age: 0, hit: true, owner: 'cleanse' });
-    tell(s, self ? 'Movement restored.' : 'Paralysis removed.');
+    p.immobilized = 0;
+    s.fx.push({ x: p.x, y: p.y, age: 0, hit: true, owner: 'cleanse', targetId: 'player' });
+    tell(s, `Recuperaste el movimiento. Remover gastó ${spell.mana} de maná.`);
+    teach(s, 'remover');
   } else {
-    s.fx.push({ x: target.x, y: target.y, age: 0, hit: true, owner: 'player' });
+    s.fx.push({ x: enemy!.x, y: enemy!.y, age: 0, hit: true, owner: 'player', targetId: enemy!.name });
     if (enemy) {
       damage(s, enemy, 1);
       if (enemy.hp === 0) defeatEnemy(s, enemy);
-    } else tell(s, 'No rival under the pointer. Aim at a character and click.');
+    }
+    tell(s, `Acertaste Apocalipsis: el rival perdió vida y gastaste ${spell.mana} de maná.`);
+    teach(s, 'apocalipsis', enemy!.name);
   }
+  recordSpellWords(s, s.selectedSpell, 'player', p);
   return true;
 }
+function recordSpellWords(s: DemoState, spell: string, targetId: string, point: Point) {
+  s.fx = s.fx.filter((effect) => effect.owner !== 'words' || effect.targetId !== targetId);
+  s.fx.push({ x: point.x, y: point.y, owner: 'words', spell, targetId, age: 0, hit: true });
+}
 function melee(s: DemoState) {
-  if (s.meleeCooldown > 0) return false;
-  s.meleeCooldown = 1;
+  if (s.player.hp <= 0) return false;
+  const wait = Math.max(s.meleeCooldown, s.castToHit);
+  if (wait > 1e-6) {
+    if (wait <= 0.1 + 1e-6) s.pendingMelee = 0.1;
+    return false;
+  }
+  s.pendingMelee = 0;
+  s.meleeCooldown = 1.48;
+  s.hitToCast = 0.65;
   s.potionAttackLockout = 0.31;
   s.meditating = false;
   const p = s.player,
@@ -354,17 +375,18 @@ function melee(s: DemoState) {
 function meditate(s: DemoState) {
   s.meditating = !s.meditating;
   s.armed = false;
-  s.player.step = null;
   tell(s, s.meditating ? 'Meditating. Stay still to recover mana.' : 'Meditation stopped.');
 }
 function usePotion(s: DemoState, kind: string) {
+  if (s.tutorial?.stage === 'setup' || s.tutorial?.coach?.current) return false;
   const life = kind === 'life';
   if (!life && kind !== 'mana') return false;
   const stock = life ? 'lifePotions' : 'manaPotions',
     resource = life ? 'hp' : 'mana';
-  if (s.player.hp <= 0 || s[stock] <= 0 || s.potionCooldown > 1e-6 || s.potionAttackLockout > 1e-6) return false;
-  // Normal-area RAO semantics: a valid use consumes stock even at full resources.
-  s[stock]--;
+  if (s.player.hp <= 0 || (!s.tutorial && s[stock] <= 0) || s.potionCooldown > 1e-6 || s.potionAttackLockout > 1e-6)
+    return false;
+  // Practice has unlimited supplies, but keeps recovery and attack lockouts.
+  if (!s.tutorial) s[stock]--;
   s.potionCooldown = 0.26;
   s.player[resource] = Math.min(100, s.player[resource] + (life ? 40 : 50));
   s[life ? 'lifePulse' : 'manaPulse'] = 0.4;
@@ -388,15 +410,15 @@ function botStep(s: DemoState, e: Enemy, target: Point, dt: number) {
   const b = bankBounds(s),
     bankBlocked = (x: number, y: number) =>
       s.bankUnlocked && x + RADIUS > b.x && x - RADIUS < b.x + b.w && y + RADIUS > b.y && y - RADIUS < b.y + b.h;
-  const others = [s.player, ...s.enemies.filter((a) => a.hp > 0)];
   if (!e.step) {
     if (Math.hypot(target.x - e.x, target.y - e.y) < 4) return;
     let v = cardinal(target.x - e.x, target.y - e.y),
       end = { x: e.x + v.x * 32, y: e.y + v.y * 32 };
-    if (bankBlocked(end.x, end.y) || !physics.clear(e, end, others, e)) {
+    if (bankBlocked(end.x, end.y) || blockingActor(s, e, end) || !physics.clear(e, end)) {
       v = { x: v.x ? 0 : Math.sign(target.x - e.x), y: v.y ? 0 : Math.sign(target.y - e.y) };
+      if (!v.x && !v.y) return;
       end = { x: e.x + v.x * 32, y: e.y + v.y * 32 };
-      if (bankBlocked(end.x, end.y) || !physics.clear(e, end, others, e)) return;
+      if (bankBlocked(end.x, end.y) || blockingActor(s, e, end) || !physics.clear(e, end)) return;
     }
     e.step = { ...v, end, remaining: 32 };
     e.dir = heading(v.x, v.y);
@@ -405,7 +427,7 @@ function botStep(s: DemoState, e: Enemy, target: Point, dt: number) {
     distance = Math.min(step.remaining, e.speed * dt),
     moved = bankBlocked(e.x + step.x * distance, e.y + step.y * distance)
       ? 0
-      : move(e, step.x * distance, step.y * distance, others);
+      : move(e, step.x * distance, step.y * distance);
   e.moving = moved > 0.01;
   step.remaining -= moved;
   if (moved < distance - 0.001) e.step = null;
@@ -415,6 +437,52 @@ function botStep(s: DemoState, e: Enemy, target: Point, dt: number) {
     e.step = null;
   }
 }
+function meleeReach(a: Point, b: Point) {
+  const first = tileAt(a),
+    second = tileAt(b);
+  return (
+    Math.abs(first.x - second.x) + Math.abs(first.y - second.y) === 1 &&
+    Math.hypot(a.x - b.x, a.y - b.y) <= 48 &&
+    lineClear(a, b)
+  );
+}
+function pursueMelee(s: DemoState, e: Enemy, dt: number) {
+  if (e.immobilized) return;
+  const bank = bankBounds(s);
+  const queue = [{ x: e.x, y: e.y, first: null as Point | null }],
+    seen = new Set([`${e.x},${e.y}`]);
+  // Find a free adjacent tile, routing around rivals and the revealed bank.
+  // Replan only between footsteps so moving actors keep one reserved tile.
+  for (let i = 0; i < queue.length && i < 1400; i++) {
+    const point = queue[i];
+    if (meleeReach(point, s.player)) {
+      if (point.first) botStep(s, e, point.first, dt);
+      return;
+    }
+    for (const [x, y] of [
+      [0, -32],
+      [32, 0],
+      [0, 32],
+      [-32, 0],
+    ]) {
+      const next = { x: point.x + x, y: point.y + y },
+        key = `${next.x},${next.y}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (
+        blockingActor(s, e, next) ||
+        !physics.clear(point, next) ||
+        (s.bankUnlocked &&
+          next.x + RADIUS > bank.x &&
+          next.x - RADIUS < bank.x + bank.w &&
+          next.y + RADIUS > bank.y &&
+          next.y - RADIUS < bank.y + bank.h)
+      )
+        continue;
+      queue.push({ ...next, first: point.first || next });
+    }
+  }
+}
 function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
   dt = Math.max(0, Math.min(dt, 0.05));
   s.time += dt;
@@ -422,6 +490,8 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
   s.flash = Math.max(0, s.flash - dt * 1.5);
   s.cooldown = Math.max(0, s.cooldown - dt);
   s.meleeCooldown = Math.max(0, s.meleeCooldown - dt);
+  s.hitToCast = Math.max(0, s.hitToCast - dt);
+  s.castToHit = Math.max(0, s.castToHit - dt);
   for (const key of ['potionCooldown', 'potionAttackLockout', 'lifePulse', 'manaPulse'] as const)
     s[key] = Math.max(0, s[key] - dt);
   const p = s.player;
@@ -430,7 +500,7 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
     return;
   }
   p.immobilized = Math.max(0, p.immobilized - dt);
-  const vector = cardinal(input.x || 0, input.y || 0);
+  s.movementBlock = '';
   p.moving = false;
   // Banking uses the same solid footprint as other props once it appears.
   const activeObstacles = s.bankUnlocked ? [bankBounds(s)] : [];
@@ -438,65 +508,44 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
     activeObstacles.some(
       (o) => x + RADIUS > o.x && x - RADIUS < o.x + o.w && y + RADIUS > o.y && y - RADIUS < o.y + o.h,
     );
-  if (!p.immobilized && !p.step && (vector.x || vector.y)) {
-    const end = { x: p.x + vector.x * 32, y: p.y + vector.y * 32 };
-    p.dir = heading(vector.x, vector.y);
-    if (
-      !insideBank(end.x, end.y) &&
-      physics.clear(
-        p,
-        end,
-        s.enemies.filter((e) => e.hp > 0),
-        p,
-      )
-    )
-      p.step = { ...vector, end, remaining: 32 };
+  if (!p.immobilized) {
+    walk(
+      p,
+      dt,
+      input,
+      {
+        clear: (start, end) => {
+          const actor = blockingActor(s, p, end);
+          if (actor) {
+            s.movementBlock = `Casillero ocupado por ${'name' in actor ? actor.name : 'otro personaje'}.`;
+            return false;
+          }
+          const free = !insideBank(end.x, end.y) && physics.clear(start, end);
+          if (!free) s.movementBlock = 'Hay un obstáculo en ese casillero.';
+          return free;
+        },
+        move: (dx, dy) => (insideBank(p.x + dx, p.y + dy) ? 0 : move(p, dx, dy)),
+      },
+      s.navigation?.points,
+    );
   }
-  if (p.step && !p.immobilized) {
-    const step = p.step,
-      distance = Math.min(step.remaining, 160 * dt),
-      dx = step.x * distance,
-      dy = step.y * distance;
-    const moved = insideBank(p.x + dx, p.y + dy)
-      ? 0
-      : move(
-          p,
-          dx,
-          dy,
-          s.enemies.filter((e) => e.hp > 0),
-        );
-    p.moving = moved > 0.01;
-    step.remaining -= moved;
-    if (moved < distance - 0.001) p.step = null;
-    else if (step.remaining < 0.001) {
-      p.x = step.end.x;
-      p.y = step.end.y;
-      p.step = null;
-    }
+  if (p.immobilized && (input.x || input.y)) {
+    const direction = cardinal(input.x || 0, input.y || 0);
+    p.dir = heading(direction.x, direction.y);
+  }
+  if (s.pendingMelee > 0) {
+    if (Math.max(s.meleeCooldown, s.castToHit) <= 1e-6) melee(s);
+    else s.pendingMelee = Math.max(0, s.pendingMelee - dt);
   }
 
-  if (p.moving) s.meditating = false;
-  if (s.meditating) p.mana = Math.min(100, p.mana + 18 * dt);
+  if (p.moving && (input.x || input.y || s.navigation)) s.meditating = false;
+  if (s.meditating && !p.moving) p.mana = Math.min(100, p.mana + 18 * dt);
   const safe = p.x < 270;
   if (safe) {
     p.hp = Math.min(100, p.hp + 12 * dt);
     p.mana = Math.min(100, p.mana + 24 * dt);
   }
-  for (const f of s.fx) {
-    f.age += dt;
-    if (f.owner === 'enemy' && !f.hit && f.age >= 0.3) {
-      f.hit = true;
-      if (!safe && Math.hypot(p.x - f.x, p.y - f.y) < 35) {
-        if (f.spell === 'inmovilizar') {
-          p.immobilized = 2.5;
-          p.step = null;
-          tell(s, 'Immobilized! Prepare Remover parálisis and click yourself.');
-        } else damage(s, p, 12);
-        s.flash = 0.2;
-        cancelDeposit(s);
-      }
-    }
-  }
+  for (const f of s.fx) f.age += dt;
   s.fx = s.fx.filter((f) => f.age < 2);
   if (p.hp <= 0) {
     respawnPlayer(s);
@@ -534,6 +583,10 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
 
   for (const e of s.enemies) {
     e.moving = false;
+    if (e.kind === 'practice') {
+      e.dir = heading(p.x - e.x, p.y - e.y);
+      continue;
+    }
     e.cooldown = Math.max(0, e.cooldown - dt);
     if (e.hp <= 0) {
       e.respawn -= dt;
@@ -561,8 +614,36 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
         e.immobilized = 0;
         e.cleanseCooldown = 5;
         s.fx.push({ x: e.x, y: e.y, age: 0, hit: true, owner: 'cleanse' });
-        tell(s, `${e.name} used Remover parálisis.`);
+        recordSpellWords(s, 'remover', e.name, e);
+        tell(s, `${e.name} usó Remover y recuperó el movimiento.`);
+        teach(s, 'enemyCleanse', e.name);
+        if (s.tutorial?.coach?.current) break;
       }
+    }
+    if (e.step && !e.immobilized) {
+      botStep(s, e, e.step.end, dt);
+      continue;
+    }
+    if (e.kind === 'melee' && !safe && Math.hypot(p.x - e.x, p.y - e.y) < 480) {
+      e.dir = heading(p.x - e.x, p.y - e.y);
+      if (meleeReach(e, p)) {
+        if (e.cooldown === 0) {
+          e.cooldown = 1.48;
+          damage(s, p, 8);
+          s.fx.push({ x: p.x, y: p.y, age: 0, hit: true, owner: 'melee', targetId: 'player' });
+          s.meditating = false;
+          s.flash = 0.2;
+          cancelDeposit(s);
+          tell(s, `${e.name} te golpeó cuerpo a cuerpo: perdiste 8 de vida. Alejate o usá una poción de vida.`);
+          teach(s, 'receivedMelee');
+          if (s.tutorial?.coach?.current) break;
+          if (p.hp <= 0) {
+            respawnPlayer(s);
+            break;
+          }
+        }
+      } else pursueMelee(s, e, dt);
+      continue;
     }
     const loot = s.drops
       .filter((d) => s.time >= d.readyAt + 1 && d.x >= 270 && Math.hypot(d.x - e.x, d.y - e.y) < 240)
@@ -581,34 +662,60 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
       if (e.wind <= 0) {
         e.cooldown = 2.4;
         if (!safe && e.aim && lineClear(e, e.aim)) {
-          s.fx.push({
-            x: e.aim.x,
-            y: e.aim.y,
-            age: 0,
-            hit: false,
-            owner: 'enemy',
-            spell: e.attackSpell || 'apocalipsis',
-          });
+          resolveEnemySpell(s, e.aim, e.attackSpell || 'apocalipsis');
+          recordSpellWords(s, e.attackSpell || 'apocalipsis', e.name, e);
+          if (s.tutorial?.coach?.current) break;
         }
       }
       continue;
     }
-    if (!safe && d < 480) {
+    if (e.kind !== 'melee' && !safe && d < 480) {
       if (d < 170 && e.cooldown === 0 && lineClear(e, p)) {
         e.wind = 0.85;
         e.attackCount = (e.attackCount || 0) + 1;
         e.attackSpell = e.attackCount % 4 === 0 ? 'inmovilizar' : 'apocalipsis';
         e.aim = { x: p.x, y: p.y };
-        e.step = null;
       } else if (d > 115) botStep(s, e, p, dt);
     } else if (Math.hypot(e.x - e.homeX, e.y - e.homeY) > 5) botStep(s, e, { x: e.homeX, y: e.homeY }, dt);
   }
-  if (s.autopotEnabled && s.heldPotions.length) {
+  if (!s.tutorial?.coach?.current && s.autopotEnabled && s.heldPotions.length) {
     const primary = s.heldPotions.at(-1)!;
     if (usePotion(s, primary.kind)) primary.claimed = true;
   }
 }
+// Resolve an NPC's chosen tile at launch. Animation does not defer damage or add a radius.
+function resolveEnemySpell(s: DemoState, target: Point, spell = 'apocalipsis') {
+  const p = s.player;
+  const hit = p.x >= 270 && sameTile(p, target);
+  s.fx.push({
+    x: hit ? p.x : target.x,
+    y: hit ? p.y : target.y,
+    age: 0,
+    hit,
+    owner: 'enemy',
+    spell,
+    targetId: hit ? 'player' : undefined,
+  });
+  if (!hit) {
+    tell(s, 'El rival falló: el hechizo no acertó tu casillero.');
+    teach(s, 'enemyMiss');
+    return false;
+  }
+  if (spell === 'inmovilizar') {
+    p.immobilized = 2.5;
+    tell(s, 'Te inmovilizaron. Podés girar y lanzar: usá Remover sobre tu casillero (10 de maná).');
+    teach(s, 'receivedInmovilizar');
+  } else {
+    damage(s, p, 12);
+    tell(s, 'Te acertaron Apocalipsis: perdiste 12 de vida. Usá una poción de vida si hace falta.');
+    teach(s, 'receivedApocalipsis');
+  }
+  s.flash = 0.2;
+  cancelDeposit(s);
+  return true;
+}
 const api = {
+  resolveEnemySpell,
   bankAt,
   bankBounds,
   spells,

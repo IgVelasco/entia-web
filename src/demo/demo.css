@@ -766,7 +766,7 @@ aside {
   gap: 9px;
   border-left: 0;
   display: grid;
-  grid-template-rows: minmax(220px, 1.1fr) minmax(165px, 0.72fr) auto auto;
+  grid-template-rows: minmax(220px, 1.1fr) minmax(210px, 0.72fr) auto auto;
   overflow: hidden;
 }
 .rao-window {
@@ -856,7 +856,8 @@ aside {
 }
 .spell-list {
   flex: 1;
-  min-height: 48px;
+  min-height: 81px;
+  flex-shrink: 0;
   background: #242822;
   padding: 2px;
 }
@@ -1028,7 +1029,8 @@ aside {
   bottom: 118px;
 }
 #message {
-  bottom: 176px;
+  top: auto;
+  bottom: 8px;
 }
 #target-help {
   bottom: 8px;
@@ -1045,7 +1047,7 @@ aside {
     width: 290px;
     padding: 10px;
     gap: 8px;
-    grid-template-rows: minmax(215px, 1fr) minmax(160px, 0.7fr) auto auto auto;
+    grid-template-rows: minmax(215px, 1fr) minmax(210px, 0.7fr) auto auto auto;
     overflow-y: auto;
     background: #18251cef;
   }

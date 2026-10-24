@@ -1,14 +1,19 @@
 import M from './rules/navigation.ts';
 import { load } from './assets.ts';
-import { $, canvas, demo } from './context.ts';
+import { $, canvas, demo, needsMovementChoice } from './context.ts';
 import { returnToNix } from './embed.ts';
 import { bindTap, clear, interact, prepareSpell } from './input.ts';
 import { schedule } from './loop.ts';
 import { animateGuide, motion, resetMotion } from './motion.ts';
 import type { TutorialState } from './rules/state.ts';
+import { syncSetup } from './setup.ts';
+import { syncCombatCoach } from './combat-coach.ts';
+import { macroActions, macroLabels, keyLabel } from './rules/macros.ts';
 
 export function ui() {
   syncGuide();
+  syncSetup();
+  syncCombatCoach();
   // Counts are written as numbers; the DOM stringifies them.
   const p = demo.state.player;
   $('#health-fill').style.width = p.hp + '%';
@@ -16,16 +21,22 @@ export function ui() {
   $('#mana-fill').style.width = p.mana + '%';
   $('#mana').textContent = Math.floor(p.mana) + ' / 100';
   $('#mobile-vitals').textContent = 'Life ' + Math.ceil(p.hp) + ' · Mana ' + Math.floor(p.mana);
+  $('#movement-status').textContent =
+    p.immobilized > 0
+      ? `Inmovilizado · ${Math.ceil(p.immobilized)} s · Usá Remover parálisis o esperá.`
+      : demo.state.movementBlock;
+  $('#movement-status').hidden = !p.immobilized && !demo.state.movementBlock;
   $('#carried').textContent = String(demo.state.carried);
   $('#autopot').checked = demo.state.autopotEnabled;
-  $('#life-stock').textContent = String(demo.state.lifePotions);
-  $('#mana-stock').textContent = String(demo.state.manaPotions);
-  $('#life-inventory-count').textContent = String(demo.state.lifePotions);
-  $('#mana-inventory-count').textContent = String(demo.state.manaPotions);
-  $('#life-potion').disabled = !demo.state.lifePotions;
-  $('#mana-potion').disabled = !demo.state.manaPotions;
-  $('#macro-life').disabled = !demo.state.lifePotions;
-  $('#macro-mana').disabled = !demo.state.manaPotions;
+  const unlimited = !!demo.state.tutorial;
+  $('#life-stock').textContent = unlimited ? '∞' : String(demo.state.lifePotions);
+  $('#mana-stock').textContent = unlimited ? '∞' : String(demo.state.manaPotions);
+  $('#life-inventory-count').textContent = unlimited ? '∞' : String(demo.state.lifePotions);
+  $('#mana-inventory-count').textContent = unlimited ? '∞' : String(demo.state.manaPotions);
+  $('#life-potion').disabled = !unlimited && !demo.state.lifePotions;
+  $('#mana-potion').disabled = !unlimited && !demo.state.manaPotions;
+  $('#macro-life').disabled = !unlimited && !demo.state.lifePotions;
+  $('#macro-mana').disabled = !unlimited && !demo.state.manaPotions;
   $('#health-fill').classList.toggle('potion-used', demo.state.lifePulse > 0);
   $('#mana-fill').classList.toggle('potion-used', demo.state.manaPulse > 0);
   $('#secured').textContent = String(demo.state.secured);
@@ -42,7 +53,7 @@ export function ui() {
   $('#hint').textContent = demo.state.carried
     ? 'Stay near the bank to secure your essence. Fall and you drop what you carry.'
     : demo.state.drops.length
-      ? 'Stand on a crystal and press Q. Your dropped essence can be recovered.'
+      ? 'Stand on a crystal and use Pick up or your interaction key. Your dropped essence can be recovered.'
       : `Prepare Apocalipsis, then point and click a rival. ${demo.state.secured} / 60 secured.`;
   const near = M.nearBank(demo.state),
     gate = M.nearGate(demo.state),
@@ -59,14 +70,14 @@ export function ui() {
         ? 'Carrying ' + demo.state.carried + ' · bank south of the portal'
         : 'Bank unlocked · ' + demo.state.secured + ' essence secured';
   $('#interact').innerHTML = item
-    ? 'Pick up essence <kbd>Q</kbd>'
+    ? `Pick up essence <kbd>${keyLabel(demo.macroBindings.interact)}</kbd>`
     : demo.state.bank >= 1
       ? 'Drawing in essence…'
       : demo.state.bank
         ? 'Stay nearby…'
         : near
           ? 'Essence bank · automatic transfer'
-          : 'Return to Nix <kbd>E</kbd>';
+          : `Return to Nix <kbd>${keyLabel(demo.macroBindings.interact)}</kbd>`;
   $('#bank-progress').hidden = !demo.state.bank;
   $('#bank-progress span').style.width =
     (demo.state.bank < 1
@@ -74,21 +85,57 @@ export function ui() {
       : Math.max(0, (1 - demo.state.carried / Math.max(1, demo.state.bankAmount)) * 100)) + '%';
   $('#cast').disabled = demo.paused;
   $('#meditate').setAttribute('aria-pressed', String(demo.state.meditating));
-  $('#meditate').textContent = demo.state.meditating ? 'Meditating… N to stop' : 'Meditate · N';
+  $('#meditate').textContent =
+    (demo.state.meditating ? 'Meditar: activo' : 'Meditar') + ' · ' + keyLabel(demo.macroBindings.meditate);
+  $('#use-selected').textContent = 'Usar · ' + keyLabel(demo.macroBindings.use);
+  $('#pause kbd').textContent = keyLabel(demo.macroBindings.pause);
   $('#prepare-spell').disabled = demo.paused;
-  $('#prepare-spell').textContent = demo.state.armed ? 'Cancel aim' : 'Prepare';
+  $('#prepare-spell').textContent = demo.state.armed ? 'Cancelar' : 'Lanzar';
+  $('#cast').textContent = demo.state.armed ? 'Cancelar' : 'Lanzar';
   $('#prepare-spell').setAttribute('aria-pressed', String(demo.state.armed));
   $('#cast').setAttribute('aria-pressed', String(demo.state.armed));
   $('#target-help').dataset.armed = String(demo.state.armed);
   $('#target-help').textContent = demo.state.armed
     ? M.spells[demo.state.selectedSpell].name +
       ' ready · ' +
-      (demo.state.selectedSpell === 'remover' ? 'click yourself or a character' : 'click a rival') +
+      (demo.state.selectedSpell === 'remover' ? 'click your own tile' : 'click a rival') +
       ' · Esc cancels'
-    : 'Click to walk · C to aim · Q to pick up';
-  $('#spell-status').textContent = demo.state.armed
-    ? 'Ready: click your target'
-    : M.spells[demo.state.selectedSpell].name + ' · ' + M.spells[demo.state.selectedSpell].mana + ' mana';
+    : (demo.clickMovement ? 'Clic, teclas o joystick para caminar' : 'Solo teclas o joystick para caminar') +
+      ' · seleccioná un hechizo y apretá Lanzar';
+  for (const action of macroActions) {
+    const id = action === 'apocalipsis' ? 'spell' : action;
+    $('#macro-' + id + ' kbd').textContent = demo.macroBindings[action] ? keyLabel(demo.macroBindings[action]) : '—';
+    $('#macro-' + id).setAttribute(
+      'aria-label',
+      macroLabels[action] +
+        (demo.macroBindings[action] ? ' · ' + keyLabel(demo.macroBindings[action]) : ' · sin tecla'),
+    );
+  }
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-spell]')) {
+    const selected = button.dataset.spell === demo.state.selectedSpell;
+    button.setAttribute('aria-selected', String(selected));
+    button.tabIndex = selected ? 0 : -1;
+    button.setAttribute(
+      'aria-label',
+      M.spells[button.dataset.spell!].name +
+        (demo.macroBindings[button.dataset.spell! as keyof typeof demo.macroBindings]
+          ? ' · ' + keyLabel(demo.macroBindings[button.dataset.spell! as keyof typeof demo.macroBindings])
+          : ''),
+    );
+    button.querySelector('[data-spell-key]')!.textContent = demo.macroBindings[
+      button.dataset.spell! as keyof typeof demo.macroBindings
+    ]
+      ? keyLabel(demo.macroBindings[button.dataset.spell! as keyof typeof demo.macroBindings])
+      : '—';
+  }
+  $('#mobile-spell').value = demo.state.selectedSpell;
+  const recovery = Math.max(demo.state.cooldown, demo.state.hitToCast);
+  $('#spell-status').textContent =
+    recovery > 0
+      ? 'Recovering · ' + recovery.toFixed(1) + 's' + (demo.state.armed ? ' · aim stays ready' : '')
+      : demo.state.armed
+        ? 'Ready: click your target'
+        : M.spells[demo.state.selectedSpell].name + ' · ' + M.spells[demo.state.selectedSpell].mana + ' mana';
   $('#inventory-count').textContent = String(demo.state.carried);
   $('#essence-slot').disabled = demo.state.carried === 0;
   $('#item-description').textContent =
@@ -98,8 +145,12 @@ export function ui() {
         ? 'Life potion · restores 40'
         : 'Mana potion · restores 50';
   $('#use-selected').disabled = demo.selectedInventory === 'essence' || demo.paused;
-  canvas.style.cursor = demo.state.armed ? 'crosshair' : 'pointer';
-  $('#cast').style.opacity = demo.state.cooldown > 0 ? '.55' : '1';
+  canvas.style.cursor = demo.state.armed ? 'crosshair' : 'default';
+  $('#cast').style.opacity = recovery > 0 ? '.55' : '1';
+  for (const id of ['#strike', '#mobile-strike']) {
+    $(id).textContent = 'Golpear · ' + keyLabel(demo.macroBindings.strike);
+    $(id).style.opacity = Math.max(demo.state.meleeCooldown, demo.state.castToHit) > 0 ? '.55' : '1';
+  }
 
   tutorialUI();
   if (demo.state.noticeId !== demo.noticeId) {
@@ -107,7 +158,10 @@ export function ui() {
     $('#message').textContent = demo.state.notice;
     demo.messageUntil = performance.now() + 5000;
   }
-  $('#message').classList.toggle('visible', performance.now() < demo.messageUntil);
+  $('#message').classList.toggle(
+    'visible',
+    demo.state.tutorial?.stage !== 'melee' && performance.now() < demo.messageUntil,
+  );
 }
 export function showHelp(first = false) {
   if (!demo.ready) return;
@@ -189,6 +243,18 @@ export function bindActionButtons() {
   $('#retry').onclick = load;
 }
 export function bindHud() {
+  $('#practice-continue').onclick = () => {
+    if (
+      demo.paused ||
+      !(demo.state.tutorial?.stage === 'melee' ? M.startSpellPractice(demo.state) : M.startFight(demo.state))
+    )
+      return;
+    clear();
+    ui();
+    demo.previous = performance.now();
+    focusGame();
+    schedule();
+  };
   $('#hud-help').onclick = () => showHelp();
   $('#close-help').onclick = hideHelp;
   $('#help-dialog').addEventListener('cancel', (e) => {
@@ -215,7 +281,13 @@ export function bindHud() {
   });
   $('#selected-spell').onclick = () => focusGame();
   $('#selected-spell').ondblclick = prepareSpell;
-  bindTap($('#macro-spell'), prepareSpell);
+  for (const action of ['apocalipsis', 'inmovilizar', 'remover']) {
+    const id = action === 'apocalipsis' ? 'spell' : action;
+    bindTap($('#macro-' + id) as HTMLButtonElement, () => {
+      selectSpell(action);
+      prepareSpell();
+    });
+  }
   for (const kind of ['life', 'mana']) {
     const button = $('#macro-' + kind),
       key = 'pointer-' + kind;
@@ -256,8 +328,33 @@ export function selectSpell(id: string) {
   ui();
 }
 export function bindSpells() {
-  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-spell]')) {
+  const buttons = [...document.querySelectorAll<HTMLButtonElement>('[data-spell]')];
+  for (const [index, button] of buttons.entries()) {
     button.onclick = () => selectSpell(button.dataset.spell!);
+    button.onkeydown = (event) => {
+      const directions = ['ArrowDown', 'ArrowUp', 'Home', 'End'];
+      if (!directions.includes(event.key) && event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      event.stopPropagation();
+      const next =
+        event.key === 'Home'
+          ? 0
+          : event.key === 'End'
+            ? buttons.length - 1
+            : event.key === 'ArrowDown'
+              ? (index + 1) % buttons.length
+              : event.key === 'ArrowUp'
+                ? (index + buttons.length - 1) % buttons.length
+                : index;
+      selectSpell(buttons[next].dataset.spell!);
+      buttons[next].focus();
+    };
+    button.onkeyup = (event) => {
+      if ([' ', 'Enter', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
     button.ondblclick = () => {
       selectSpell(button.dataset.spell!);
       prepareSpell();
@@ -273,6 +370,7 @@ export function bindSpells() {
 }
 export function focusGame() {
   if (
+    needsMovementChoice() ||
     !demo.ready ||
     demo.paused ||
     demo.hostSuspended ||
@@ -280,6 +378,9 @@ export function focusGame() {
     document.hidden ||
     demo.hudDrawerOpen ||
     demo.state.tutorial?.dialog ||
+    demo.state.tutorial?.stage === 'setup' ||
+    !!demo.state.tutorial?.coach?.current ||
+    $('#bindings-dialog').open ||
     $('#help-dialog').open ||
     $('#character-dialog').open
   )
@@ -325,12 +426,31 @@ function tutorialUI() {
   const t = demo.state.tutorial;
   if (!t) return;
   const hall = demo.state.phase === 'hallway',
+    setup = t.stage === 'setup',
+    melee = t.stage === 'melee',
+    spellPractice = t.stage === 'spells',
+    practice = melee || spellPractice,
     done = t.stage === 'complete';
+  $('#melee-practice').hidden = !practice;
+  const hit = melee ? M.meleePracticeHit(demo.state) : M.spellPracticeComplete(demo.state);
+  $('#practice-title').textContent = melee ? 'Practicá un golpe cuerpo a cuerpo' : 'Practicá tus hechizos';
+  $('#practice-description').textContent =
+    'Acercate al casillero contiguo del Entrenador. Miralo de frente con WASD, flechas o joystick: el golpe sale hacia donde mirás, no hacia el cursor.';
+  $('#practice-continue').textContent = melee ? 'Practicar hechizos' : 'Seguir a la pelea';
+  $('#practice-continue').disabled = !hit || demo.paused;
+  $('#practice-status').textContent = hit
+    ? '¡Golpe acertado! Ya podés practicar hechizos.'
+    : 'Pendiente: acertá un golpe al Entrenador. Un golpe al aire no cuenta.';
+  $('#practice-instructions').textContent = demo.macroBindings.strike
+    ? `Usá Golpear o tu tecla ${keyLabel(demo.macroBindings.strike)}. Esperá la recuperación entre intentos. El entrenador no ataca.`
+    : 'Usá el botón Golpear, o asigná una tecla en Teclas y macros. El entrenador no ataca.';
+  $('#strike').hidden = hall || setup || done;
   $('#chapter').textContent = hall
     ? 'THE VEIL / FIRST STEPS'
     : done
       ? 'THE VEIL / TUTORIAL FINISHED'
       : 'THE VEIL / ARENA';
+  if (setup) $('#chapter').textContent = 'THE VEIL / PREPARACIÓN';
   $('#objective-label').textContent = hall
     ? 'MEET YOUR GUIDES'
     : done
@@ -346,12 +466,14 @@ function tutorialUI() {
         ? 'The bank is nearby'
         : Math.min(2, demo.state.kills) + ' / 2 rivals defeated';
   $('#hint').textContent = hall
-    ? 'Click the carpet or use movement keys. Each guide speaks as you reach them.'
+    ? (demo.clickMovement
+        ? 'Clic en la alfombra, WASD, flechas o joystick para caminar.'
+        : 'Usá WASD, flechas o joystick para caminar. El clic no te mueve.') + ' Cada guía habla cuando te acercás.'
     : done
       ? 'The full-match rules are provisional. Replay, review them or return to Nix.'
       : t.bankRevealed
-        ? 'Pick up crystals with Q. Follow BANK and stay nearby until your carried essence is secured.'
-        : 'Prepare, aim and cast. Pick up crystals with Q or Pick up.';
+        ? 'Recogé cristales con el botón o tu tecla de interacción. Seguí BANK y permanecé cerca para guardar la esencia.'
+        : 'Elegí un hechizo y apretá Lanzar, o usá tu macro. Apuntá al casillero. Usá tu tecla de interacción para recoger.';
   $('#deposit-status').textContent = hall
     ? 'Safe hallway · learn at your pace'
     : done
@@ -379,10 +501,58 @@ function tutorialUI() {
     const g = M.nearGuide(demo.state);
     $('.interact-area').hidden = !g;
     $('#interact').disabled = !g;
-    $('#interact').textContent = g ? 'Talk to ' + g.name + ' · E' : 'Talk';
+    $('#interact').textContent = g ? 'Talk to ' + g.name + ' · ' + keyLabel(demo.macroBindings.interact) : 'Talk';
   }
   $('#cast').disabled = demo.paused || hall || done;
   $('#prepare-spell').disabled = demo.paused || hall || done;
+  if (setup) {
+    $('#cast').disabled = true;
+    $('#prepare-spell').disabled = true;
+    $('#objective-label').textContent = 'PREPARÁ TUS CONTROLES';
+    $('#objective').textContent = 'Sala segura';
+    $('#hint').textContent = 'Conocé las ventanas y elegí si querés usar macros antes de combatir.';
+    $('#deposit-status').textContent = 'Combate detenido · no se gasta vida, maná ni pociones';
+  }
+  if (practice) {
+    $('#chapter').textContent = 'THE VEIL / PRÁCTICA CUERPO A CUERPO';
+    $('#objective-label').textContent = 'APRENDÉ A GOLPEAR';
+    $('#objective').textContent = hit ? '1 / 1 golpe acertado' : '0 / 1 golpe acertado';
+    $('#hint').textContent = 'Acercate al Entrenador y miralo de frente. Golpear no sigue al cursor.';
+    $('#deposit-status').textContent = 'Práctica segura · acertá un golpe antes de seguir';
+    $('#cast').disabled = true;
+    $('#prepare-spell').disabled = true;
+  }
+  if (spellPractice) {
+    const step = t.meleePractice!.spellStep!;
+    const descriptions = {
+      apocalipsis:
+        'Prepará Apocalipsis con Lanzar o tu macro y acertale al Entrenador. Un clic, un casillero; consume 15 de maná.',
+      inmovilizar: 'Acertá Inmovilizar al Entrenador. Consume 20 de maná y le impide avanzar; todavía puede lanzar.',
+      counter:
+        demo.state.player.x < 270
+          ? 'Volvé a la arena, a la derecha del portal, para que el Entrenador te inmovilice.'
+          : 'Ahora el Entrenador va a inmovilizarte para que practiques Remover.',
+      remover:
+        'Estás inmovilizado. Prepará Remover y lanzalo sobre tu figura o tus pies. Consume 10 de maná. Podés girar y lanzar.',
+      complete:
+        'Ya acertaste Apocalipsis e Inmovilizar al Entrenador y usaste Remover sobre vos. Podés seguir a la pelea.',
+    };
+    const count = step === 'apocalipsis' ? 0 : step === 'inmovilizar' ? 1 : step === 'complete' ? 3 : 2;
+    $('#chapter').textContent = 'THE VEIL / PRÁCTICA DE HECHIZOS';
+    $('#objective-label').textContent = 'APRENDÉ A LANZAR';
+    $('#objective').textContent = `${count} / 3 hechizos practicados`;
+    $('#practice-description').textContent = descriptions[step];
+    $('#practice-instructions').textContent =
+      'Seleccioná el hechizo indicado y usá Lanzar o su macro. El cursor apunta libremente; lanzar conserva hacia dónde mirás.';
+    $('#practice-status').textContent =
+      step === 'complete'
+        ? '¡Práctica completada! Ya podés seguir a la pelea.'
+        : `Paso ${Math.min(3, count + 1)} de 3 · ${step === 'counter' ? 'Esperá el hechizo del Entrenador' : M.spells[step].name}`;
+    $('#hint').textContent = descriptions[step];
+    $('#deposit-status').textContent = 'Práctica segura · los fallos no completan el ejercicio';
+    $('#cast').disabled = demo.paused || step === 'counter' || step === 'complete';
+    $('#prepare-spell').disabled = $('#cast').disabled;
+  }
   if (t.bankRevealed && !done) {
     const b = M.bankAt(demo.state),
       dx = b.x - demo.state.player.x,
@@ -432,7 +602,14 @@ function paintPortrait(id: string) {
   if (demo.images[body]) c.drawImage(demo.images[body], 0, 320, 96, 160, 0, -20, 96, 160);
 }
 function updateJourney(t: TutorialState) {
-  const index = t.stage === 'hallway' ? 0 : t.stage === 'fight' ? 1 : t.stage === 'deposit' ? 2 : 3;
+  const index =
+    t.stage === 'hallway' || t.stage === 'setup'
+      ? 0
+      : t.stage === 'fight' || t.stage === 'melee' || t.stage === 'spells'
+        ? 1
+        : t.stage === 'deposit'
+          ? 2
+          : 3;
   for (let i = 0; i < 4; i++) {
     const step = $('#journey-' + i);
     step.dataset.state = i < index ? 'done' : i === index ? 'current' : 'waiting';

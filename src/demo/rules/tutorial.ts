@@ -1,5 +1,7 @@
 /* Guided offline onboarding. Numerical match limits remain design proposals. */
 import M from './model.ts';
+import { walk } from './movement.ts';
+import { createCoach, teach, dismissCombatLesson, skipCombatLessons, enableCombatLessons } from './combat-lessons.ts';
 import type { DemoState, Guide } from './state.ts';
 const hallway = {
   floor: { x: 48, y: 384, w: 512, h: 160 },
@@ -23,7 +25,7 @@ const guides: Guide[] = [
     title: 'Find your footing',
     lines: [
       'Welcome to the Veil. Walk along this hall and meet our three guides before you enter the arena.',
-      'Click or tap the floor to walk there. WASD, arrows or the thumbstick also move you. Each guide introduces their lesson as you reach them. You can also click a guide, or press E nearby, to talk again.',
+      'Click or tap the floor to walk there. WASD, arrows or the thumbstick also move you. Each guide introduces their lesson as you reach them. Click a guide or use your assigned interaction key nearby to talk again. Teclas y macros shows every assignment.',
     ],
   },
   {
@@ -36,8 +38,8 @@ const guides: Guide[] = [
     gait: 0,
     title: 'Aim. Cast. Keep moving.',
     lines: [
-      'Normally, a click moves you. Press C or Prepare to enter aiming mode: the next click casts instead of walking. Escape or Prepare again cancels aiming. Prepare again for each cast. Space or Strike attacks in front of you.',
-      'Keep moving away from incoming spell markers. Hold the life or mana potion button to repeat it. N or Meditate recovers mana while you stand still.',
+      'Select a spell and press Lanzar, then click the ground tile you want to target. The cursor stays free. Before combat, a safe workshop will show spells, potions and optional keyboard macros.',
+      'Keep moving during combat. Immobilization stops translation but still allows turning and casting. Remover parálisis on your own tile restores movement and costs mana; it cannot release an enemy. Meditate recovers mana while standing still.',
     ],
   },
   {
@@ -50,18 +52,20 @@ const guides: Guide[] = [
     gait: 0,
     title: 'Carry risk. Bank safety.',
     lines: [
-      'Defeated rivals drop essence. Stand on a crystal and press Q or Pick up. Carried essence drops when you fall; rivals can take it.',
+      'Defeated rivals drop essence. Stand on a crystal and use Pick up or your assigned interaction key. Carried essence drops when you fall; rivals can take it. All keys, including the alternative pickup key, can be changed in Teclas y macros.',
       'Fight a few rivals in the arena. A bank will appear nearby. Stay beside it until your carried essence has transferred. Secured essence stays safe.',
     ],
   },
 ];
 function createTutorial() {
   const s = M.create();
+  s.enemies.find((enemy) => enemy.name === 'Sentinel')!.kind = 'melee';
   s.phase = 'hallway';
   s.player.x = 80;
   s.player.y = 464;
   s.tutorial = {
     stage: 'hallway',
+    coach: createCoach(),
     seen: [],
     dialog: null,
     page: 0,
@@ -70,7 +74,7 @@ function createTutorial() {
     finalRead: false,
     hallTime: 0,
   };
-  M.tell(s, 'Walk right and meet the Warden. E or Talk opens a conversation.');
+  M.tell(s, 'Walk right and meet the Warden. Talk or your interaction key opens a conversation.');
   return s;
 }
 function nearGuide(s: DemoState) {
@@ -105,6 +109,8 @@ function talk(s: DemoState, id: string) {
   s.armed = false;
   s.player.step = null;
   M.clearPotionKeys(s);
+  s.pendingMelee = 0;
+  s.player.moving = false;
   return true;
 }
 function next(s: DemoState) {
@@ -125,12 +131,88 @@ function hallExitX(_y: number) {
 function enterArena(s: DemoState) {
   if (s.tutorial!.seen.length !== guides.length) return false;
   s.phase = 'arena';
-  s.tutorial!.stage = 'fight';
+  s.tutorial!.stage = 'setup';
   s.player.x = 304;
   s.player.y = 432;
   s.player.step = null;
   s.flash = 0.7;
-  M.tell(s, 'Defeat two rivals and collect their essence. A nearby bank will reveal itself.');
+  M.tell(s, 'Prepará tus controles. La pelea comienza únicamente cuando elijas entrar.');
+  return true;
+}
+function startMeleePractice(s: DemoState) {
+  if (s.phase !== 'arena' || s.tutorial?.stage !== 'setup') return false;
+  const template = s.enemies.find((enemy) => enemy.name === 'Sentinel')!;
+  s.tutorial.meleePractice = { target: 'Entrenador', arenaEnemies: s.enemies };
+  s.tutorial.stage = 'melee';
+  s.enemies = [
+    {
+      ...template,
+      name: 'Entrenador',
+      kind: 'practice',
+      x: 400,
+      y: 432,
+      homeX: 400,
+      homeY: 432,
+      hp: 2,
+      maxHp: 2,
+      reward: 0,
+      essence: 0,
+      cooldown: 0,
+    },
+  ];
+  s.armed = false;
+  s.player.step = null;
+  M.clearPotionKeys(s);
+  M.tell(
+    s,
+    'Práctica segura: acercate al Entrenador, miralo de frente y acertale un golpe cuerpo a cuerpo para seguir.',
+  );
+  return true;
+}
+function meleePracticeHit(s: DemoState) {
+  const practice = s.tutorial?.meleePractice;
+  const target = s.enemies.find((enemy) => enemy.name === practice?.target);
+  return s.tutorial?.stage === 'melee' && !!practice && !!target && target.hp < target.maxHp;
+}
+function startSpellPractice(s: DemoState) {
+  if (!meleePracticeHit(s)) return false;
+  const t = s.tutorial!;
+  t.stage = 'spells';
+  t.meleePractice!.spellStep = 'apocalipsis';
+  Object.assign(s.enemies[0], { x: 464, y: 432, hp: 3, maxHp: 3, immobilized: 0 });
+  s.player = { x: 304, y: 432, dir: 1, gait: 0, hp: 100, mana: 100, immobilized: 0 };
+  s.selectedSpell = 'apocalipsis';
+  s.armed = false;
+  s.cooldown = s.meleeCooldown = s.hitToCast = s.castToHit = s.pendingMelee = s.potionAttackLockout = 0;
+  s.navigation = null;
+  s.fx = [];
+  s.damageTexts = [];
+  M.clearPotionKeys(s);
+  return true;
+}
+function spellPracticeComplete(s: DemoState) {
+  return s.tutorial?.stage === 'spells' && s.tutorial.meleePractice?.spellStep === 'complete';
+}
+function startFight(s: DemoState) {
+  if (!spellPracticeComplete(s)) return false;
+  s.enemies = s.tutorial!.meleePractice!.arenaEnemies;
+  delete s.tutorial!.meleePractice;
+  s.player = { x: 304, y: 432, dir: 1, gait: 0, hp: 100, mana: 100, immobilized: 0 };
+  s.cooldown = s.meleeCooldown = s.hitToCast = s.castToHit = s.potionAttackLockout = s.pendingMelee = 0;
+  s.navigation = null;
+  s.damageTexts = [];
+  s.tutorial!.stage = 'fight';
+  s.selectedSpell = 'apocalipsis';
+  teach(s, 'precision');
+  s.armed = false;
+  s.player.step = null;
+  s.meditating = false;
+  s.fx = [];
+  M.clearPotionKeys(s);
+  M.tell(
+    s,
+    'Derrotá a dos rivales y recogé su esencia. Sentinel te persigue para golpear cuerpo a cuerpo; los otros lanzan hechizos. Las pociones son ilimitadas.',
+  );
   return true;
 }
 const originalUpdate = M.update,
@@ -145,9 +227,47 @@ M.pickup = function (s, radius) {
   }
   return n;
 };
-M.cast = (s, target) =>
-  s.phase === 'hallway' || s.tutorial?.stage === 'complete' ? ((s.armed = false), false) : originalCast(s, target);
-M.melee = (s) => (s.phase === 'hallway' || s.tutorial?.stage === 'complete' ? false : originalMelee(s));
+M.cast = (s, target) => {
+  if (
+    s.phase === 'hallway' ||
+    s.tutorial?.stage === 'setup' ||
+    s.tutorial?.stage === 'melee' ||
+    s.tutorial?.stage === 'complete' ||
+    !!s.tutorial?.coach?.current
+  ) {
+    s.armed = false;
+    return false;
+  }
+  const practice = s.tutorial?.stage === 'spells' ? s.tutorial.meleePractice : undefined;
+  if (
+    practice &&
+    (practice.spellStep === 'counter' || practice.spellStep === 'complete' || s.selectedSpell !== practice.spellStep)
+  ) {
+    s.armed = false;
+    M.tell(s, 'Seguí el hechizo indicado en la práctica antes de pasar al siguiente.');
+    return false;
+  }
+  const success = originalCast(s, target);
+  if (success && practice) {
+    if (practice.spellStep === 'apocalipsis') {
+      practice.spellStep = 'inmovilizar';
+      s.selectedSpell = 'inmovilizar';
+    } else if (practice.spellStep === 'inmovilizar') {
+      practice.spellStep = 'counter';
+      practice.counterRemaining = 1;
+    } else if (practice.spellStep === 'remover') practice.spellStep = 'complete';
+  }
+  return success;
+};
+M.melee = (s) =>
+  s.phase === 'hallway' ||
+  s.tutorial?.stage === 'setup' ||
+  s.tutorial?.stage === 'spells' ||
+  s.tutorial?.stage === 'complete' ||
+  meleePracticeHit(s) ||
+  !!s.tutorial?.coach?.current
+    ? false
+    : originalMelee(s);
 M.interact = function (s) {
   if (s.phase === 'hallway') {
     const g = nearGuide(s);
@@ -190,22 +310,32 @@ M.update = function (s, dt, input = { x: 0, y: 0 }) {
   if (!s.tutorial) return originalUpdate(s, dt, input);
   const t = s.tutorial;
   dt = Math.max(0, Math.min(dt, 0.05));
-  if (t.dialog) return;
+  if (t.dialog || t.stage === 'setup' || t.coach?.current) return;
   if (s.phase === 'hallway') {
     s.time += dt;
     t.hallTime += dt;
     s.flash = Math.max(0, s.flash - dt);
-    const p = s.player,
-      v = M.cardinal(input.x || 0, input.y || 0),
-      beforeX = p.x,
-      beforeY = p.y;
-    p.x = Math.max(hallway.walk.minX, Math.min(t.seen.length === 3 ? hallway.walk.maxX : 432, p.x + v.x * 160 * dt));
-    p.y = Math.max(hallway.walk.minY, Math.min(hallway.walk.maxY, p.y + v.y * 160 * dt));
-    p.moving = p.x !== beforeX || p.y !== beforeY;
-    if (p.moving) {
-      p.dir = v.x ? (v.x > 0 ? 1 : 3) : v.y > 0 ? 2 : 0;
-      p.gait += Math.hypot(p.x - beforeX, p.y - beforeY);
-    }
+    const p = s.player;
+    walk(
+      p,
+      dt,
+      input,
+      {
+        clear: () => true,
+        constrain: (end) => ({
+          x: Math.max(hallway.walk.minX, Math.min(t.seen.length === 3 ? hallway.walk.maxX : 432, end.x)),
+          y: Math.max(hallway.walk.minY, Math.min(hallway.walk.maxY, end.y)),
+        }),
+        move: (dx, dy) => {
+          p.x += dx;
+          p.y += dy;
+          const distance = Math.hypot(dx, dy);
+          p.gait += distance;
+          return distance;
+        },
+      },
+      s.navigation?.points,
+    );
     const g = guides.find((g) => !t.seen.includes(g.id) && Math.abs(g.x - p.x) <= 28 && Math.abs(g.y - p.y) <= 100);
     if (p.moving && g) {
       talk(s, g.id);
@@ -219,6 +349,51 @@ M.update = function (s, dt, input = { x: 0, y: 0 }) {
   if (t.stage === 'complete') {
     s.time += dt;
     s.streamParticles = s.streamParticles.filter((p) => (p.age += dt) < 0.55);
+    return;
+  }
+  if (t.stage === 'melee') {
+    if (meleePracticeHit(s)) {
+      s.player.moving = false;
+      s.player.step = null;
+      s.navigation = null;
+      s.pendingMelee = 0;
+      s.fx = s.fx.filter((effect) => (effect.age += dt) < 2);
+      s.damageTexts = s.damageTexts.filter((hit) => (hit.age += dt) < 1);
+    } else originalUpdate(s, dt, input);
+    return;
+  }
+  if (t.stage === 'spells') {
+    const practice = t.meleePractice!;
+    if (practice.spellStep === 'complete') {
+      s.player.moving = false;
+      s.player.step = null;
+      s.navigation = null;
+      s.fx = s.fx.filter((effect) => (effect.age += dt) < 2);
+      s.damageTexts = s.damageTexts.filter((hit) => (hit.age += dt) < 1);
+      return;
+    }
+    // Keep paralysis active until the learner really casts Remover on themself.
+    if (practice.spellStep === 'remover') s.player.immobilized = Math.max(2.5, s.player.immobilized);
+    originalUpdate(s, dt, input);
+    if (practice.spellStep === 'counter') {
+      practice.counterRemaining = Math.max(0, (practice.counterRemaining || 0) - dt);
+      if (!practice.counterRemaining && s.player.x >= 270) {
+        const trainer = s.enemies[0];
+        M.resolveEnemySpell(s, s.player, 'inmovilizar');
+        s.fx.push({
+          x: trainer.x,
+          y: trainer.y,
+          age: 0,
+          hit: true,
+          owner: 'words',
+          spell: 'inmovilizar',
+          targetId: trainer.name,
+        });
+        practice.spellStep = 'remover';
+        s.selectedSpell = 'remover';
+        s.armed = false;
+      }
+    }
     return;
   }
   t.arenaTime += dt;
@@ -245,5 +420,13 @@ export default Object.assign(M, {
   talk,
   nextGuide: next,
   enterArena,
+  startMeleePractice,
+  meleePracticeHit,
+  startSpellPractice,
+  spellPracticeComplete,
+  startFight,
+  dismissCombatLesson,
+  skipCombatLessons,
+  enableCombatLessons,
   revealBank,
 });

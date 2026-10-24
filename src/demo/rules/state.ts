@@ -1,5 +1,6 @@
 // Shapes of the offline demo's game state, shared by the model, tutorial and navigation rules.
 import type { Point, Rect } from '../../shared/physics.ts';
+import type { CombatCoach } from './combat-lessons.ts';
 
 export type { Point, Rect };
 export type Phase = 'hallway' | 'arena';
@@ -13,7 +14,7 @@ export interface Spell {
   name: string;
   mana: number;
 }
-// Where a cast lands; enemyId and self say which character the pointer was on.
+// Raw clicked world position. Legacy actor hints are ignored; the occupied tile resolves the target.
 export interface CastTarget extends Point {
   enemyId?: string;
   self?: boolean;
@@ -70,6 +71,7 @@ export interface Effect extends Point {
   hit: boolean;
   owner: string;
   spell?: string;
+  targetId?: string;
 }
 export interface DamageText extends Point {
   amount: number;
@@ -96,7 +98,14 @@ export interface Guide extends Dialog, Point {
   gait: number;
 }
 export interface TutorialState {
-  stage: 'hallway' | 'fight' | 'deposit' | 'complete';
+  coach?: CombatCoach;
+  stage: 'hallway' | 'setup' | 'melee' | 'spells' | 'fight' | 'deposit' | 'complete';
+  meleePractice?: {
+    target: string;
+    arenaEnemies: Enemy[];
+    spellStep?: 'apocalipsis' | 'inmovilizar' | 'counter' | 'remover' | 'complete';
+    counterRemaining?: number;
+  };
   seen: string[];
   dialog: Dialog | null;
   page: number;
@@ -139,6 +148,9 @@ export interface DemoState {
   meleeCooldown: number;
   cooldown: number;
   time: number;
+  hitToCast: number;
+  castToHit: number;
+  pendingMelee: number;
   fx: Effect[];
   drops: Drop[];
   nextDrop: number;
@@ -147,6 +159,7 @@ export interface DemoState {
   flash: number;
   won: boolean;
   enemies: Enemy[];
+  movementBlock: string;
   // Where the tutorial revealed the bank; the fixed banker position otherwise.
   bankPosition?: Point;
   // Present only in a tutorial run (createTutorial).

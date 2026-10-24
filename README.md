@@ -12,6 +12,10 @@ The Nix site (`index.html`) and its embedded offline demo (`demo/index.html`), b
 
 Before opening a pull request, run `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm test`, `npm run build` and `npm run test:e2e`. CI runs the same checks on every pull request.
 
+## Language conventions
+
+Write code comments, technical documentation, commit messages, and pull request titles and descriptions in English. Keep player-facing tutorial copy in Spanish. Spell names, identifiers, and quoted UI labels retain their original spelling when referenced in technical text.
+
 ## Node
 
 Use Node 22 (`.nvmrc` pins 22.22.3; run `nvm use`). Node 24's V8 intermittently segfaults in garbage collection while running the vm-sandbox tests (`tests/navigation.test.cjs`), reproduced on 24.5.0 and 24.15.0.

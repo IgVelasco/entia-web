@@ -1,3 +1,5 @@
 /* Demo stylesheet: the demo styles, then the shared character editor, in cascade order. */
 @import './demo.css';
+@import './setup.css';
+@import './spells.css';
 @import '../shared/character.css';

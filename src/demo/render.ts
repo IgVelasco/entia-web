@@ -2,7 +2,8 @@ import * as Character from '../shared/character.ts';
 import * as Physics from '../shared/physics.ts';
 import M from './rules/navigation.ts';
 import { $, canvas, ctx, demo, floor, reduced } from './context.ts';
-import { aimPoint } from './input.ts';
+import { drawSpellEffect } from './spell-effects.ts';
+import { actorFrame } from './actor-sprites.ts';
 import { schedule } from './loop.ts';
 import type { Drop, Point, SceneryItem } from './rules/state.ts';
 
@@ -90,11 +91,10 @@ function text(s: string, x: number, y: number, color = '#e6e4cc', size = 13) {
 }
 export function actor(a: Actor, body: string, player = false) {
   const im = demo.images[body];
-  const stride = body === 'mage' ? 32 : 64;
-  const f = !body.startsWith('npc-') && a.moving ? 1 + (Math.floor((a.gait / stride) * 7) % 7) : 0;
+  const frame = actorFrame(a, body);
   ellipse(a.x, a.y + 1, 16, 5, '#00110cc0');
   if (player) ellipse(a.x, a.y + 2, 20, 8, '#e8d491', true);
-  ctx.drawImage(im, f * 96, a.dir * 160, 96, 160, Math.round(a.x - 30), Math.round(a.y - 99.375), 60, 100);
+  ctx.drawImage(im, frame.sx, frame.sy, 96, 160, frame.x, frame.y, frame.width, frame.height);
 }
 export function resourceBar(a: Point, value: number, maxValue: number, yOffset = 12, mana = false) {
   const x = Math.round(a.x) - 23,
@@ -174,7 +174,9 @@ export function draw() {
       })),
       { type: 'portal', y: M.gateway.y },
       ...(demo.state.bankUnlocked ? [{ type: 'bank', y: M.bankAt(demo.state).y }] : []),
-      ...(demo.state.phase === 'arena' && demo.state.tutorial?.stage !== 'complete'
+      ...(demo.state.phase === 'arena' &&
+      demo.state.tutorial?.stage !== 'complete' &&
+      demo.state.tutorial?.stage !== 'setup'
         ? demo.state.enemies.filter((e) => e.hp > 0)
         : []),
       ...(demo.state.tutorial?.stage === 'complete'
@@ -191,59 +193,25 @@ export function draw() {
       renderBank();
     } else actor(a, a.body, a.player);
   }
-  if (demo.state.phase === 'arena' && demo.state.tutorial?.stage !== 'complete')
+  if (
+    demo.state.phase === 'arena' &&
+    demo.state.tutorial?.stage !== 'complete' &&
+    demo.state.tutorial?.stage !== 'setup'
+  )
     for (const e of demo.state.enemies) {
       if (e.hp <= 0) continue;
       text(e.name, e.x, e.y - 98, '#d9c79c', 12);
       resourceBar(e, e.hp, e.maxHp);
     }
   for (const f of demo.state.fx) {
-    const frame = Math.min(31, Math.floor(f.age * 16));
-    if (f.owner === 'bind' || f.owner === 'cleanse') {
-      if (f.age < 1.25) {
-        ctx.strokeStyle = f.owner === 'bind' ? '#adbaf0' : '#d7dfbd';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(f.x, f.y - 25, 22 + f.age * 8, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-    } else if (f.owner === 'melee') {
+    if (f.owner === 'melee') {
       if (f.age < 0.25) ellipse(f.x, f.y, 20 + f.age * 30, 8 + f.age * 15, '#e8d5a7', true);
-    } else if (reduced.matches) {
-      ellipse(f.x, f.y, 35, 20, '#e8d5a7', true);
-    } else
-      ctx.drawImage(
-        demo.images.spell,
-        (frame % 4) * 273,
-        Math.floor(frame / 4) * 243,
-        273,
-        243,
-        f.x - 73,
-        f.y - 90,
-        146,
-        130,
-      );
+    } else drawSpellEffect(ctx, demo.images, f, demo.state, reduced.matches);
   }
   resourceBar(p, p.hp, 100);
   resourceBar(p, p.mana, 100, 22, true);
   const playerName = Character.get().name;
   if (playerName) text(playerName, p.x, p.y - 102, '#ded2a1', 12);
-  const aim = aimPoint();
-  if (aim && demo.state.armed) {
-    const valid = Math.hypot(aim.x - p.x, aim.y - p.y) <= 270 && M.lineClear(p, aim);
-    ellipse(aim.x, aim.y, 34, 17, valid ? '#e4d490' : '#dd8068', true);
-    ctx.strokeStyle = valid ? '#e4d490' : '#dd8068';
-    ctx.beginPath();
-    ctx.moveTo(aim.x - 10, aim.y);
-    ctx.lineTo(aim.x + 10, aim.y);
-    ctx.moveTo(aim.x, aim.y - 9);
-    ctx.lineTo(aim.x, aim.y + 9);
-    ctx.stroke();
-  }
-  for (const e of demo.state.enemies)
-    if (e.wind > 0 && e.kind === 'ranged' && e.aim) {
-      ellipse(e.aim.x, e.aim.y, 42, 20, '#f1a373', true);
-    }
   if (p.immobilized > 0) text('IMMOVILIZED', p.x, p.y - 130, '#b4c9ed', 11);
   for (const e of demo.state.enemies)
     if (e.hp > 0 && e.immobilized > 0) text('IMMOVILIZED', e.x, e.y - 115, '#b4c9ed', 10);

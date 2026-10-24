@@ -2,6 +2,8 @@
 import * as Physics from '../../shared/physics.ts';
 import M from './tutorial.ts';
 import type { DemoState, Point } from './state.ts';
+import { occupiedPosition, sameTile } from './occupancy.ts';
+import { advanceCombatPresentation } from './combat-lessons.ts';
 const originalUpdate = M.update;
 function cancelWalk(s: DemoState) {
   s.navigation = null;
@@ -13,6 +15,8 @@ function walkTo(s: DemoState, target?: Point | null, guide: string | null = null
     !Number.isFinite(target.x) ||
     !Number.isFinite(target.y) ||
     s.armed ||
+    s.tutorial?.stage === 'setup' ||
+    !!s.tutorial?.coach?.current ||
     s.tutorial?.dialog ||
     s.tutorial?.stage === 'complete'
   )
@@ -34,11 +38,11 @@ function walkTo(s: DemoState, target?: Point | null, guide: string | null = null
       radius: M.RADIUS,
       obstacles: [...M.obstacles, ...(s.bankUnlocked ? [M.bankBounds(s)] : [])],
     });
-    const others = s.enemies.filter((e) => e.hp > 0),
+    const occupied = (point: Point) => s.enemies.some((e) => e.hp > 0 && sameTile(occupiedPosition(e), point)),
       tx = Math.round((target.x - start.x) / 32),
       ty = Math.round((target.y - start.y) / 32);
     const end = { x: start.x + tx * 32, y: start.y + ty * 32 };
-    if (!physics.free(end.x, end.y, others, p)) {
+    if (!physics.free(end.x, end.y) || occupied(end)) {
       M.tell(s, 'That spot is blocked. Click open ground.');
       return false;
     }
@@ -73,7 +77,7 @@ function walkTo(s: DemoState, target?: Point | null, guide: string | null = null
           key = x + ',' + y;
         if (seen.has(key)) continue;
         const b = { x: start.x + x * 32, y: start.y + y * 32 };
-        if (physics.clear(a, b, others, p)) {
+        if (!occupied(b) && physics.clear(a, b)) {
           seen.add(key);
           queue.push({ x, y, prev: i });
         }
@@ -100,8 +104,12 @@ function finish(s: DemoState) {
   }
 }
 M.update = function (s, dt, input = { x: 0, y: 0 }) {
+  if (s.tutorial?.coach?.current) {
+    advanceCombatPresentation(s, dt);
+    return;
+  }
   if (input.x || input.y) cancelWalk(s);
-  if (s.armed || s.player.hp <= 0 || s.tutorial?.dialog || s.navigation?.phase !== s.phase) cancelWalk(s);
+  if (s.player.hp <= 0 || s.tutorial?.dialog || s.navigation?.phase !== s.phase) cancelWalk(s);
   let nav = s.navigation;
   const p = s.player,
     x = p.x,
@@ -111,19 +119,21 @@ M.update = function (s, dt, input = { x: 0, y: 0 }) {
     if (!nav.points.length) {
       finish(s);
       nav = null;
-    } else {
-      const q = nav.points[0];
-      input = M.cardinal(q.x - p.x, q.y - p.y);
-      if (s.phase === 'hallway') {
-        const distance = Math.abs(input.x ? q.x - p.x : q.y - p.y);
-        dt = Math.min(dt, distance / 160);
-      }
     }
   }
   const stepEnd = p.step?.end,
     noticeBefore = s.noticeId;
   originalUpdate(s, dt, input);
   if (nav && s.navigation === nav) {
+    if (s.tutorial?.dialog) {
+      cancelWalk(s);
+      return;
+    }
+    while (nav.points.length && Math.hypot(nav.points[0].x - p.x, nav.points[0].y - p.y) < 0.1) nav.points.shift();
+    if (!nav.points.length && !p.step) {
+      finish(s);
+      return;
+    }
     if (s.phase !== nav.phase || Math.hypot(p.x - x, p.y - y) > 160 * Math.max(0, Math.min(dt, 0.05)) + 0.1) {
       cancelWalk(s);
       return;

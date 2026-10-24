@@ -1,5 +1,5 @@
 import M from './rules/navigation.ts';
-import { $, canvas, demo, floor } from './context.ts';
+import { $, canvas, demo, floor, needsMovementChoice } from './context.ts';
 import { returnToNix } from './embed.ts';
 import { togglePause, ui } from './hud.ts';
 import { clear, input } from './input.ts';
@@ -14,11 +14,13 @@ export function tick(now: number) {
   demo.previous = now;
   if (
     demo.ready &&
+    !needsMovementChoice() &&
     !demo.paused &&
     now >= demo.beatUntil &&
     !document.hidden &&
     !demo.returning &&
     !demo.hudDrawerOpen &&
+    !$('#bindings-dialog').open &&
     !$('#character-dialog').open
   ) {
     M.update(demo.state, dt, input());
@@ -34,8 +36,12 @@ export function tick(now: number) {
   ui();
   if (
     demo.ready &&
+    !needsMovementChoice() &&
     !demo.paused &&
     (!demo.state.tutorial?.dialog || demo.guideHoldUntil > now) &&
+    (!demo.state.tutorial?.coach?.current ||
+      demo.state.tutorial.coach.revealRemaining ||
+      demo.motionHandles.size > 0) &&
     !(demo.state.tutorial?.stage === 'complete' && !demo.state.streamParticles.length && demo.guideHoldUntil <= now) &&
     !document.hidden &&
     !demo.hostSuspended
@@ -48,7 +54,7 @@ export function schedule() {
 export function bindLifecycle() {
   window.addEventListener('blur', () => {
     clear();
-    if (demo.ready && !demo.paused) togglePause(true);
+    if (demo.ready && !demo.paused && !$('#bindings-dialog').open) togglePause(true);
   });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {

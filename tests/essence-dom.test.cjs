@@ -7,6 +7,7 @@ const { loadSandboxModule } = require('./helpers/sandbox-module.cjs');
 const { containsCode } = require('./helpers/source-text.cjs');
 // run() expressions reach the demo controller through these sandbox globals: its context object, the rules (M) and each module's exports.
 const controllerGlobals = (load) => ({
+  startCombat: require('./helpers/tutorial-arena.cjs'),
   demo: load('demo/context.ts').demo,
   M: load('demo/rules/navigation.ts').default,
   Character: load('shared/character.ts'),
@@ -17,13 +18,21 @@ const controllerGlobals = (load) => ({
   Motion: load('demo/motion.ts'),
   Embed: load('demo/embed.ts'),
   Loop: load('demo/loop.ts'),
+  Setup: load('demo/setup.ts'),
 });
 // The demo controller's modules, for source-text checks.
 const controllerSource = () =>
   ['context', 'main', 'assets', 'embed', 'render', 'input', 'hud', 'motion', 'loop']
     .map((m) => fs.readFileSync(path.join(__dirname, `../src/demo/${m}.ts`), 'utf8'))
     .join('\n');
-function app({ embedded = false, width = 1100, height = 800, coarse = false, tutorial = false } = {}) {
+function app({
+  embedded = false,
+  width = 1100,
+  height = 800,
+  coarse = false,
+  tutorial = false,
+  movementChosen = true,
+} = {}) {
   const posted = [],
     parentWindow = embedded
       ? { location: { origin: 'https://entia.test' }, postMessage: (message) => posted.push(message) }
@@ -32,10 +41,14 @@ function app({ embedded = false, width = 1100, height = 800, coarse = false, tut
     listeners = {},
     windowEvents = {},
     frames = [],
-    draws = [];
+    draws = [],
+    geometry = [];
   const make = () => ({
     open: false,
     showModal() {
+      this.open = true;
+    },
+    show() {
       this.open = true;
     },
     close() {
@@ -52,7 +65,12 @@ function app({ embedded = false, width = 1100, height = 800, coarse = false, tut
     getBoundingClientRect: () => ({ width, height, left: 0, top: 0 }),
     focus() {},
     setPointerCapture() {},
-    setAttribute() {},
+    setAttribute(name, value) {
+      (this.attributes ||= {})[name] = String(value);
+    },
+    getAttribute(name) {
+      return this.attributes?.[name] ?? null;
+    },
     addEventListener(type, fn) {
       this[type === 'close' ? 'closeEvent' : type] = fn;
     },
@@ -60,6 +78,7 @@ function app({ embedded = false, width = 1100, height = 800, coarse = false, tut
       new Proxy(
         {
           drawImage: (...args) => draws.push(args),
+          ellipse: (...args) => geometry.push(args),
           createPattern: () => ({}),
           createRadialGradient: () => ({ addColorStop() {} }),
         },
@@ -119,9 +138,53 @@ function app({ embedded = false, width = 1100, height = 800, coarse = false, tut
     load = (file) => loadSandboxModule(context, path.join(__dirname, '../src', file), modules);
   load('demo/main.ts');
   Object.assign(context, controllerGlobals(load));
+  context.demo.clickMovementChosen = movementChosen;
   if (!tutorial) vm.runInContext('demo.state=M.create();demo.hostSuspended=false', context);
-  return { context, get, listeners, windowEvents, frames, draws, posted, parentWindow };
+  return { context, get, listeners, windowEvents, frames, draws, geometry, posted, parentWindow };
 }
+test('first movement choice blocks guides and walking until answered, then stays answered for this visit', async () => {
+  const a = app({ tutorial: true, movementChosen: false });
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  run('Loop.tick(20)');
+  assert(a.get('#movement-choice-dialog').open);
+  const before = run('JSON.stringify(demo.state)');
+  a.listeners.keydown({ key: 'd', target: { closest: () => false }, preventDefault() {} });
+  run('Loop.tick(500)');
+  assert.equal(run('JSON.stringify(demo.state)'), before);
+  assert.equal(run('demo.keys.size'), 0);
+  a.get('#movement-click-no').onclick();
+  assert(!a.get('#movement-choice-dialog').open);
+  assert.equal(run('demo.clickMovementChosen'), true);
+  assert.equal(run('demo.clickMovement'), false);
+  a.listeners.keydown({ key: 'd', target: { closest: () => false }, preventDefault() {} });
+  run('Loop.tick(520)');
+  assert.notEqual(run('JSON.stringify(demo.state)'), before);
+  run('demo.state=M.createTutorial();Loop.tick(540)');
+  assert(!a.get('#movement-choice-dialog').open);
+});
+
+test('an embedded unanswered prompt closes on suspension and returns on activation', async () => {
+  const a = app({ tutorial: true, embedded: true, movementChosen: false });
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  const host = (type) =>
+    a.windowEvents.message({ source: a.parentWindow, origin: 'https://entia.test', data: { type } });
+  run('Loop.tick(20)');
+  assert(!a.get('#movement-choice-dialog').open);
+  host('entia-demo-activate');
+  run('Loop.tick(40)');
+  assert(a.get('#movement-choice-dialog').open);
+  host('entia-demo-pause');
+  assert(!a.get('#movement-choice-dialog').open);
+  host('entia-demo-activate');
+  run('Loop.tick(60)');
+  assert(a.get('#movement-choice-dialog').open);
+  a.get('#movement-click-yes').onclick();
+  assert.equal(run('demo.clickMovement'), true);
+  assert.equal(run('demo.clickMovementChosen'), true);
+});
+
 test('initial instructions pause gameplay; resume, right HUD and camera work', async () => {
   const a = app();
   await new Promise((r) => setImmediate(r));
@@ -153,11 +216,296 @@ test('controller uses latest held direction and pointer-specific casts', async (
   run("demo.keys.add('w');demo.keys.add('d')");
   assert.equal(run('Input.input().x'), 1);
   assert.equal(run('Input.input().y'), 0);
+  run('Render.draw();demo.pointer={x:demo.width/2+100*demo.scale,y:demo.height/2};Input.prepareSpell()');
+  assert.equal(run('Input.aimPoint().x'), 404);
+  assert.equal(run('Input.aimPoint().y'), 432);
+  run('Input.castAtPointer()');
+  assert(!run('demo.state.armed'));
+  assert.equal(run('demo.state.player.mana'), 100);
+});
+
+test('disabling click movement cancels routes but preserves keyboard walking and free spell clicks', async () => {
+  const a = app();
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  a.get('#resume').onclick();
+  run('M.walkTo(demo.state,{x:432,y:432});Render.draw()');
+  a.get('#bindings-click-no').onclick();
+  assert.equal(run('demo.clickMovement'), false);
+  assert.equal(run('demo.state.navigation'), null);
+  assert.equal(a.get('#bindings-click-no').getAttribute('aria-pressed'), 'true');
+  const click = { button: 0, clientX: 650, clientY: 400 };
+  run('Render.draw()');
+  a.get('#game').click(click);
+  assert.equal(run('demo.state.navigation'), null);
+  const x = run('demo.state.player.x');
+  run('M.update(demo.state,.02,{x:1});Render.draw()');
+  assert(run('demo.state.player.x') > x);
+  run('demo.state.armed=true');
+  a.get('#game').click({
+    button: 0,
+    clientX: run('demo.width/2+(demo.state.enemies[0].x-demo.state.player.x)*demo.scale'),
+    clientY: run('demo.height/2+(demo.state.enemies[0].y-demo.state.player.y)*demo.scale'),
+  });
+  assert.equal(run('demo.state.enemies[0].hp'), 1);
+  assert.equal(run('demo.state.player.mana'), 85);
+  a.get('#bindings-click-yes').onclick();
+  a.get('#game').click(click);
+  assert(run('demo.state.navigation'));
+});
+
+test('click movement disabled still allows talking to a nearby guide without approaching a distant one', async () => {
+  const a = app({ tutorial: true });
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  a.get('#bindings-click-no').onclick();
+  run('Render.draw()');
+  const clickGuide = (index) =>
+    a.get('#game').click({
+      button: 0,
+      clientX: run(`demo.width/2+(M.guides[${index}].x-demo.state.player.x)*demo.scale`),
+      clientY: run(`demo.height/2+(M.guides[${index}].y-M.hallway.cameraY)*demo.scale`),
+    });
+  clickGuide(1);
+  assert.equal(run('demo.state.navigation'), null);
+  assert.equal(run('demo.state.tutorial.dialog'), null);
+  clickGuide(0);
+  assert.equal(run('demo.state.tutorial.dialog.id'), 'warden');
+});
+
+test('a spell rebound to E never also interacts, and interaction can move to another key', async () => {
+  const a = app();
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  a.get('#resume').onclick();
   run(
-    'Render.draw();demo.pointer={x:demo.width/2+100*demo.scale,y:demo.height/2};Input.prepareSpell();Input.castAtPointer()',
+    "demo.macroBindings.interact='t';demo.macroBindings.apocalipsis='e';globalThis.interactions=0;M.interact=()=>++interactions",
   );
-  assert.equal(run('demo.state.fx[0].x'), 404);
-  assert.equal(run('demo.state.fx[0].y'), 432);
+  const event = (key) => ({ key, target: { closest: () => false }, preventDefault() {} });
+  a.listeners.keydown(event('e'));
+  assert(run('demo.state.armed'));
+  a.listeners.keyup(event('e'));
+  assert.equal(run('interactions'), 0);
+  a.listeners.keydown(event('t'));
+  assert.equal(run('interactions'), 0);
+  a.listeners.keyup(event('t'));
+  assert.equal(run('interactions'), 1);
+});
+
+test('held macro repeats suppress browser function-key defaults without dispatching twice', async () => {
+  const a = app();
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  a.get('#resume').onclick();
+  run("demo.macroBindings.life='f1'");
+  let prevented = 0;
+  for (const repeat of [false, true, true])
+    a.listeners.keydown({
+      key: 'F1',
+      repeat,
+      target: { closest: () => false },
+      preventDefault() {
+        prevented++;
+      },
+    });
+  assert.equal(prevented, 3);
+  assert.equal(run('demo.state.heldPotions.length'), 1);
+  a.listeners.keyup({ key: 'F1', preventDefault() {} });
+  assert.equal(run('demo.state.lifePotions'), 99);
+});
+
+test('standalone Ctrl and Shift dispatch macros, can be held while walking, and wait for both modifier sides to release', async () => {
+  const a = app();
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  a.get('#resume').onclick();
+  run("demo.macroBindings.mana='control';demo.macroBindings.life='shift'");
+  const event = (key, rest = {}) => ({ key, target: { closest: () => false }, preventDefault() {}, ...rest });
+  a.listeners.keydown(event('Control', { ctrlKey: true }));
+  assert.equal(run('demo.state.heldPotions[0].key'), 'control');
+  let prevented = false;
+  a.listeners.keydown(
+    event('w', {
+      ctrlKey: true,
+      preventDefault() {
+        prevented = true;
+      },
+    }),
+  );
+  assert(prevented, 'bound Ctrl + walking must not trigger a browser tab shortcut');
+  assert.equal(run('Input.input().y'), -1);
+  a.listeners.keydown(event('Shift', { ctrlKey: true, shiftKey: true }));
+  assert.equal(run('demo.state.heldPotions.length'), 2);
+  a.listeners.keyup(event('Shift', { shiftKey: true }));
+  assert.equal(run('demo.state.heldPotions.length'), 2);
+  a.listeners.keyup(event('Shift'));
+  assert.equal(run('demo.state.heldPotions.length'), 1);
+  a.listeners.keyup(event('Control', { ctrlKey: true }));
+  assert.equal(run('demo.state.heldPotions.length'), 1);
+  a.listeners.keyup(event('Control'));
+  assert.equal(run('demo.state.heldPotions.length'), 0);
+  prevented = false;
+  a.listeners.keydown(
+    event('c', {
+      ctrlKey: true,
+      preventDefault() {
+        prevented = true;
+      },
+    }),
+  );
+  assert.equal(prevented, false, 'other Ctrl shortcuts keep their browser meaning');
+});
+
+test('the full bindings editor freezes the world and can reopen without changing assignments', async () => {
+  const a = app();
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  a.get('#resume').onclick();
+  run("demo.macroBindings.apocalipsis='t';Setup.openBindings()");
+  assert(a.get('#bindings-dialog').open);
+  const time = run('demo.state.time');
+  run('Loop.tick(40)');
+  assert.equal(run('demo.state.time'), time);
+  a.get('#bindings-close').onclick();
+  assert(!a.get('#bindings-dialog').open);
+  run('Loop.tick(80);Setup.openBindings()');
+  assert(run('demo.state.time') > time);
+  assert.equal(run('demo.macroBindings.apocalipsis'), 't');
+});
+
+test('real incoming paralysis opens its explanation, pauses time and teaches a self cast of Remover', async () => {
+  const a = app({ tutorial: true });
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  run(
+    "demo.state.tutorial.seen=M.guides.map(g=>g.id);M.enterArena(demo.state);startCombat(M,demo.state);M.dismissCombatLesson(demo.state);M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');for(let i=0;i<31;i++)M.update(demo.state,.02);Hud.ui()",
+  );
+  assert(a.get('#combat-lesson').open);
+  assert.equal(a.get('#combat-title').textContent, 'Te inmovilizaron');
+  assert.match(a.get('#combat-response').textContent, /10 de maná/);
+  const paralysis = run('demo.state.player.immobilized');
+  run('Loop.tick(500)');
+  assert.equal(run('demo.state.player.immobilized'), paralysis);
+  a.get('#combat-continue').onclick();
+  assert(!a.get('#combat-lesson').open);
+  run(
+    "Hud.selectSpell('remover');Input.prepareSpell();demo.pointer={x:demo.width/2,y:demo.height/2};Input.castAtPointer();for(let i=0;i<31;i++)M.update(demo.state,.02);Hud.ui()",
+  );
+  assert.equal(run('demo.state.player.immobilized'), 0);
+  assert.equal(run('demo.state.player.mana'), 90);
+  assert.equal(a.get('#combat-title').textContent, 'Te quitaste la inmovilización');
+  a.get('#combat-skip').onclick();
+  assert(!a.get('#combat-lesson').open);
+  run("M.resolveEnemySpell(demo.state,demo.state.player,'apocalipsis');Hud.ui()");
+  assert(!a.get('#combat-lesson').open);
+  assert.equal(run('demo.state.player.hp'), 88);
+});
+
+test('coaching waits for the spell visual before opening its card, then remains reversible from pause', async () => {
+  const a = app({ tutorial: true });
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  run(
+    "demo.state.tutorial.seen=M.guides.map(g=>g.id);M.enterArena(demo.state);startCombat(M,demo.state);M.dismissCombatLesson(demo.state);M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');Hud.ui()",
+  );
+  assert(!a.get('#combat-lesson').open);
+  assert.equal(a.get('#combat-guidance').hidden, true);
+  run('for(let i=0;i<10;i++)Loop.tick((i+1)*20)');
+  assert(!a.get('#combat-lesson').open);
+  assert(run('demo.state.fx[0].age > .19'));
+  run('for(let i=10;i<32;i++)Loop.tick((i+1)*20)');
+  assert(a.get('#combat-lesson').open);
+  assert.equal(run('demo.state.player.immobilized'), 2.5);
+  a.get('#combat-skip').onclick();
+  run('Hud.showHelp();Hud.ui()');
+  assert.match(a.get('#help-experienced').textContent, /Volver a mostrar/);
+  a.get('#help-experienced').onclick();
+  assert.equal(run('demo.state.tutorial.coach.enabled'), true);
+  assert.equal(run('demo.paused'), true);
+  assert(a.get('#help-dialog').open);
+  assert.match(a.get('#help-experienced').textContent, /Ya he jugado/);
+  run(
+    "Hud.hideHelp();M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');for(let i=0;i<31;i++)M.update(demo.state,.02);Hud.ui()",
+  );
+  assert(a.get('#combat-lesson').open);
+});
+
+test('compact coaching releases its highlights and focus lock on pause, then restores them on resume', async () => {
+  const a = app({ tutorial: true });
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  run(
+    "demo.state.tutorial.seen=M.guides.map(g=>g.id);M.enterArena(demo.state);startCombat(M,demo.state);M.dismissCombatLesson(demo.state);M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');for(let i=0;i<31;i++)M.update(demo.state,.02);Hud.ui()",
+  );
+  assert.equal(a.get('main').inert, true);
+  assert.equal(a.get('#combat-guidance').hidden, false);
+  assert.match(a.get('#combat-actor-label').textContent, /inmovilizado/);
+  assert.equal(a.get('#combat-action-label').textContent, 'Remover parálisis');
+  run('Hud.showHelp();Hud.ui()');
+  assert.equal(a.get('main').inert, false);
+  assert.equal(a.get('#combat-guidance').hidden, true);
+  let prevented = false;
+  a.listeners.keydown({
+    key: 'Escape',
+    preventDefault() {
+      prevented = true;
+    },
+  });
+  assert.equal(prevented, false, 'the native help dialog must receive Escape');
+  assert.equal(run('demo.state.tutorial.coach.current'), 'receivedInmovilizar');
+  run('Hud.hideHelp();Hud.ui()');
+  assert.equal(a.get('main').inert, true);
+  assert(a.get('#combat-lesson').open);
+  a.get('#combat-skip').onclick();
+  assert.equal(a.get('main').inert, false);
+  assert.equal(a.get('#combat-guidance').hidden, true);
+});
+
+test('phone coaching highlights visible vitals instead of the offscreen resource drawer', async () => {
+  const a = app({ tutorial: true, width: 390, height: 844 });
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  a.get('.mana-track').getBoundingClientRect = () => ({ left: 420, top: 100, width: 300, height: 20 });
+  a.get('#mobile-vitals').getBoundingClientRect = () => ({ left: 240, top: 120, width: 120, height: 20 });
+  run(
+    "demo.state.tutorial.seen=M.guides.map(g=>g.id);M.enterArena(demo.state);startCombat(M,demo.state);M.dismissCombatLesson(demo.state);M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');for(let i=0;i<31;i++)M.update(demo.state,.02);Hud.ui()",
+  );
+  assert.equal(a.get('#combat-resource-outline').getAttribute('x'), '235');
+  assert.equal(a.get('#combat-resource-outline').getAttribute('width'), '130');
+  assert.equal(a.get('#combat-action-label').textContent, 'Remover parálisis');
+});
+
+test('pointer coordinates stay free over sprites and no aiming or NPC impact areas are drawn', async () => {
+  const a = app();
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  a.get('#resume').onclick();
+  run(
+    'Render.draw();demo.pointer={x:demo.width/2+(496-demo.state.player.x)*demo.scale,y:demo.height/2+(330-demo.state.player.y)*demo.scale};demo.state.armed=true',
+  );
+  assert.equal(run('Input.aimPoint().x'), 496);
+  assert.equal(run('Input.aimPoint().y'), 330);
+  assert.equal(run('Input.aimPoint().enemyId'), undefined);
+  run('demo.state.enemies[0].wind=1;demo.state.enemies[0].aim={x:750,y:700};Render.draw()');
+  assert(!a.geometry.some((args) => args[0] === 750 && args[1] === 700));
+  assert(!a.geometry.some((args) => args[0] === 496 && args[1] === 330));
+});
+
+test('a configured potion macro works on its own key without a hardcoded F1 fallback', async () => {
+  const a = app();
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  const event = (key) => ({ key, preventDefault() {}, target: { closest: () => false } });
+  a.get('#resume').onclick();
+  run('demo.macroBindings.life="f3"');
+  a.listeners.keydown(event('F1'));
+  assert.equal(run('demo.state.heldPotions.length'), 0);
+  a.listeners.keydown(event('F3'));
+  run('M.update(demo.state,.02)');
+  assert.equal(run('demo.state.lifePotions'), 99);
+  a.listeners.keyup(event('F3'));
+  assert.equal(run('demo.state.heldPotions.length'), 0);
+  assert.equal(run('demo.state.lifePotions'), 99);
 });
 test('holding space does not repeat casts', async () => {
   const a = app();
@@ -166,6 +514,45 @@ test('holding space does not repeat casts', async () => {
   a.get('#resume').onclick();
   run("demo.keys.add(' ');for(let i=0;i<30;i++)Loop.tick(i*20)");
   assert.equal(run('demo.state.fx.length'), 0);
+});
+
+test('Space and E act on release, and pause discards a held action', async () => {
+  const a = app();
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  const event = (key) => ({ key, target: { closest: () => false }, preventDefault() {} });
+  a.get('#resume').onclick();
+  a.listeners.keydown(event(' '));
+  assert.equal(run('demo.state.fx.length'), 0);
+  a.listeners.keyup(event(' '));
+  assert.equal(run('demo.state.fx.filter(f=>f.owner==="melee").length'), 1);
+  run('M.drop(demo.state,demo.state.player.x,demo.state.player.y,10,"rival");demo.state.time=1');
+  a.listeners.keydown(event('e'));
+  assert.equal(run('demo.state.carried'), 0);
+  a.listeners.keyup(event('e'));
+  assert.equal(run('demo.state.carried'), 10);
+  a.listeners.keydown(event('u'));
+  run('Hud.showHelp();Hud.hideHelp()');
+  a.listeners.keyup(event('u'));
+  assert.equal(run('demo.state.lifePotions'), 100);
+});
+
+test('keyboard and touch movement keep working while a spell is prepared and cast', async () => {
+  const a = app();
+  await new Promise((r) => setImmediate(r));
+  const run = (s) => vm.runInContext(s, a.context);
+  a.get('#resume').onclick();
+  run('demo.state.enemies=[{...demo.state.enemies[0],x:404,y:432,speed:0,cooldown:99}];Render.draw()');
+  a.get('[data-dir=right]').pointerdown({ pointerId: 1, preventDefault() {} });
+  run('Input.prepareSpell();M.update(demo.state,.04,Input.input())');
+  const x = run('demo.state.player.x');
+  run('Input.worldClick({clientX:demo.width/2+100*demo.scale,clientY:demo.height/2})');
+  run('M.update(demo.state,.04,Input.input())');
+  assert(run('demo.state.player.x') > x);
+  assert.equal(run('demo.state.player.mana'), 85);
+  assert(!run('demo.state.armed'));
+  a.get('[data-dir=right]').pointercancel({ pointerId: 1 });
+  assert.equal(run('Input.input().x'), 0);
 });
 test('Prepare arms without attacking and Escape cancels it', async () => {
   const a = app();
@@ -326,6 +713,9 @@ test('held touch movement survives preparing and casting with a second pointer',
   a.get('#resume').onclick();
   a.get('[data-dir=right]').pointerdown({ pointerId: 1, preventDefault() {} });
   assert.equal(run('Input.input().x'), 1);
+  run(
+    'demo.state.enemies[0].x=demo.state.player.x+(245-demo.width/2)/demo.scale;demo.state.enemies[0].y=demo.state.player.y',
+  );
   a.get('#cast').click();
   assert.equal(run('Input.input().x'), 1);
   a.get('#game').pointerdown({ pointerType: 'touch', pointerId: 2, clientX: 245, clientY: 350, preventDefault() {} });
@@ -489,7 +879,9 @@ test('control-panel events stop before map and outside release cannot cast', asy
   run('Input.worldClick({clientX:550,clientY:900})');
   assert.equal(run('demo.state.player.mana'), 100);
   assert(run('demo.state.armed'));
-  run('Input.worldClick({clientX:600,clientY:400})');
+  run(
+    'demo.state.enemies[0].x=demo.state.player.x+(600-demo.width/2)/demo.scale;demo.state.enemies[0].y=demo.state.player.y;Input.worldClick({clientX:600,clientY:400})',
+  );
   assert.equal(run('demo.state.player.mana'), 85);
 });
 test('deposit status explains locked, carrying and secured states on mobile', async () => {
@@ -680,7 +1072,7 @@ test('tutorial HUD and final NPC completion are usable on phone', async () => {
   await new Promise((r) => setImmediate(r));
   const run = (s) => vm.runInContext(s, a.context);
   run(
-    'for(const g of M.guides){M.talk(demo.state,g.id);while(demo.state.tutorial.dialog)M.nextGuide(demo.state);}M.enterArena(demo.state);demo.state.kills=2;M.update(demo.state,.02);Hud.ui()',
+    'for(const g of M.guides){M.talk(demo.state,g.id);while(demo.state.tutorial.dialog)M.nextGuide(demo.state);}M.enterArena(demo.state);M.skipCombatLessons(demo.state);startCombat(M,demo.state);demo.state.kills=2;M.update(demo.state,.02);Hud.ui()',
   );
   assert.match(a.get('#objective-label').textContent, /BANK/);
   run(
@@ -762,7 +1154,7 @@ test('arena entrance motion pauses simulation briefly and releases without a tim
     return x;
   };
   run(
-    'Motion.syncMotion(0);for(const g of M.guides){M.talk(demo.state,g.id);while(demo.state.tutorial.dialog)M.nextGuide(demo.state);}M.enterArena(demo.state);Motion.syncMotion(100)',
+    'Motion.syncMotion(0);for(const g of M.guides){M.talk(demo.state,g.id);while(demo.state.tutorial.dialog)M.nextGuide(demo.state);}M.enterArena(demo.state);M.skipCombatLessons(demo.state);startCombat(M,demo.state);Motion.syncMotion(100)',
   );
   assert.equal(run('demo.beatUntil'), 950);
   const before = run('demo.state.time');
@@ -863,19 +1255,24 @@ test('floor click beside an NPC walks; only the NPC sprite opens a conversation'
   assert.equal(run('demo.state.tutorial.dialog.id'), 'warden');
   assert(a.get('#guide-dialog').open);
 });
-test('spell mode wins over movement and toggling Prepare cancels aiming', async () => {
+test('spell clicks preserve a walking route and toggling Prepare cancels only aiming', async () => {
   const a = app();
   await new Promise((r) => setImmediate(r));
   const run = (s) => vm.runInContext(s, a.context);
   a.get('#resume').onclick();
   run('Render.draw();Input.worldClick({clientX:demo.width/2+100*demo.scale,clientY:demo.height/2})');
   assert(run('!!demo.state.navigation'));
-  run('Input.prepareSpell()');
-  assert.equal(run('demo.state.navigation'), null);
+  run(
+    'demo.state.enemies[0].x=404;demo.state.enemies[0].y=432;demo.state.enemies[0].speed=0;demo.state.enemies[0].cooldown=99;Input.prepareSpell()',
+  );
+  assert(run('!!demo.state.navigation'));
   run('Input.worldClick({clientX:demo.width/2+100*demo.scale,clientY:demo.height/2})');
   assert.equal(run('demo.state.player.mana'), 85);
-  assert.equal(run('demo.state.navigation'), null);
+  assert(run('!!demo.state.navigation'));
   assert(!run('demo.state.armed'));
+  const x = run('demo.state.player.x');
+  run('M.update(demo.state,.04)');
+  assert(run('demo.state.player.x') > x);
   run('Input.prepareSpell();Input.prepareSpell()');
   assert(!run('demo.state.armed'));
 });
