@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const M = require('../src/demo/rules/navigation.ts').default;
+const { completeSpells } = require('./helpers/tutorial-arena.cjs');
 
 function lesson() {
   const s = M.createTutorial();
@@ -37,6 +38,8 @@ test('a safe trainer must actually lose health to melee before combat can start'
   assert(!M.melee(s), 'a completed trainer cannot be killed for rewards');
   assert.equal(s.kills, 0);
   assert.equal(s.drops.length, 0);
+  assert(!M.startFight(s), 'the spell exercise is still required');
+  completeSpells(M, s);
   assert(M.startFight(s));
   assert.equal(s.tutorial.stage, 'fight');
   assert.equal(s.enemies.length, 3);
@@ -61,6 +64,7 @@ test('spells, elapsed time and skipping explanations cannot satisfy the melee ex
   s.player.x = 368;
   s.player.dir = 1;
   assert(M.melee(s));
+  completeSpells(M, s);
   assert(M.startFight(s));
   assert.equal(s.tutorial.coach.current, null);
   assert.equal(s.tutorial.coach.enabled, false);
@@ -75,6 +79,7 @@ test('the successful hit stays visible until continuing and practice resets on r
   assert.equal(s.player.x, 368);
   assert.equal(s.tutorial.stage, 'melee');
   assert(s.fx.some((effect) => effect.owner === 'melee' && effect.age > 0));
+  completeSpells(M, s);
   M.startFight(s);
   assert.equal(s.player.x, 304);
   assert.equal(s.player.hp, 100);

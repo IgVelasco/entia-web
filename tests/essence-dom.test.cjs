@@ -7,6 +7,7 @@ const { loadSandboxModule } = require('./helpers/sandbox-module.cjs');
 const { containsCode } = require('./helpers/source-text.cjs');
 // run() expressions reach the demo controller through these sandbox globals: its context object, the rules (M) and each module's exports.
 const controllerGlobals = (load) => ({
+  startCombat: require('./helpers/tutorial-arena.cjs'),
   demo: load('demo/context.ts').demo,
   M: load('demo/rules/navigation.ts').default,
   Character: load('shared/character.ts'),
@@ -377,7 +378,7 @@ test('real incoming paralysis opens its explanation, pauses time and teaches a s
   await new Promise((r) => setImmediate(r));
   const run = (s) => vm.runInContext(s, a.context);
   run(
-    "demo.state.tutorial.seen=M.guides.map(g=>g.id);M.enterArena(demo.state);M.startMeleePractice(demo.state);demo.state.player.x=368;demo.state.player.dir=1;M.melee(demo.state);M.startFight(demo.state);M.dismissCombatLesson(demo.state);M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');for(let i=0;i<31;i++)M.update(demo.state,.02);Hud.ui()",
+    "demo.state.tutorial.seen=M.guides.map(g=>g.id);M.enterArena(demo.state);startCombat(M,demo.state);M.dismissCombatLesson(demo.state);M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');for(let i=0;i<31;i++)M.update(demo.state,.02);Hud.ui()",
   );
   assert(a.get('#combat-lesson').open);
   assert.equal(a.get('#combat-title').textContent, 'Te inmovilizaron');
@@ -405,7 +406,7 @@ test('coaching waits for the spell visual before opening its card, then remains 
   await new Promise((r) => setImmediate(r));
   const run = (s) => vm.runInContext(s, a.context);
   run(
-    "demo.state.tutorial.seen=M.guides.map(g=>g.id);M.enterArena(demo.state);M.startMeleePractice(demo.state);demo.state.player.x=368;demo.state.player.dir=1;M.melee(demo.state);M.startFight(demo.state);M.dismissCombatLesson(demo.state);M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');Hud.ui()",
+    "demo.state.tutorial.seen=M.guides.map(g=>g.id);M.enterArena(demo.state);startCombat(M,demo.state);M.dismissCombatLesson(demo.state);M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');Hud.ui()",
   );
   assert(!a.get('#combat-lesson').open);
   assert.equal(a.get('#combat-guidance').hidden, true);
@@ -434,7 +435,7 @@ test('compact coaching releases its highlights and focus lock on pause, then res
   await new Promise((r) => setImmediate(r));
   const run = (s) => vm.runInContext(s, a.context);
   run(
-    "demo.state.tutorial.seen=M.guides.map(g=>g.id);M.enterArena(demo.state);M.startMeleePractice(demo.state);demo.state.player.x=368;demo.state.player.dir=1;M.melee(demo.state);M.startFight(demo.state);M.dismissCombatLesson(demo.state);M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');for(let i=0;i<31;i++)M.update(demo.state,.02);Hud.ui()",
+    "demo.state.tutorial.seen=M.guides.map(g=>g.id);M.enterArena(demo.state);startCombat(M,demo.state);M.dismissCombatLesson(demo.state);M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');for(let i=0;i<31;i++)M.update(demo.state,.02);Hud.ui()",
   );
   assert.equal(a.get('main').inert, true);
   assert.equal(a.get('#combat-guidance').hidden, false);
@@ -467,7 +468,7 @@ test('phone coaching highlights visible vitals instead of the offscreen resource
   a.get('.mana-track').getBoundingClientRect = () => ({ left: 420, top: 100, width: 300, height: 20 });
   a.get('#mobile-vitals').getBoundingClientRect = () => ({ left: 240, top: 120, width: 120, height: 20 });
   run(
-    "demo.state.tutorial.seen=M.guides.map(g=>g.id);M.enterArena(demo.state);M.startMeleePractice(demo.state);demo.state.player.x=368;demo.state.player.dir=1;M.melee(demo.state);M.startFight(demo.state);M.dismissCombatLesson(demo.state);M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');for(let i=0;i<31;i++)M.update(demo.state,.02);Hud.ui()",
+    "demo.state.tutorial.seen=M.guides.map(g=>g.id);M.enterArena(demo.state);startCombat(M,demo.state);M.dismissCombatLesson(demo.state);M.resolveEnemySpell(demo.state,demo.state.player,'inmovilizar');for(let i=0;i<31;i++)M.update(demo.state,.02);Hud.ui()",
   );
   assert.equal(a.get('#combat-resource-outline').getAttribute('x'), '235');
   assert.equal(a.get('#combat-resource-outline').getAttribute('width'), '130');
@@ -1071,7 +1072,7 @@ test('tutorial HUD and final NPC completion are usable on phone', async () => {
   await new Promise((r) => setImmediate(r));
   const run = (s) => vm.runInContext(s, a.context);
   run(
-    'for(const g of M.guides){M.talk(demo.state,g.id);while(demo.state.tutorial.dialog)M.nextGuide(demo.state);}M.enterArena(demo.state);M.skipCombatLessons(demo.state);M.startMeleePractice(demo.state);demo.state.player.x=368;demo.state.player.dir=1;M.melee(demo.state);M.startFight(demo.state);demo.state.kills=2;M.update(demo.state,.02);Hud.ui()',
+    'for(const g of M.guides){M.talk(demo.state,g.id);while(demo.state.tutorial.dialog)M.nextGuide(demo.state);}M.enterArena(demo.state);M.skipCombatLessons(demo.state);startCombat(M,demo.state);demo.state.kills=2;M.update(demo.state,.02);Hud.ui()',
   );
   assert.match(a.get('#objective-label').textContent, /BANK/);
   run(
@@ -1153,7 +1154,7 @@ test('arena entrance motion pauses simulation briefly and releases without a tim
     return x;
   };
   run(
-    'Motion.syncMotion(0);for(const g of M.guides){M.talk(demo.state,g.id);while(demo.state.tutorial.dialog)M.nextGuide(demo.state);}M.enterArena(demo.state);M.skipCombatLessons(demo.state);M.startMeleePractice(demo.state);demo.state.player.x=368;demo.state.player.dir=1;M.melee(demo.state);M.startFight(demo.state);Motion.syncMotion(100)',
+    'Motion.syncMotion(0);for(const g of M.guides){M.talk(demo.state,g.id);while(demo.state.tutorial.dialog)M.nextGuide(demo.state);}M.enterArena(demo.state);M.skipCombatLessons(demo.state);startCombat(M,demo.state);Motion.syncMotion(100)',
   );
   assert.equal(run('demo.beatUntil'), 950);
   const before = run('demo.state.time');

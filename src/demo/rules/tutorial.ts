@@ -174,8 +174,27 @@ function meleePracticeHit(s: DemoState) {
   const target = s.enemies.find((enemy) => enemy.name === practice?.target);
   return s.tutorial?.stage === 'melee' && !!practice && !!target && target.hp < target.maxHp;
 }
-function startFight(s: DemoState) {
+function startSpellPractice(s: DemoState) {
   if (!meleePracticeHit(s)) return false;
+  const t = s.tutorial!;
+  t.stage = 'spells';
+  t.meleePractice!.spellStep = 'apocalipsis';
+  Object.assign(s.enemies[0], { x: 464, y: 432, hp: 3, maxHp: 3, immobilized: 0 });
+  s.player = { x: 304, y: 432, dir: 1, gait: 0, hp: 100, mana: 100, immobilized: 0 };
+  s.selectedSpell = 'apocalipsis';
+  s.armed = false;
+  s.cooldown = s.meleeCooldown = s.hitToCast = s.castToHit = s.pendingMelee = s.potionAttackLockout = 0;
+  s.navigation = null;
+  s.fx = [];
+  s.damageTexts = [];
+  M.clearPotionKeys(s);
+  return true;
+}
+function spellPracticeComplete(s: DemoState) {
+  return s.tutorial?.stage === 'spells' && s.tutorial.meleePractice?.spellStep === 'complete';
+}
+function startFight(s: DemoState) {
+  if (!spellPracticeComplete(s)) return false;
   s.enemies = s.tutorial!.meleePractice!.arenaEnemies;
   delete s.tutorial!.meleePractice;
   s.player = { x: 304, y: 432, dir: 1, gait: 0, hp: 100, mana: 100, immobilized: 0 };
@@ -183,6 +202,7 @@ function startFight(s: DemoState) {
   s.navigation = null;
   s.damageTexts = [];
   s.tutorial!.stage = 'fight';
+  s.selectedSpell = 'apocalipsis';
   teach(s, 'precision');
   s.armed = false;
   s.player.step = null;
@@ -207,17 +227,42 @@ M.pickup = function (s, radius) {
   }
   return n;
 };
-M.cast = (s, target) =>
-  s.phase === 'hallway' ||
-  s.tutorial?.stage === 'setup' ||
-  s.tutorial?.stage === 'melee' ||
-  s.tutorial?.stage === 'complete' ||
-  !!s.tutorial?.coach?.current
-    ? ((s.armed = false), false)
-    : originalCast(s, target);
+M.cast = (s, target) => {
+  if (
+    s.phase === 'hallway' ||
+    s.tutorial?.stage === 'setup' ||
+    s.tutorial?.stage === 'melee' ||
+    s.tutorial?.stage === 'complete' ||
+    !!s.tutorial?.coach?.current
+  ) {
+    s.armed = false;
+    return false;
+  }
+  const practice = s.tutorial?.stage === 'spells' ? s.tutorial.meleePractice : undefined;
+  if (
+    practice &&
+    (practice.spellStep === 'counter' || practice.spellStep === 'complete' || s.selectedSpell !== practice.spellStep)
+  ) {
+    s.armed = false;
+    M.tell(s, 'Seguí el hechizo indicado en la práctica antes de pasar al siguiente.');
+    return false;
+  }
+  const success = originalCast(s, target);
+  if (success && practice) {
+    if (practice.spellStep === 'apocalipsis') {
+      practice.spellStep = 'inmovilizar';
+      s.selectedSpell = 'inmovilizar';
+    } else if (practice.spellStep === 'inmovilizar') {
+      practice.spellStep = 'counter';
+      practice.counterRemaining = 1;
+    } else if (practice.spellStep === 'remover') practice.spellStep = 'complete';
+  }
+  return success;
+};
 M.melee = (s) =>
   s.phase === 'hallway' ||
   s.tutorial?.stage === 'setup' ||
+  s.tutorial?.stage === 'spells' ||
   s.tutorial?.stage === 'complete' ||
   meleePracticeHit(s) ||
   !!s.tutorial?.coach?.current
@@ -317,6 +362,40 @@ M.update = function (s, dt, input = { x: 0, y: 0 }) {
     } else originalUpdate(s, dt, input);
     return;
   }
+  if (t.stage === 'spells') {
+    const practice = t.meleePractice!;
+    if (practice.spellStep === 'complete') {
+      s.player.moving = false;
+      s.player.step = null;
+      s.navigation = null;
+      s.fx = s.fx.filter((effect) => (effect.age += dt) < 2);
+      s.damageTexts = s.damageTexts.filter((hit) => (hit.age += dt) < 1);
+      return;
+    }
+    // Keep paralysis active until the learner really casts Remover on themself.
+    if (practice.spellStep === 'remover') s.player.immobilized = Math.max(2.5, s.player.immobilized);
+    originalUpdate(s, dt, input);
+    if (practice.spellStep === 'counter') {
+      practice.counterRemaining = Math.max(0, (practice.counterRemaining || 0) - dt);
+      if (!practice.counterRemaining && s.player.x >= 270) {
+        const trainer = s.enemies[0];
+        M.resolveEnemySpell(s, s.player, 'inmovilizar');
+        s.fx.push({
+          x: trainer.x,
+          y: trainer.y,
+          age: 0,
+          hit: true,
+          owner: 'words',
+          spell: 'inmovilizar',
+          targetId: trainer.name,
+        });
+        practice.spellStep = 'remover';
+        s.selectedSpell = 'remover';
+        s.armed = false;
+      }
+    }
+    return;
+  }
   t.arenaTime += dt;
   const previousSecured = s.secured;
   originalUpdate(s, dt, input);
@@ -343,6 +422,8 @@ export default Object.assign(M, {
   enterArena,
   startMeleePractice,
   meleePracticeHit,
+  startSpellPractice,
+  spellPracticeComplete,
   startFight,
   dismissCombatLesson,
   skipCombatLessons,

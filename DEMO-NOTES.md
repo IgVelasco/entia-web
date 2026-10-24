@@ -1,3 +1,11 @@
+# Required spell exercises and readable spell selector — 23 October 2026
+
+- After the required melee hit, a passive trainer stays in a safe spell exercise. The learner must actually hit it with Apocalipsis, then Inmovilizar. The trainer then casts Inmovilizar on the player, who must target themself with Remover before Seguir a la pelea becomes available. The normal targeting, mana costs, recovery, impact artwork and spell rules remain active. Misses, wrong spells, hostile Remover, waiting and skipping optional explanations cannot complete the exercise.
+- Each step explains its target, effect and cost, selects the next spell and displays progress. Paralysis remains active until a successful self-removal; direction keys still turn the immobilized player. The drill does not advance combat/bank progress or create rewards. Continuing restores the real arena opponents and starting resources.
+- The spell selector now separates the name, effect, mana cost and assigned key into dark rows with distinct icons, one gold selected outline and visible keyboard focus. Arrow keys, Home and End navigate it. Desktop and phone layouts show all three descriptions without clipping. Inventory slots retain usable artwork height and scroll within their panel when space is limited.
+- Player casts preserve the current heading on hits and misses, including self-removal. Movement keys and the joystick still control facing.
+- Verification exercises the complete required sequence and failure paths, mana use, persistent immobilization, direction-only movement and every casting heading. Browser coverage performs the drill at desktop and phone widths and checks selection, keyboard navigation, misses, self-removal, caption bounds and entry into combat.
+
 # Required melee exercise before combat — 23 October 2026
 
 - The safe controls workshop now opens a dedicated melee practice stage with one passive Entrenador. The lower control panel explains adjacent range, facing with movement keys/joystick, direction rather than cursor aim, attack recovery and the current assigned Golpear key. A visible desktop Golpear button remains in the control deck during real combat; mobile uses its existing touch strike button with the same label/binding.

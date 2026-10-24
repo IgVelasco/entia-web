@@ -83,7 +83,7 @@ test('first pickup does not reveal tutorial bank through either input path', () 
   for (const mode of ['pickup', 'interact']) {
     const s = arena();
     M.drop(s, s.player.x, s.player.y, 10, 'rival');
-    s.time = 1;
+    s.time += 1;
     M[mode](s);
     assert.equal(s.carried, 10);
     assert(!s.bankUnlocked);

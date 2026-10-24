@@ -111,12 +111,24 @@ export function ui() {
         (demo.macroBindings[action] ? ' · ' + keyLabel(demo.macroBindings[action]) : ' · sin tecla'),
     );
   }
-  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-spell]'))
-    button.textContent =
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-spell]')) {
+    const selected = button.dataset.spell === demo.state.selectedSpell;
+    button.setAttribute('aria-selected', String(selected));
+    button.tabIndex = selected ? 0 : -1;
+    button.setAttribute(
+      'aria-label',
       M.spells[button.dataset.spell!].name +
-      (demo.macroBindings[button.dataset.spell! as keyof typeof demo.macroBindings]
-        ? ' · ' + keyLabel(demo.macroBindings[button.dataset.spell! as keyof typeof demo.macroBindings])
-        : '');
+        (demo.macroBindings[button.dataset.spell! as keyof typeof demo.macroBindings]
+          ? ' · ' + keyLabel(demo.macroBindings[button.dataset.spell! as keyof typeof demo.macroBindings])
+          : ''),
+    );
+    button.querySelector('[data-spell-key]')!.textContent = demo.macroBindings[
+      button.dataset.spell! as keyof typeof demo.macroBindings
+    ]
+      ? keyLabel(demo.macroBindings[button.dataset.spell! as keyof typeof demo.macroBindings])
+      : '—';
+  }
+  $('#mobile-spell').value = demo.state.selectedSpell;
   const recovery = Math.max(demo.state.cooldown, demo.state.hitToCast);
   $('#spell-status').textContent =
     recovery > 0
@@ -232,7 +244,11 @@ export function bindActionButtons() {
 }
 export function bindHud() {
   $('#practice-continue').onclick = () => {
-    if (demo.paused || !M.startFight(demo.state)) return;
+    if (
+      demo.paused ||
+      !(demo.state.tutorial?.stage === 'melee' ? M.startSpellPractice(demo.state) : M.startFight(demo.state))
+    )
+      return;
     clear();
     ui();
     demo.previous = performance.now();
@@ -312,8 +328,33 @@ export function selectSpell(id: string) {
   ui();
 }
 export function bindSpells() {
-  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-spell]')) {
+  const buttons = [...document.querySelectorAll<HTMLButtonElement>('[data-spell]')];
+  for (const [index, button] of buttons.entries()) {
     button.onclick = () => selectSpell(button.dataset.spell!);
+    button.onkeydown = (event) => {
+      const directions = ['ArrowDown', 'ArrowUp', 'Home', 'End'];
+      if (!directions.includes(event.key) && event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      event.stopPropagation();
+      const next =
+        event.key === 'Home'
+          ? 0
+          : event.key === 'End'
+            ? buttons.length - 1
+            : event.key === 'ArrowDown'
+              ? (index + 1) % buttons.length
+              : event.key === 'ArrowUp'
+                ? (index + buttons.length - 1) % buttons.length
+                : index;
+      selectSpell(buttons[next].dataset.spell!);
+      buttons[next].focus();
+    };
+    button.onkeyup = (event) => {
+      if ([' ', 'Enter', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
     button.ondblclick = () => {
       selectSpell(button.dataset.spell!);
       prepareSpell();
@@ -386,13 +427,19 @@ function tutorialUI() {
   if (!t) return;
   const hall = demo.state.phase === 'hallway',
     setup = t.stage === 'setup',
-    practice = t.stage === 'melee',
+    melee = t.stage === 'melee',
+    spellPractice = t.stage === 'spells',
+    practice = melee || spellPractice,
     done = t.stage === 'complete';
   $('#melee-practice').hidden = !practice;
-  const hit = M.meleePracticeHit(demo.state);
+  const hit = melee ? M.meleePracticeHit(demo.state) : M.spellPracticeComplete(demo.state);
+  $('#practice-title').textContent = melee ? 'Practicá un golpe cuerpo a cuerpo' : 'Practicá tus hechizos';
+  $('#practice-description').textContent =
+    'Acercate al casillero contiguo del Entrenador. Miralo de frente con WASD, flechas o joystick: el golpe sale hacia donde mirás, no hacia el cursor.';
+  $('#practice-continue').textContent = melee ? 'Practicar hechizos' : 'Seguir a la pelea';
   $('#practice-continue').disabled = !hit || demo.paused;
   $('#practice-status').textContent = hit
-    ? '¡Golpe acertado! Ya podés seguir a la pelea.'
+    ? '¡Golpe acertado! Ya podés practicar hechizos.'
     : 'Pendiente: acertá un golpe al Entrenador. Un golpe al aire no cuenta.';
   $('#practice-instructions').textContent = demo.macroBindings.strike
     ? `Usá Golpear o tu tecla ${keyLabel(demo.macroBindings.strike)}. Esperá la recuperación entre intentos. El entrenador no ataca.`
@@ -475,6 +522,37 @@ function tutorialUI() {
     $('#cast').disabled = true;
     $('#prepare-spell').disabled = true;
   }
+  if (spellPractice) {
+    const step = t.meleePractice!.spellStep!;
+    const descriptions = {
+      apocalipsis:
+        'Prepará Apocalipsis con Lanzar o tu macro y acertale al Entrenador. Un clic, un casillero; consume 15 de maná.',
+      inmovilizar: 'Acertá Inmovilizar al Entrenador. Consume 20 de maná y le impide avanzar; todavía puede lanzar.',
+      counter:
+        demo.state.player.x < 270
+          ? 'Volvé a la arena, a la derecha del portal, para que el Entrenador te inmovilice.'
+          : 'Ahora el Entrenador va a inmovilizarte para que practiques Remover.',
+      remover:
+        'Estás inmovilizado. Prepará Remover y lanzalo sobre tu figura o tus pies. Consume 10 de maná. Podés girar y lanzar.',
+      complete:
+        'Ya acertaste Apocalipsis e Inmovilizar al Entrenador y usaste Remover sobre vos. Podés seguir a la pelea.',
+    };
+    const count = step === 'apocalipsis' ? 0 : step === 'inmovilizar' ? 1 : step === 'complete' ? 3 : 2;
+    $('#chapter').textContent = 'THE VEIL / PRÁCTICA DE HECHIZOS';
+    $('#objective-label').textContent = 'APRENDÉ A LANZAR';
+    $('#objective').textContent = `${count} / 3 hechizos practicados`;
+    $('#practice-description').textContent = descriptions[step];
+    $('#practice-instructions').textContent =
+      'Seleccioná el hechizo indicado y usá Lanzar o su macro. El cursor apunta libremente; lanzar conserva hacia dónde mirás.';
+    $('#practice-status').textContent =
+      step === 'complete'
+        ? '¡Práctica completada! Ya podés seguir a la pelea.'
+        : `Paso ${Math.min(3, count + 1)} de 3 · ${step === 'counter' ? 'Esperá el hechizo del Entrenador' : M.spells[step].name}`;
+    $('#hint').textContent = descriptions[step];
+    $('#deposit-status').textContent = 'Práctica segura · los fallos no completan el ejercicio';
+    $('#cast').disabled = demo.paused || step === 'counter' || step === 'complete';
+    $('#prepare-spell').disabled = $('#cast').disabled;
+  }
   if (t.bankRevealed && !done) {
     const b = M.bankAt(demo.state),
       dx = b.x - demo.state.player.x,
@@ -527,7 +605,7 @@ function updateJourney(t: TutorialState) {
   const index =
     t.stage === 'hallway' || t.stage === 'setup'
       ? 0
-      : t.stage === 'fight' || t.stage === 'melee'
+      : t.stage === 'fight' || t.stage === 'melee' || t.stage === 'spells'
         ? 1
         : t.stage === 'deposit'
           ? 2

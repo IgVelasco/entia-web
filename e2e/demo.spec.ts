@@ -1,4 +1,4 @@
-import { completeMeleePractice } from './practice.ts';
+import { completeMeleePractice, completeSpellPractice, castPracticeSpell } from './practice.ts';
 import { test, expect, openDemo, openSite, type Page } from './fixtures.ts';
 
 const guides = ['The Warden', 'The Arcanist', 'The Keeper'];
@@ -151,6 +151,77 @@ test.describe('offline demo', () => {
     test.use({ reducedMotion: 'reduce' });
 
     for (const width of [1280, 390]) {
+      test(`spell exercise requires Apocalipsis, Inmovilizar and self Remover at ${width}px`, async ({
+        page,
+      }, testInfo) => {
+        await page.setViewportSize({ width, height: width === 390 ? 844 : 720 });
+        await openDemo(page);
+        await enterPreparation(page);
+        await page.locator('#setup-windows').click();
+        await page.locator('#setup-experienced').click();
+        const time = new Date('2026-10-23T12:00:00Z');
+        await page.clock.install({ time });
+        await page.clock.pauseAt(new Date(time.getTime() + 10000));
+        await page.locator('#setup-start').click();
+        await completeMeleePractice(page, { clockPaused: true, includeSpells: false });
+        await expect(page.locator('#practice-continue')).toBeDisabled();
+        await expect(page.locator('.spell-list [aria-selected="true"]')).toHaveCount(1);
+        await expect(page.locator('[data-spell="apocalipsis"]')).toHaveAttribute('aria-selected', 'true');
+        if (width === 1280) {
+          await page.locator('[data-spell="apocalipsis"]').focus();
+          await page.keyboard.press('ArrowDown');
+          await expect(page.locator('[data-spell="inmovilizar"]')).toHaveAttribute('aria-selected', 'true');
+          await page.keyboard.press('ArrowUp');
+        }
+        await castPracticeSpell(page, 'empty', { clockPaused: true });
+        await expect(page.locator('#objective')).toHaveText('0 / 3 hechizos practicados');
+        await expect(page.locator('#mana')).toHaveText('100 / 100');
+        await castPracticeSpell(page, 'trainer', { clockPaused: true });
+        await expect(page.locator('#objective')).toHaveText('1 / 3 hechizos practicados');
+        await expect(page.locator('#mana')).toHaveText('85 / 100');
+        await expect(page.locator('[data-spell="inmovilizar"]')).toHaveAttribute('aria-selected', 'true');
+        await castPracticeSpell(page, 'trainer', { clockPaused: true });
+        await page.clock.runFor(1500);
+        await expect(page.locator('#objective')).toHaveText('2 / 3 hechizos practicados');
+        await expect(page.locator('#mana')).toHaveText('65 / 100');
+        await expect(page.locator('#movement-status')).toContainText('Inmovilizado');
+        await expect(page.locator('#practice-description')).toContainText('sobre tu figura o tus pies');
+        await castPracticeSpell(page, 'trainer', { clockPaused: true });
+        await expect(page.locator('#objective')).toHaveText('2 / 3 hechizos practicados');
+        await expect(page.locator('#practice-continue')).toBeDisabled();
+        await page.clock.runFor(5000);
+        await expect(page.locator('#movement-status')).toContainText('Inmovilizado');
+        await castPracticeSpell(page, 'self', { clockPaused: true });
+        await expect(page.locator('#objective')).toHaveText('3 / 3 hechizos practicados');
+        await expect(page.locator('#mana')).toHaveText('55 / 100');
+        await expect(page.locator('#movement-status')).toBeHidden();
+        await expect(page.locator('#practice-continue')).toBeEnabled();
+        if (width === 390) await page.locator('#toggle-hud').click();
+        await page.clock.runFor(100);
+        const potionBounds = await page.locator('#life-potion').boundingBox();
+        expect(potionBounds?.height).toBeGreaterThanOrEqual(40);
+        await expect(page.locator('.spell-list [aria-selected="true"]')).toHaveCount(1);
+        const spellListBounds = await page.locator('.spell-list').boundingBox();
+        expect(spellListBounds).not.toBeNull();
+        for (const key of ['apocalipsis', 'inmovilizar', 'remover']) {
+          await expect(page.locator(`[data-spell="${key}"]`)).toBeInViewport();
+          const caption = await page.locator(`[data-spell="${key}"] .spell-copy small`).boundingBox();
+          expect(caption).not.toBeNull();
+          expect(caption!.y + caption!.height).toBeLessThanOrEqual(spellListBounds!.y + spellListBounds!.height);
+        }
+        await testInfo.attach('spell-practice-and-selector', {
+          body: await page.screenshot(),
+          contentType: 'image/png',
+        });
+        if (width === 390) await page.locator('#toggle-hud').click();
+        await page.locator('#practice-continue').click();
+        await page.clock.runFor(40);
+        await expect(page.locator('body')).toHaveAttribute('data-tutorial-stage', 'fight');
+        await expect(page.locator('#mana')).toHaveText('100 / 100');
+      });
+    }
+
+    for (const width of [1280, 390]) {
       test(`melee practice explains the assigned key and requires a real hit at ${width}px`, async ({
         page,
       }, testInfo) => {
@@ -202,6 +273,7 @@ test.describe('offline demo', () => {
         await testInfo.attach('melee-practice-completed', { body: await page.screenshot(), contentType: 'image/png' });
         await page.locator('#practice-continue').click();
         await page.clock.runFor(20);
+        await completeSpellPractice(page, { clockPaused: true });
         await expect(page.locator('body')).toHaveAttribute('data-tutorial-stage', 'fight');
         await expect(panel).toBeHidden();
         await expect(page.locator('#prepare-spell')).toBeEnabled();
@@ -410,9 +482,13 @@ test.describe('offline demo', () => {
       await page.locator('#bindings-close').click();
       await page.locator('#setup-next').click();
       await page.locator('#setup-experienced').click();
+      const time = new Date('2026-10-23T12:00:00Z');
+      await page.clock.install({ time });
+      await page.clock.pauseAt(new Date(time.getTime() + 10000));
       await page.locator('#setup-start').click();
-      await completeMeleePractice(page);
+      await completeMeleePractice(page, { clockPaused: true });
       await page.keyboard.press('e');
+      await page.clock.runFor(40);
       await expect(page.locator('#prepare-spell')).toHaveAttribute('aria-pressed', 'true');
       await expect(page.locator('#help-dialog')).toBeHidden();
       await page.locator('#controls-options').click();
@@ -420,6 +496,7 @@ test.describe('offline demo', () => {
       await expect(editor.locator('[data-bind="interact"]')).toHaveText('G');
       await page.locator('#bindings-close').click();
       await page.keyboard.press('Escape');
+      await page.clock.runFor(40);
       await expect(page.locator('#prepare-spell')).toHaveAttribute('aria-pressed', 'false');
     });
 

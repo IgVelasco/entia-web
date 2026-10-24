@@ -97,7 +97,7 @@ export function syncMotion(now: number) {
     );
     for (let i = 0; i < 4; i++)
       motion($('#journey-' + i), [{ opacity: 0 }, { opacity: 1 }], { duration: 450, delay: 80 * i });
-  } else if (key === 'fight' && (old === 'hallway' || old === 'setup' || old === 'melee')) {
+  } else if (key === 'fight' && (old === 'hallway' || old === 'setup' || old === 'melee' || old === 'spells')) {
     clear();
     chapterCue('CHAPTER II', 'Beyond the Veil', 'Two rivals. One choice: risk it or secure it.', now);
   } else if (key === 'deposit') {

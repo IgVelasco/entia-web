@@ -75,6 +75,7 @@ export interface CombatCoach {
 }
 export const createCoach = (): CombatCoach => ({ enabled: true, seen: [], current: null });
 export function teach(s: DemoState, id: CombatLessonId, subject = 'player') {
+  if (s.tutorial?.stage === 'spells') return;
   const coach = s.tutorial?.coach;
   if (!coach?.enabled || coach.current || coach.seen.includes(id)) return;
   coach.seen.push(id);

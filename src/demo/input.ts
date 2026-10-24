@@ -65,6 +65,8 @@ export function prepareSpell() {
     demo.state.phase === 'hallway' ||
     demo.state.tutorial?.stage === 'setup' ||
     demo.state.tutorial?.stage === 'complete' ||
+    (demo.state.tutorial?.stage === 'spells' &&
+      ['counter', 'complete'].includes(demo.state.tutorial.meleePractice?.spellStep || '')) ||
     demo.state.tutorial?.stage === 'melee'
   )
     return;

@@ -284,7 +284,6 @@ function cast(s: DemoState, target?: CastTarget | null) {
   // belongs only to movement collision, never to a spell's hitbox.
   const enemy = s.enemies.find((e) => e.hp > 0 && sameTile(e, target)),
     self = sameTile(p, target);
-  if (d > 0) p.dir = heading(target.x - p.x, target.y - p.y);
   const reject = (message: string, lesson: 'miss' | 'mana' | 'enemyRemover' = 'miss') => {
     tell(s, message);
     teach(s, lesson, lesson === 'enemyRemover' ? enemy!.name : 'player');

@@ -63,7 +63,7 @@
           <section id="melee-practice" hidden aria-labelledby="practice-title" lang="es-AR">
             <div>
               <strong id="practice-title">Practicá un golpe cuerpo a cuerpo</strong>
-              <p>
+              <p id="practice-description">
                 Acercate al casillero contiguo del Entrenador. Miralo de frente con WASD, flechas o joystick: el golpe
                 sale hacia donde mirás, no hacia el cursor.
               </p>
@@ -167,11 +167,35 @@
           </div>
         </section>
         <section class="rao-window spells-window" aria-labelledby="spells-heading">
-          <h2 id="spells-heading">Spells</h2>
-          <div class="spell-list" role="listbox" aria-label="Available spells">
-            <button id="selected-spell" data-spell="apocalipsis" role="option" aria-selected="true">Apocalipsis</button
-            ><button data-spell="inmovilizar" role="option" aria-selected="false">Inmovilizar</button
-            ><button data-spell="remover" role="option" aria-selected="false">Remover parálisis</button>
+          <h2 id="spells-heading">Hechizos</h2>
+          <div class="spell-list" role="listbox" aria-label="Hechizos disponibles">
+            <button
+              id="selected-spell"
+              data-spell="apocalipsis"
+              role="option"
+              aria-selected="true"
+              aria-label="Apocalipsis"
+            >
+              <span class="spell-icon" aria-hidden="true">✦</span
+              ><span class="spell-copy"><strong>Apocalipsis</strong><small>Daño directo · 15 maná</small></span
+              ><kbd data-spell-key>—</kbd>
+            </button>
+            <button data-spell="inmovilizar" role="option" aria-selected="false" aria-label="Inmovilizar" tabindex="-1">
+              <span class="spell-icon" aria-hidden="true">❄</span
+              ><span class="spell-copy"><strong>Inmovilizar</strong><small>Detiene al rival · 20 maná</small></span
+              ><kbd data-spell-key>—</kbd>
+            </button>
+            <button
+              data-spell="remover"
+              role="option"
+              aria-selected="false"
+              aria-label="Remover parálisis"
+              tabindex="-1"
+            >
+              <span class="spell-icon" aria-hidden="true">↟</span
+              ><span class="spell-copy"><strong>Remover</strong><small>Quita tu parálisis · 10 maná</small></span
+              ><kbd data-spell-key>—</kbd>
+            </button>
           </div>
           <small id="spell-status">15 mana · targeted spell</small
           ><button id="prepare-spell" aria-pressed="false">Lanzar</button>
