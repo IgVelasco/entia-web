@@ -1,3 +1,9 @@
+# Required melee exercise before combat — 23 October 2026
+
+- The safe controls workshop now opens a dedicated melee practice stage with one passive Entrenador. The lower control panel explains adjacent range, facing with movement keys/joystick, direction rather than cursor aim, attack recovery and the current assigned Golpear key. A visible desktop Golpear button remains in the control deck during real combat; mobile uses its existing touch strike button with the same label/binding.
+- Seguir a la pelea stays disabled until an actual melee strike damages the trainer. Empty swings, facing away, spells, waiting and skipping contextual explanations cannot pass the gate. Practice does not advance the arena/bank clock, create kill rewards or expose the learner to enemy attacks. The hit effect remains visible, with completion text, until the learner explicitly continues.
+- Continuing restores the arena opponents, the starting position/resources and clean recovery/input state, then begins the existing spell/combat lessons. Replaying requires a fresh practice hit. Combat test fixtures also go through the real hit gate instead of bypassing the new stage.
+
 # Unlimited practice potions, pursuing melee rival and lower cards — 23 October 2026
 
 - Tutorial life and mana potions are unlimited, with ∞ in both the inventory and macro bar. Uses restore the same amounts and retain the shared cooldown, attack recovery and held-key cadence. The workshop explains the unlimited supply; the finite-stock rules outside a tutorial remain unchanged.

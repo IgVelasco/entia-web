@@ -285,7 +285,7 @@ export function bindSetup() {
       syncSetup();
     };
   $('#setup-start').onclick = () => {
-    if (step !== 3 || capturing || !M.startFight(demo.state)) return;
+    if (step !== 3 || capturing || !M.startMeleePractice(demo.state)) return;
     clear();
     syncSetup();
     demo.previous = performance.now();

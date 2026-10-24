@@ -136,6 +136,7 @@ export function ui() {
   canvas.style.cursor = demo.state.armed ? 'crosshair' : 'default';
   $('#cast').style.opacity = recovery > 0 ? '.55' : '1';
   for (const id of ['#strike', '#mobile-strike']) {
+    $(id).textContent = 'Golpear · ' + keyLabel(demo.macroBindings.strike);
     $(id).style.opacity = Math.max(demo.state.meleeCooldown, demo.state.castToHit) > 0 ? '.55' : '1';
   }
 
@@ -145,7 +146,10 @@ export function ui() {
     $('#message').textContent = demo.state.notice;
     demo.messageUntil = performance.now() + 5000;
   }
-  $('#message').classList.toggle('visible', performance.now() < demo.messageUntil);
+  $('#message').classList.toggle(
+    'visible',
+    demo.state.tutorial?.stage !== 'melee' && performance.now() < demo.messageUntil,
+  );
 }
 export function showHelp(first = false) {
   if (!demo.ready) return;
@@ -227,6 +231,14 @@ export function bindActionButtons() {
   $('#retry').onclick = load;
 }
 export function bindHud() {
+  $('#practice-continue').onclick = () => {
+    if (demo.paused || !M.startFight(demo.state)) return;
+    clear();
+    ui();
+    demo.previous = performance.now();
+    focusGame();
+    schedule();
+  };
   $('#hud-help').onclick = () => showHelp();
   $('#close-help').onclick = hideHelp;
   $('#help-dialog').addEventListener('cancel', (e) => {
@@ -374,7 +386,18 @@ function tutorialUI() {
   if (!t) return;
   const hall = demo.state.phase === 'hallway',
     setup = t.stage === 'setup',
+    practice = t.stage === 'melee',
     done = t.stage === 'complete';
+  $('#melee-practice').hidden = !practice;
+  const hit = M.meleePracticeHit(demo.state);
+  $('#practice-continue').disabled = !hit || demo.paused;
+  $('#practice-status').textContent = hit
+    ? '¡Golpe acertado! Ya podés seguir a la pelea.'
+    : 'Pendiente: acertá un golpe al Entrenador. Un golpe al aire no cuenta.';
+  $('#practice-instructions').textContent = demo.macroBindings.strike
+    ? `Usá Golpear o tu tecla ${keyLabel(demo.macroBindings.strike)}. Esperá la recuperación entre intentos. El entrenador no ataca.`
+    : 'Usá el botón Golpear, o asigná una tecla en Teclas y macros. El entrenador no ataca.';
+  $('#strike').hidden = hall || setup || done;
   $('#chapter').textContent = hall
     ? 'THE VEIL / FIRST STEPS'
     : done
@@ -443,6 +466,15 @@ function tutorialUI() {
     $('#hint').textContent = 'Conocé las ventanas y elegí si querés usar macros antes de combatir.';
     $('#deposit-status').textContent = 'Combate detenido · no se gasta vida, maná ni pociones';
   }
+  if (practice) {
+    $('#chapter').textContent = 'THE VEIL / PRÁCTICA CUERPO A CUERPO';
+    $('#objective-label').textContent = 'APRENDÉ A GOLPEAR';
+    $('#objective').textContent = hit ? '1 / 1 golpe acertado' : '0 / 1 golpe acertado';
+    $('#hint').textContent = 'Acercate al Entrenador y miralo de frente. Golpear no sigue al cursor.';
+    $('#deposit-status').textContent = 'Práctica segura · acertá un golpe antes de seguir';
+    $('#cast').disabled = true;
+    $('#prepare-spell').disabled = true;
+  }
   if (t.bankRevealed && !done) {
     const b = M.bankAt(demo.state),
       dx = b.x - demo.state.player.x,
@@ -493,7 +525,13 @@ function paintPortrait(id: string) {
 }
 function updateJourney(t: TutorialState) {
   const index =
-    t.stage === 'hallway' || t.stage === 'setup' ? 0 : t.stage === 'fight' ? 1 : t.stage === 'deposit' ? 2 : 3;
+    t.stage === 'hallway' || t.stage === 'setup'
+      ? 0
+      : t.stage === 'fight' || t.stage === 'melee'
+        ? 1
+        : t.stage === 'deposit'
+          ? 2
+          : 3;
   for (let i = 0; i < 4; i++) {
     const step = $('#journey-' + i);
     step.dataset.state = i < index ? 'done' : i === index ? 'current' : 'waiting';

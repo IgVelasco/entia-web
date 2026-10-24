@@ -584,6 +584,10 @@ function update(s: DemoState, dt: number, input: Input = { x: 0, y: 0 }) {
 
   for (const e of s.enemies) {
     e.moving = false;
+    if (e.kind === 'practice') {
+      e.dir = heading(p.x - e.x, p.y - e.y);
+      continue;
+    }
     e.cooldown = Math.max(0, e.cooldown - dt);
     if (e.hp <= 0) {
       e.respawn -= dt;

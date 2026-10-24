@@ -1,3 +1,4 @@
+const startCombat = require('./helpers/tutorial-arena.cjs');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
@@ -10,7 +11,7 @@ function practice() {
   s.tutorial.seen = M.guides.map((g) => g.id);
   M.enterArena(s);
   M.skipCombatLessons(s);
-  M.startFight(s);
+  startCombat(M, s);
   s.player.x = 400;
   s.player.y = 432;
   s.enemies = [{ ...s.enemies[0], x: 464, y: 432, speed: 0, cooldown: 99 }];

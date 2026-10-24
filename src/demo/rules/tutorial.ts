@@ -139,9 +139,50 @@ function enterArena(s: DemoState) {
   M.tell(s, 'Prepará tus controles. La pelea comienza únicamente cuando elijas entrar.');
   return true;
 }
-function startFight(s: DemoState) {
+function startMeleePractice(s: DemoState) {
   if (s.phase !== 'arena' || s.tutorial?.stage !== 'setup') return false;
-  s.tutorial.stage = 'fight';
+  const template = s.enemies.find((enemy) => enemy.name === 'Sentinel')!;
+  s.tutorial.meleePractice = { target: 'Entrenador', arenaEnemies: s.enemies };
+  s.tutorial.stage = 'melee';
+  s.enemies = [
+    {
+      ...template,
+      name: 'Entrenador',
+      kind: 'practice',
+      x: 400,
+      y: 432,
+      homeX: 400,
+      homeY: 432,
+      hp: 2,
+      maxHp: 2,
+      reward: 0,
+      essence: 0,
+      cooldown: 0,
+    },
+  ];
+  s.armed = false;
+  s.player.step = null;
+  M.clearPotionKeys(s);
+  M.tell(
+    s,
+    'Práctica segura: acercate al Entrenador, miralo de frente y acertale un golpe cuerpo a cuerpo para seguir.',
+  );
+  return true;
+}
+function meleePracticeHit(s: DemoState) {
+  const practice = s.tutorial?.meleePractice;
+  const target = s.enemies.find((enemy) => enemy.name === practice?.target);
+  return s.tutorial?.stage === 'melee' && !!practice && !!target && target.hp < target.maxHp;
+}
+function startFight(s: DemoState) {
+  if (!meleePracticeHit(s)) return false;
+  s.enemies = s.tutorial!.meleePractice!.arenaEnemies;
+  delete s.tutorial!.meleePractice;
+  s.player = { x: 304, y: 432, dir: 1, gait: 0, hp: 100, mana: 100, immobilized: 0 };
+  s.cooldown = s.meleeCooldown = s.hitToCast = s.castToHit = s.potionAttackLockout = s.pendingMelee = 0;
+  s.navigation = null;
+  s.damageTexts = [];
+  s.tutorial!.stage = 'fight';
   teach(s, 'precision');
   s.armed = false;
   s.player.step = null;
@@ -169,6 +210,7 @@ M.pickup = function (s, radius) {
 M.cast = (s, target) =>
   s.phase === 'hallway' ||
   s.tutorial?.stage === 'setup' ||
+  s.tutorial?.stage === 'melee' ||
   s.tutorial?.stage === 'complete' ||
   !!s.tutorial?.coach?.current
     ? ((s.armed = false), false)
@@ -177,6 +219,7 @@ M.melee = (s) =>
   s.phase === 'hallway' ||
   s.tutorial?.stage === 'setup' ||
   s.tutorial?.stage === 'complete' ||
+  meleePracticeHit(s) ||
   !!s.tutorial?.coach?.current
     ? false
     : originalMelee(s);
@@ -263,6 +306,17 @@ M.update = function (s, dt, input = { x: 0, y: 0 }) {
     s.streamParticles = s.streamParticles.filter((p) => (p.age += dt) < 0.55);
     return;
   }
+  if (t.stage === 'melee') {
+    if (meleePracticeHit(s)) {
+      s.player.moving = false;
+      s.player.step = null;
+      s.navigation = null;
+      s.pendingMelee = 0;
+      s.fx = s.fx.filter((effect) => (effect.age += dt) < 2);
+      s.damageTexts = s.damageTexts.filter((hit) => (hit.age += dt) < 1);
+    } else originalUpdate(s, dt, input);
+    return;
+  }
   t.arenaTime += dt;
   const previousSecured = s.secured;
   originalUpdate(s, dt, input);
@@ -287,6 +341,8 @@ export default Object.assign(M, {
   talk,
   nextGuide: next,
   enterArena,
+  startMeleePractice,
+  meleePracticeHit,
   startFight,
   dismissCombatLesson,
   skipCombatLessons,

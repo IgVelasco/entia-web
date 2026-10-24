@@ -60,6 +60,18 @@
           </div>
         </div>
         <div id="control-deck" aria-label="Game controls">
+          <section id="melee-practice" hidden aria-labelledby="practice-title" lang="es-AR">
+            <div>
+              <strong id="practice-title">Practicá un golpe cuerpo a cuerpo</strong>
+              <p>
+                Acercate al casillero contiguo del Entrenador. Miralo de frente con WASD, flechas o joystick: el golpe
+                sale hacia donde mirás, no hacia el cursor.
+              </p>
+              <p id="practice-instructions"></p>
+              <p id="practice-status" role="status" aria-live="polite"></p>
+            </div>
+            <button id="practice-continue" disabled>Seguir a la pelea</button>
+          </section>
           <p id="deposit-status" role="status">Bank unlocks after your first pickup</p>
           <div class="deck-top">
             <div class="macrobar" aria-label="Demo macro shortcuts">
@@ -76,6 +88,7 @@
                 <kbd>—</kbd><img src="../assets/hud/scroll.png" alt="" /></button
               ><span></span>
             </div>
+            <button id="strike">Golpear</button>
             <div class="interact-area" hidden>
               <button id="interact">Interact <kbd>E</kbd></button>
               <div id="bank-progress" hidden><span></span></div>
@@ -191,7 +204,7 @@
           ><button id="hud-help" class="quiet">Controls</button>
         </div>
         <div class="combat-actions">
-          <button id="strike">Strike</button><button id="meditate" aria-pressed="false">Meditate</button>
+          <button id="meditate" aria-pressed="false">Meditate</button>
         </div>
       </aside>
     </main>
@@ -406,18 +419,20 @@
       </div>
       <h2 id="help-title">Welcome to the Veil</h2>
       <p class="dialog-lead">
-        Walk toward each hallway guide to hear their lesson, enter the arena, defeat two rivals and deposit your essence
-        to complete this tutorial.
+        Meet the hallway guides and configure your controls. Before combat, land one melee hit on the passive trainer
+        and choose Seguir a la pelea. Then defeat two rivals and deposit your essence to complete the tutorial.
       </p>
       <div class="howto-flow">
         <div>
           <b>1. Fight</b>
           <p>
-            Click the floor to walk. Select a spell and press Lanzar to aim, then click its target tile. Escape or
-            Cancelar cancels aiming. Prepare again for each cast. Keep moving while aiming and casting. Inmovilizar
-            stops translation but allows turning; Remover parálisis targets your own tile and costs mana. You cannot
-            remove an enemy's immobilization. Bots can remove their own immobilization too. Aim stays free and spells
-            have no target-area indicators. Walk into the return portal to go back to Nix.
+            To strike, stand beside the rival and face it with WASD, arrows or the joystick. Press Golpear or release
+            your assigned strike key: melee follows your facing, not the cursor. Click the floor to walk. Select a spell
+            and press Lanzar to aim, then click its target tile. Escape or Cancelar cancels aiming. Prepare again for
+            each cast. Keep moving while aiming and casting. Inmovilizar stops translation but allows turning; Remover
+            parálisis targets your own tile and costs mana. You cannot remove an enemy's immobilization. Bots can remove
+            their own immobilization too. Aim stays free and spells have no target-area indicators. Walk into the return
+            portal to go back to Nix.
           </p>
         </div>
         <div>
@@ -438,7 +453,8 @@
       <p class="small-note">
         Auto-pot repeats a potion while its assigned macro is held. Assign your own keys in the safe workshop before
         combat, or choose to play entirely from the windows. You can also hold the hotbar buttons. With Auto-pot off,
-        releasing uses one. Holding still consumes potions at full resources. This practice run supplies 100 of each.
+        releasing uses one. This tutorial has unlimited life and mana potions (∞), with recovery between uses and after
+        attacks.
       </p>
       <details open>
         <summary>Controls</summary>

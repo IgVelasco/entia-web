@@ -1,3 +1,4 @@
+import { completeMeleePractice } from './practice.ts';
 import { test, expect, openDemo, openSite, type Page } from './fixtures.ts';
 
 const guides = ['The Warden', 'The Arcanist', 'The Keeper'];
@@ -41,6 +42,7 @@ async function enterArena(page: Page) {
   await page.locator('#setup-next').click();
   await page.locator('#setup-experienced').click();
   await page.locator('#setup-start').click();
+  await completeMeleePractice(page);
   await expect(page.locator('#chapter')).toHaveText('THE VEIL / ARENA');
 }
 
@@ -89,7 +91,7 @@ test.describe('offline demo', () => {
       await openDemo(page);
       const time = new Date('2026-10-22T12:00:00Z');
       await page.clock.install({ time });
-      await page.clock.pauseAt(new Date(time.getTime() + 100));
+      await page.clock.pauseAt(new Date(time.getTime() + 10000));
       const before = await page.locator('#game').boundingBox();
       const pageHeight = await page.locator('body').evaluate((el) => el.scrollHeight);
       const notice = page.locator('#movement-status');
@@ -148,6 +150,64 @@ test.describe('offline demo', () => {
   test.describe('with reduced motion', () => {
     test.use({ reducedMotion: 'reduce' });
 
+    for (const width of [1280, 390]) {
+      test(`melee practice explains the assigned key and requires a real hit at ${width}px`, async ({
+        page,
+      }, testInfo) => {
+        await page.setViewportSize({ width, height: width === 390 ? 844 : 720 });
+        await openDemo(page);
+        await page.locator('#pause').click();
+        await page.locator('#help-bindings').click();
+        await page.locator('#bindings-dialog [data-bind="strike"]').click();
+        await page.keyboard.press('j');
+        await page.locator('#bindings-close').click();
+        await page.locator('#resume').click();
+        await enterPreparation(page);
+        await page.locator('#setup-windows').click();
+        await page.locator('#setup-experienced').click();
+        const time = new Date('2026-10-23T12:00:00Z');
+        await page.clock.install({ time });
+        await page.clock.pauseAt(new Date(time.getTime() + 1000));
+        await page.locator('#setup-start').click();
+        await page.clock.runFor(20);
+        const panel = page.locator('#melee-practice');
+        await expect(panel).toBeVisible();
+        await expect(panel).toContainText('hacia donde mirás, no hacia el cursor');
+        await expect(page.locator('#practice-instructions')).toContainText('tu tecla J');
+        await expect(page.locator('#practice-continue')).toBeDisabled();
+        await expect(page.locator('#prepare-spell')).toBeDisabled();
+        await expect(page.locator('#objective')).toHaveText('0 / 1 golpe acertado');
+        await page.keyboard.press('j');
+        await page.clock.runFor(20);
+        await expect(page.locator('#objective')).toHaveText('0 / 1 golpe acertado');
+        await expect(page.locator('#practice-continue')).toBeDisabled();
+        await page.locator('#game').focus();
+        await page.keyboard.down('d');
+        await page.clock.runFor(600);
+        await page.keyboard.up('d');
+        await page.clock.runFor(1000);
+        if (width === 390) await page.locator('#mobile-strike').click();
+        else await page.keyboard.press('j');
+        await page.clock.runFor(20);
+        await expect(page.locator('#practice-status')).toContainText('¡Golpe acertado!');
+        await expect(page.locator('#objective')).toHaveText('1 / 1 golpe acertado');
+        await expect(page.locator('#practice-continue')).toBeEnabled();
+        await expect(page.locator('#practice-continue')).toBeInViewport();
+        const field = await page.locator('.playfield').boundingBox();
+        const card = await panel.boundingBox();
+        if (!field || !card) throw new Error('Missing practice layout');
+        expect(field.height).toBeGreaterThan(200);
+        expect(card.y).toBeGreaterThanOrEqual(field.y + field.height);
+        await page.clock.runFor(100);
+        await testInfo.attach('melee-practice-completed', { body: await page.screenshot(), contentType: 'image/png' });
+        await page.locator('#practice-continue').click();
+        await page.clock.runFor(20);
+        await expect(page.locator('body')).toHaveAttribute('data-tutorial-stage', 'fight');
+        await expect(panel).toBeHidden();
+        await expect(page.locator('#prepare-spell')).toBeEnabled();
+      });
+    }
+
     for (const viewport of [
       { width: 1280, height: 720 },
       { width: 390, height: 844 },
@@ -158,6 +218,7 @@ test.describe('offline demo', () => {
         await enterPreparation(page);
         await page.locator('#setup-windows').click();
         await page.locator('#setup-start').click();
+        await completeMeleePractice(page);
         const card = page.locator('#combat-lesson');
         const assertBottom = async () => {
           await expect(card).toBeVisible();
@@ -198,6 +259,7 @@ test.describe('offline demo', () => {
       await page.clock.install({ time });
       await page.clock.pauseAt(new Date(time.getTime() + 1000));
       await page.locator('#setup-start').click();
+      await completeMeleePractice(page, { clockPaused: true });
       for (const id of ['life-stock', 'mana-stock', 'life-inventory-count', 'mana-inventory-count'])
         await expect(page.locator('#' + id)).toHaveText('∞');
       for (let i = 0; i < 40; i++) {
@@ -248,6 +310,7 @@ test.describe('offline demo', () => {
       await page.clock.install({ time });
       await page.clock.pauseAt(new Date(time.getTime() + 10000));
       await page.locator('#setup-start').click();
+      await completeMeleePractice(page, { clockPaused: true });
       await page.clock.runFor(20);
       await page.keyboard.press('Control');
       await page.clock.runFor(20);
@@ -348,6 +411,7 @@ test.describe('offline demo', () => {
       await page.locator('#setup-next').click();
       await page.locator('#setup-experienced').click();
       await page.locator('#setup-start').click();
+      await completeMeleePractice(page);
       await page.keyboard.press('e');
       await expect(page.locator('#prepare-spell')).toHaveAttribute('aria-pressed', 'true');
       await expect(page.locator('#help-dialog')).toBeHidden();
@@ -364,6 +428,7 @@ test.describe('offline demo', () => {
       await enterPreparation(page);
       await page.locator('#setup-windows').click();
       await page.locator('#setup-start').click();
+      await completeMeleePractice(page);
       await expect(page.locator('#combat-title')).toHaveText('Un clic, un casillero');
       await expect(page.locator('#combat-description')).toContainText('no se cargan ni cubren un área');
       await expect(page.locator('main')).toHaveAttribute('inert', '');
@@ -448,6 +513,7 @@ test.describe('offline demo', () => {
       await expect(page.locator('body')).toHaveAttribute('data-tutorial-stage', 'setup');
       await page.locator('#setup-experienced').click();
       await page.locator('#setup-start').click();
+      await completeMeleePractice(page);
       await expect(page.locator('#controls-lesson')).toBeHidden();
       await page.keyboard.press('t');
       await expect(page.locator('#prepare-spell')).toHaveAttribute('aria-pressed', 'true');
@@ -464,6 +530,7 @@ test.describe('offline demo', () => {
       await expect(page.locator('body')).toHaveAttribute('data-tutorial-stage', 'setup');
       await page.locator('#setup-experienced').click();
       await page.locator('#setup-start').click();
+      await completeMeleePractice(page);
       await page.keyboard.press('c');
       await expect(page.locator('#prepare-spell')).toHaveAttribute('aria-pressed', 'false');
       await page.locator('#prepare-spell').click();

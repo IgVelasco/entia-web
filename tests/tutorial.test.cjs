@@ -1,3 +1,4 @@
+const startCombat = require('./helpers/tutorial-arena.cjs');
 const test = require('node:test'),
   assert = require('node:assert/strict');
 const M = require('../src/demo/rules/tutorial.ts').default;
@@ -12,7 +13,7 @@ function arena() {
   }
   assert(M.enterArena(s));
   M.skipCombatLessons(s);
-  assert(M.startFight(s));
+  assert(startCombat(M, s));
   return s;
 }
 test('fresh tutorial begins in a safe bounded hall with three distinct guides', () => {
@@ -72,7 +73,7 @@ test('preparation freezes movement, enemies, timers and resources until explicit
   assert.equal(s.lifePotions, 100);
   assert.equal(s.player.hp, 80);
   M.skipCombatLessons(s);
-  assert(M.startFight(s));
+  assert(startCombat(M, s));
   assert.equal(s.tutorial.stage, 'fight');
   assert(!M.startFight(s));
   advance(s, 0.1, { x: 1 });

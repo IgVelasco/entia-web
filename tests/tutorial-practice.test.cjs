@@ -1,3 +1,4 @@
+const startCombat = require('./helpers/tutorial-arena.cjs');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const M = require('../src/demo/rules/navigation.ts').default;
@@ -8,7 +9,7 @@ function practice() {
   s.tutorial.seen = M.guides.map((guide) => guide.id);
   M.enterArena(s);
   M.skipCombatLessons(s);
-  M.startFight(s);
+  startCombat(M, s);
   return s;
 }
 function advance(s, seconds, input = {}) {

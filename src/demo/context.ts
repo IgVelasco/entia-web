@@ -86,6 +86,9 @@ interface DemoElements {
   '#interact': HTMLButtonElement;
   '#cast': HTMLButtonElement;
   '#prepare-spell': HTMLButtonElement;
+  '#practice-continue': HTMLButtonElement;
+  '#strike': HTMLButtonElement;
+  '#mobile-strike': HTMLButtonElement;
   '#use-selected': HTMLButtonElement;
   '#essence-slot': HTMLButtonElement;
   '#life-potion': HTMLButtonElement;
@@ -93,7 +96,6 @@ interface DemoElements {
   '#macro-life': HTMLButtonElement;
   '#macro-mana': HTMLButtonElement;
   '#macro-spell': HTMLButtonElement;
-  '#mobile-strike': HTMLButtonElement;
   '#setup-next': HTMLButtonElement;
   '#setup-back': HTMLButtonElement;
   '#setup-start': HTMLButtonElement;

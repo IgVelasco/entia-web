@@ -64,7 +64,8 @@ export function prepareSpell() {
     demo.presentationNow < demo.beatUntil ||
     demo.state.phase === 'hallway' ||
     demo.state.tutorial?.stage === 'setup' ||
-    demo.state.tutorial?.stage === 'complete'
+    demo.state.tutorial?.stage === 'complete' ||
+    demo.state.tutorial?.stage === 'melee'
   )
     return;
   setHudDrawer(false);

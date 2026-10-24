@@ -1,3 +1,4 @@
+import { completeMeleePractice } from './practice.ts';
 import { test, expect, openDemo, openSite, transformOf } from './fixtures.ts';
 
 test.describe('Nix site on a phone', () => {
@@ -104,6 +105,7 @@ test.describe('offline demo on a phone', () => {
     await expect(page.locator('#setup-summary')).toContainText('No hay teclas');
     await page.locator('#setup-experienced').tap();
     await page.locator('#setup-start').tap();
+    await completeMeleePractice(page);
     await expect(page.locator('#controls-lesson')).toBeHidden();
     await expect(page.locator('#cast')).toBeEnabled();
   });

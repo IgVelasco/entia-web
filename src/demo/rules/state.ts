@@ -99,7 +99,8 @@ export interface Guide extends Dialog, Point {
 }
 export interface TutorialState {
   coach?: CombatCoach;
-  stage: 'hallway' | 'setup' | 'fight' | 'deposit' | 'complete';
+  stage: 'hallway' | 'setup' | 'melee' | 'fight' | 'deposit' | 'complete';
+  meleePractice?: { target: string; arenaEnemies: Enemy[] };
   seen: string[];
   dialog: Dialog | null;
   page: number;
